@@ -8,6 +8,10 @@
  * «Мои работы» (Р-305). Ссылка «назад» называет экран-цель по меню роли
  * (Р-703): менеджеру — «Сегодня» и «Мои работы», руководителю — «Сводка» и
  * «Работы».
+ *
+ * Решение Р-895 уточняет экраны-цели: карточка заявки возвращает к перечню
+ * заявок, «Новый заказ» — к «Заказам» (Р-874), а у «Заявок» менеджера —
+ * пункта его меню — ссылки «назад» нет. Правило подписи прежнее.
  */
 
 import assert from 'node:assert/strict';
@@ -16,7 +20,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 
 import type { Actor } from '../src/lib/cabinet/access.ts';
-import { SUMMARY_HREF, menuLabel } from '../src/lib/cabinet/nav.ts';
+import { ORDERS_HREF, SUMMARY_HREF, menuLabel } from '../src/lib/cabinet/nav.ts';
 
 const MANAGE = path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage');
 
@@ -51,18 +55,31 @@ describe('экран-цель — по меню роли', () => {
 });
 
 describe('заявки и новый заказ: подписи по роли', () => {
-  it('ссылка «назад» с заявок и карточки заявки — пункт меню роли', () => {
-    for (const page of [LEADS, LEAD]) {
-      assert.match(page, /backHref=\{SUMMARY_HREF\}\s*backLabel=\{menuLabel\(actor, SUMMARY_HREF\) \?\? 'Сводка'\}/u);
-    }
+  it('«Все заявки»: у менеджера — пункта меню — «назад» нет, руководителю — «Сводка»', () => {
+    assert.equal(menuLabel(actor('MANAGER'), '/cabinet/manage/leads'), 'Заявки');
+    assert.equal(menuLabel(actor('HEAD'), '/cabinet/manage/leads'), null);
+    assert.match(LEADS, /const inMenu = menuLabel\(actor, '\/cabinet\/manage\/leads'\) !== null;/u);
+    assert.match(
+      LEADS,
+      /backHref=\{inMenu \? undefined : SUMMARY_HREF\}\s*backLabel=\{inMenu \? undefined : \(menuLabel\(actor, SUMMARY_HREF\) \?\? 'Сводка'\)\}/u,
+    );
+  });
+
+  it('карточка заявки возвращает к перечню заявок и подписана пунктом меню роли (Р-895)', () => {
+    assert.match(LEAD, /const LEADS_HREF = '\/cabinet\/manage\/leads';/u);
+    assert.match(LEAD, /backHref=\{LEADS_HREF\}\s*backLabel=\{menuLabel\(actor, LEADS_HREF\) \?\? 'Все заявки'\}/u);
+    assert.doesNotMatch(LEAD, /SUMMARY_HREF/u);
   });
 
   it('пояснение «Всех заявок»: менеджеру — очередь на «Сегодня», руководителю — на «Сводке»', () => {
     assert.match(LEADS, /Очередь на «\$\{\s*actor\.role === 'MANAGER' \? 'Сегодня' : 'Сводке'\s*\}» показывает только те, что ждут решения/u);
   });
 
-  it('«Новый заказ» ведёт к «Моим работам» менеджера и «Работам» руководителя', () => {
-    assert.match(ORDER, /backHref="\/cabinet\/projects"\s*backLabel=\{menuLabel\(actor, '\/cabinet\/projects'\) \?\? 'Работы'\}/u);
+  it('«Новый заказ» подсвечивает «Заказы» и возвращает к ним (Р-895)', () => {
+    assert.equal(menuLabel(actor('MANAGER'), ORDERS_HREF), 'Заказы');
+    assert.equal(menuLabel(actor('HEAD'), ORDERS_HREF), 'Заказы');
+    assert.match(ORDER, /<Shell actor=\{actor\} current="\/cabinet\/manage\/orders\/new">/u);
+    assert.match(ORDER, /backHref=\{ORDERS_HREF\}\s*backLabel=\{menuLabel\(actor, ORDERS_HREF\) \?\? 'Заказы'\}/u);
   });
 
   it('прежних «к сводке» и «к работам» на трёх экранах нет', () => {

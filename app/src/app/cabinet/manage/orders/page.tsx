@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -26,6 +27,8 @@ import {
 import { PROJECT_STATUS_LABEL } from '../../../../lib/cabinet/project-status';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { ORDER_COLUMNS, orderDescription, orderTotals } from '../../../../lib/cabinet/table-views';
+
+export const metadata: Metadata = { title: 'Заказы' };
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +61,7 @@ const DEBT_TAB: Record<OrderDebtFilter, string> = {
  * «Заказы» — книга заказов в кабинете (запрос владельца 13.11.2026,
  * решение Р-874): те же столбцы, что в файле владельца, итог «Сумма»,
  * отбор по состоянию и долгу, выгрузка .xlsx того же вида. Строка ведёт на
- * карточку работы, где «Редактировать заказ» и «Деньги по заказу».
+ * карточку работы, где «Редактировать заказ» и «Оплаты и документы».
  */
 export default async function OrdersScreen({
   searchParams,
@@ -87,7 +90,7 @@ export default async function OrdersScreen({
     <Shell actor={actor} current="/cabinet/manage/orders">
       <ScreenHead
         title="Заказы"
-        note={`${actor.role === 'HEAD' ? 'Все работы практики' : 'Ваши работы'} — как в книге заказов: дата, заказчик, тип, описание, срок, стоимость, статус, оплачено и остаток. Строка ведёт на карточку работы: там «Редактировать заказ» и «Деньги по заказу» — записать поступление.`}
+        note={`${actor.role === 'HEAD' ? 'Все работы практики' : 'Ваши работы'} — как в книге заказов: дата, заказчик, тип, описание, срок, стоимость, статус, оплачено и остаток. Строка ведёт на карточку работы: там «Редактировать заказ» и «Оплаты и документы» — записать поступление.`}
         action={<ButtonLink href="/cabinet/manage/orders/new">Новый заказ</ButtonLink>}
       />
 

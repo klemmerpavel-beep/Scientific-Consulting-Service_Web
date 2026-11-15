@@ -145,7 +145,37 @@ export function storage(): Storage {
  * (подмена в тестах) отдаёт прочитанное целиком тем же видом.
  */
 export async function openObject(store: Storage, key: string): Promise<OpenedObject> {
-  if (store.open !== undefined) return store.open(key);
+  try {
+    if (store.open !== undefined) return await store.open(key);
+    return await openWhole(store, key);
+  } catch (error) {
+    // Строка в базе есть, объекта в хранилище нет: сбой диска, прерванная
+    // загрузка, восстановление из копии. Прежде выдача отвечала голой
+    // ошибкой 500 (аудит 15.11.2026, находка Ф-5, решение Р-907).
+    if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') throw new ObjectMissing(key);
+    throw error;
+  }
+}
+
+/** Объекта нет в хранилище, хотя строка о нём в базе есть (Р-907). */
+export class ObjectMissing extends Error {
+  /** Тот же признак, что у ошибки диска: прежние проверки по коду действуют. */
+  readonly code = 'ENOENT';
+  /** Ключ объекта — для журнала сервера; человеку он не показывается. */
+  readonly key: string;
+
+  constructor(key: string) {
+    super('Файл не найден в хранилище');
+    this.name = 'ObjectMissing';
+    this.key = key;
+  }
+}
+
+/** Что сказать человеку, которому файл положен, а объекта нет (Р-907). */
+export const OBJECT_MISSING_TEXT =
+  'Файл не найден в хранилище. Напишите менеджеру работы: он приложит файл заново.';
+
+async function openWhole(store: Storage, key: string): Promise<OpenedObject> {
   const body = await store.get(key);
   return {
     stream: new ReadableStream<Uint8Array>({

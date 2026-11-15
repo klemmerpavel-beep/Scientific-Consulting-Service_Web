@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -20,6 +21,8 @@ import { workChecklist } from '../../../../../lib/cabinet/checklist-marks';
 import { SERVICE_PHASES } from '../../../../../lib/cabinet/service-checklists';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { saveWorkChecklist } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Чек-лист работы' };
 
 export const dynamic = 'force-dynamic';
 
@@ -66,13 +69,13 @@ export default async function WorkChecklistScreen({
       {flags.saved === undefined ? null : <Outcome>Отметки сохранены.</Outcome>}
 
       {list === null ? (
-        <Empty title="Для этого вида работы чек-листа нет">
+        <Empty title="Для этого типа сопровождения чек-листа нет">
           Чек-листы заведены для шести видов сопровождения справочника.
         </Empty>
       ) : (
         <Card>
           {closed ? (
-            <Notice tone="quiet" role="status">
+            <Notice tone="quiet">
               Работа закрыта: отметки показаны как есть и не меняются.
             </Notice>
           ) : null}

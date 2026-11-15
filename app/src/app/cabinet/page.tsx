@@ -81,6 +81,7 @@ export default async function CabinetEntrance({
                 <Field
                   label="Электронная почта"
                   name="email"
+                  autoComplete="email"
                   type="email"
                   required
                   placeholder="you@example.ru"

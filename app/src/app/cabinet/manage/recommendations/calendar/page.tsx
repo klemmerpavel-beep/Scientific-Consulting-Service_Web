@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -37,6 +38,8 @@ import { calendarFor } from '../../../../../lib/cabinet/recommendations';
 import { markRecommendationAction } from '../../../actions';
 import { requireActor } from '../../../../../lib/cabinet/session';
 
+export const metadata: Metadata = { title: 'Календарь продвижения' };
+
 export const dynamic = 'force-dynamic';
 
 const days = (value: number) => String(value).replace('.', ',');
@@ -73,7 +76,7 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
         backHref="/cabinet/manage/recommendations"
         backLabel="Рекомендации"
         title="Календарь продвижения"
-        note="Когда продвигать каждый вид работ: от сроков сдачи и медианы выполнения. Это ориентир по истории практики, не прогноз."
+        note="Когда продвигать каждый тип сопровождения: от сроков сдачи и медианы выполнения. Это ориентир по истории практики, не прогноз."
       />
       <ActionError id={flags.error} />
 
@@ -122,11 +125,11 @@ export default async function PromoCalendarScreen({ searchParams }: { searchPara
           правый край. Заказ — конец окна и стоит с ним в одном столбце, пик
           заказов — справочный, перенесён в «На чём основано», многословные
           шапки переносятся (Р-689). */}
-      <TableCard label="Виды работ" style={{ marginBottom: 12 }}>
+      <TableCard label="Типы сопровождения" style={{ marginBottom: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1120 }}>
           <thead>
             <tr>
-              <th style={TABLE_HEAD} scope="col">Вид работ</th>
+              <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
               <th style={TABLE_NUM_HEAD} scope="col">Наблюдений</th>
               <th style={{ ...TABLE_HEAD, whiteSpace: 'normal' }} scope="col">Месяц сдачи (сроков / сезонов)</th>
               <th style={{ ...TABLE_NUM_HEAD, whiteSpace: 'normal' }} scope="col">Медиана, дней</th>

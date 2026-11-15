@@ -841,6 +841,61 @@ export function curatorProfileRows(
   return rows;
 }
 
+/**
+ * События работы, которых клиент не видит: что работа была у другого
+ * клиента (Р-873), кто назначен куратором и сдача этапа куратором
+ * менеджеру (Э-05, Р-325) — внутреннее дело практики.
+ */
+export const CLIENT_HIDDEN_EVENTS: ReadonlySet<string> = new Set([
+  'CLIENT_CHANGED',
+  'EXPERT_ASSIGNED',
+  'STAGE_HANDED_OVER',
+  'STAGE_HANDOVER_RECALLED',
+  'STAGE_HANDED_BACK',
+]);
+
+/**
+ * Ограничение полей работы под роль — в данных, а не в разметке (аудит
+ * 15.11.2026, находка П-2; решение Р-903).
+ *
+ * Выборка карточки и перечня работ одна на все роли, и клиенту с куратором
+ * она отдавала то, чего экран им не печатает: куратору — телефон и почту
+ * клиента, обоим — ФИО куратора из книги заказов (`expertNameRaw`),
+ * клиенту — события, скрытые от него на экране. Запрет держался на
+ * условиях в разметке: одна строка разметки открыла бы поле. Теперь у
+ * клиента и куратора этих значений в объекте нет.
+ *
+ * `expertNamed` — «куратор у работы назван», всем ролям: по нему карточка
+ * пишет, чей ход, и самому имени для этого быть не нужно.
+ */
+export function narrowProjectFields<
+  T extends {
+    readonly expertNameRaw?: string | null;
+    readonly client?: object | null;
+    readonly events?: readonly { readonly kind: string }[];
+  },
+>(viewer: Actor, project: T): T & { readonly expertNamed: boolean } {
+  const expertNamed = (project.expertNameRaw ?? '').trim() !== '';
+  if (viewer.role === 'MANAGER' || viewer.role === 'HEAD') return { ...project, expertNamed };
+  const client =
+    project.client === null || project.client === undefined
+      ? project.client
+      : {
+          ...project.client,
+          ...('phone' in project.client ? { phone: null } : {}),
+          ...('email' in project.client ? { email: null } : {}),
+        };
+  return {
+    ...project,
+    ...('expertNameRaw' in project ? { expertNameRaw: null } : {}),
+    ...(project.client === undefined ? {} : { client }),
+    ...(project.events === undefined || viewer.role !== 'CLIENT'
+      ? {}
+      : { events: project.events.filter((event) => !CLIENT_HIDDEN_EVENTS.has(event.kind)) }),
+    expertNamed,
+  } as T & { readonly expertNamed: boolean };
+}
+
 /** Роли, чьё имя и почта не попадают в данные экрана клиента. */
 const HIDDEN_FROM_CLIENT: readonly string[] = ['EXPERT', 'MANAGER', 'HEAD'];
 

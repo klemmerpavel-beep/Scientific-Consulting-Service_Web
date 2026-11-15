@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -21,6 +22,8 @@ import { can } from '../../../../lib/cabinet/access';
 import { diskStatus } from '../../../../lib/cabinet/disk-status';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Зеркало на облачном диске' };
 
 export const dynamic = 'force-dynamic';
 

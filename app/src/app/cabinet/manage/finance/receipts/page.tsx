@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Disclosure,
   ScreenHead,
@@ -18,6 +20,8 @@ import { receiptsPlan, type ReceiptLine } from '../../../../../lib/cabinet/finan
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Поступления' };
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +59,7 @@ export default async function ReceiptsScreen() {
         title="Поступления"
         note={`По обязательствам клиентов; это не прогноз спроса. Итого ${formatAmount(plan.total)} — столько же, сколько «К получению».`}
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/receipts" />
 
       <TableCard label="Поступления по месяцам" style={{ marginBottom: 12 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 960 }}>

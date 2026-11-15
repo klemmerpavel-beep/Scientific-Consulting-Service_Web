@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import {
   notFound,
@@ -5,6 +6,7 @@ import {
   ButtonLink,
   Block,
   Card,
+  Checkbox,
   Chip,
   Disclosure,
   Field,
@@ -54,6 +56,7 @@ import { daysPast, moscowToday, now as clockNow } from '../../../../lib/cabinet/
 import {
   OUTCOME_ANCHOR,
   OUTCOME_FLAGS,
+  doneLine,
   PUBLISHED_LINE,
   approvalSentLine,
   approvedLine,
@@ -93,6 +96,8 @@ import {
 
 import { nextStageUnpaid } from '../../../../lib/cabinet/head-checks';
 import { CHECKLISTS, stepText } from '../../../../lib/cabinet/checklists';
+
+export const metadata: Metadata = { title: 'Этап' };
 
 export const dynamic = 'force-dynamic';
 
@@ -307,6 +312,7 @@ export default async function StageScreen({
     returnedUnacked: lastReturn !== undefined && stage.returnAckAt === null,
     hasNext,
     lateDays: late,
+    hasExpert: stage.project.expertId !== null,
   });
   // Куратору первой строкой — чей ход с его стороны (Р-288, Р-329, Р-723).
   const curatorLine = curatorStageLine({
@@ -371,6 +377,9 @@ export default async function StageScreen({
       )
     ) {
       outcome = PUBLISHED_LINE;
+    } else if (done === 'stage-state' && forStaff) {
+      // Прочие переводы этапа — короткой строкой (Ф-12, решение Р-923).
+      outcome = doneLine(done);
     }
   }
 
@@ -432,7 +441,7 @@ export default async function StageScreen({
               {curatorWork === null ? null : (
                 <Text style={{ marginBottom: 12, fontWeight: 600 }}>{curatorLine.text}</Text>
               )}
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {curatorWork === null ? curatorLine.text : handedLine}
                 {(stage.handoverNote ?? '').trim() === '' ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
@@ -479,7 +488,7 @@ export default async function StageScreen({
           </Text>
           {lastReturn === undefined ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Клиент вернул этап с замечаниями ${formatDay(lastReturn.createdAt)}`}
                 {returnText === null ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
@@ -489,7 +498,7 @@ export default async function StageScreen({
           )}
           {handover !== 'handed-back' || stage.handbackAt === null ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Менеджер вернул этап ${formatDay(stage.handbackAt)}`}
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
                   {stage.handbackReason}
@@ -501,7 +510,7 @@ export default async function StageScreen({
               нейтральная пометка, как в истории работы (Р-414, Р-522). */}
           {blockedForCurator === null ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {blockedForCurator}
               </Notice>
             </div>
@@ -527,7 +536,7 @@ export default async function StageScreen({
           {handover === 'handed' ? null : mayHandOver ? (
             ownVersions === 0 ? (
               <Text muted size={13}>
-                Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — загрузите её
+                Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — приложите её
                 ниже.
               </Text>
             ) : (
@@ -559,7 +568,7 @@ export default async function StageScreen({
                   multiline
                   required
                   defaultValue={draft.note ?? stage.handoverNote ?? ''}
-                  hint="Менеджер получит записку вместе с этапом; из неё он соберёт «Итог этапа» для клиента."
+                  hint="Менеджер получит записку вместе с этапом и по ней напишет «Итог этапа» для клиента. Клиенту записка не показывается."
                 />
                 <FormActions>
                   <Button>Сдать этап менеджеру</Button>
@@ -587,13 +596,13 @@ export default async function StageScreen({
           )}
           {uploadedByClient === null ? null : (
             <div style={{ marginBottom: stage.blockedReason === null && lastReturn === undefined ? 0 : 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`${uploadedLine(stage.title, formatDay(uploadedByClient))}. ${UPLOADED_NEXT}`}
               </Notice>
             </div>
           )}
           {lastReturn === undefined ? null : (
-            <Notice tone="quiet" role="status">
+            <Notice tone="quiet">
               {`Возвращён с замечаниями ${formatDay(lastReturn.createdAt)}`}
               {returnText === null ? null : (
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
@@ -610,7 +619,7 @@ export default async function StageScreen({
           ) : null}
           {stage.blockedReason === null ? null : (
             <div style={{ marginTop: lastReturn === undefined ? 0 : 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {stage.blockedReason}
               </Notice>
             </div>
@@ -632,7 +641,8 @@ export default async function StageScreen({
             </Text>
           )}
           <Text muted size={13} style={{ marginBottom: 12 }}>
-            Записка подставлена черновиком «Итога этапа» в форму перевода на согласование. Для клиента
+            Записку видит только практика: клиенту она не показывается и в «Итог этапа» не
+            подставляется. Итог для клиента напишите в форме перевода на согласование. Для клиента
             этап остаётся «В работе».
           </Text>
           <Disclosure title="Вернуть куратору">
@@ -657,7 +667,7 @@ export default async function StageScreen({
 
       {nextUnpaid ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             Следующий этап не оплачен: его транш ещё не поступил. Перевести этап можно — подсказка только напоминает
             об оплате.
           </Notice>
@@ -666,7 +676,7 @@ export default async function StageScreen({
 
       {!live && can(actor, 'STAGE_SET_STATE', ref) ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {`Работа ${PROJECT_STATUS_LABEL[
               stage.project.status as ProjectStatusKey
             ].toLowerCase()}: этапы не меняются. Вернуть работу в действие можно на её экране, в разделе «Управление работой».`}
@@ -684,7 +694,7 @@ export default async function StageScreen({
           если срок был (решение Р-654). */}
       {!live && actor.role === 'CLIENT' && stage.project.status === 'PAUSED' ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {state !== 'IN_APPROVAL'
               ? 'Работа приостановлена — сейчас от вас ничего не требуется.'
               : stage.approvalDaysLeft === null
@@ -817,7 +827,7 @@ export default async function StageScreen({
               <Form action={reopenStageAction}>
                 <input type="hidden" name="stageId" value={stage.id} />
                 {paperwork.acts + paperwork.paid > 0 ? (
-                  <Notice tone="quiet" role="status">
+                  <Notice tone="quiet">
                     {`По работе актов — ${paperwork.acts}, оплачено траншей — ${paperwork.paid}: проверьте, не закрывают ли они этот этап.`}
                   </Notice>
                 ) : null}
@@ -939,9 +949,16 @@ export default async function StageScreen({
               )}
             </Text>
           )}
-          <Form action={approveStage} inline>
+          {/* Согласование — с отметкой и по моменту отправки (решение Р-905):
+              действие запускает сроки по оферте и клиентом не отменяется, а
+              страница могла устареть — этап сдан заново с другой версией. */}
+          <Form action={approveStage}>
             <input type="hidden" name="stageId" value={stage.id} />
-            <Button>Согласовать этап</Button>
+            <input type="hidden" name="sentAt" value={stage.approvalSentAt?.toISOString() ?? ''} />
+            <Checkbox name="seen" required label="Я посмотрел последнюю версию материалов и итог этапа" />
+            <FormActions>
+              <Button>Согласовать этап</Button>
+            </FormActions>
           </Form>
           {/* Второе действие — нейтральное и под раскрытием: акцент на
               экране один, а форма замечаний нужна не каждому
@@ -955,6 +972,7 @@ export default async function StageScreen({
             >
               <Form action={returnStageWithRemarks}>
                 <input type="hidden" name="stageId" value={stage.id} />
+                <input type="hidden" name="sentAt" value={stage.approvalSentAt?.toISOString() ?? ''} />
                 <ActionError id={errorId} slot="return" />
                 <Field
                   label="Что исправить или дополнить"
@@ -994,7 +1012,7 @@ export default async function StageScreen({
                   label="Причина остановки"
                   name="reason"
                   required
-                  placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
+                  placeholder="Ждём протокол испытаний; после получения — два рабочих дня на расчёт"
                   hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
                 />
                 <FormActions>
@@ -1004,7 +1022,10 @@ export default async function StageScreen({
             ))}
           {/* На согласование — с итогом: его клиент читает над кнопками и
               в письме (требование Т-14, решение Р-289). Подставляется
-              прежний итог: после возврата его достаточно поправить. */}
+              прежний итог: после возврата его достаточно поправить.
+              Записка куратора в поле не подставляется: она написана
+              практике, а неправленое поле уходило клиенту на экран и
+              письмом (аудит 15.11.2026, решение Р-900). */}
           {stageStateButtons(state)
             .filter((next) => next === 'IN_APPROVAL' && stage.materials.length > 0)
             .map((next) => (
@@ -1017,7 +1038,7 @@ export default async function StageScreen({
                   scope="submit"
                   multiline
                   required
-                  defaultValue={draft.outcome ?? stage.outcome ?? stage.handoverNote ?? ''}
+                  defaultValue={draft.outcome ?? stage.outcome ?? ''}
                   hint="Итог клиент читает над кнопками согласования и в письме."
                 />
                 <FormActions>
@@ -1236,7 +1257,7 @@ export default async function StageScreen({
 
                 {mayUpload ? (
                   <Disclosure
-                    title="Загрузить следующую версию"
+                    title="Приложить следующую версию"
                     id={`upload-${material.id}`}
                     open={draft.upload === material.id}
                     style={{ marginTop: 20 }}
@@ -1253,7 +1274,7 @@ export default async function StageScreen({
                         required
                       />
                       <FormActions>
-                        <Button tone="quiet">Загрузить</Button>
+                        <Button tone="quiet">Приложить</Button>
                       </FormActions>
                     </Form>
                   </Disclosure>
@@ -1308,7 +1329,7 @@ export default async function StageScreen({
                 name="file"
                 scope="new-material"
                 required
-                hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
+                hint="Каждый приложенный файл сохраняется отдельной версией: прежние остаются доступными."
               />
               {/* Пояснение куратора — как в форме «Ваша работа» на карточке:
                   замечанием к той же версии одной операцией (Р-326); отказ

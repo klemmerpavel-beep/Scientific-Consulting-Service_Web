@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -33,6 +34,8 @@ import { flashText } from '../../../../lib/cabinet/flash';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
+
+export const metadata: Metadata = { title: 'Удаление данных субъекта' };
 
 export const dynamic = 'force-dynamic';
 
@@ -86,8 +89,8 @@ export default async function ErasureScreen({
       <ScreenHead
         backHref="/cabinet/manage/tools"
         backLabel="Управление"
-        title="Удаление по требованию субъекта"
-        note="Статьи 14 и 21 Федерального закона № 152-ФЗ. Затираются ФИО, контакты, вуз, специальность, тема работы, имена файлов и тела сообщений; объекты изымаются из хранилища. Сохраняются код проекта, суммы договора и траншей, строки версий и записи журналов — первичные учётные документы хранятся своими сроками, и по ним человека опознать нельзя."
+        title="Удаление данных субъекта"
+        note="Статьи 14 и 21 Федерального закона № 152-ФЗ. Затираются ФИО, контакты, вуз, специальность, тема работы, имена файлов и тела сообщений; объекты изымаются из хранилища. Сохраняются код работы, суммы договора и траншей, строки версий и записи журналов — первичные учётные документы хранятся своими сроками, и по ним человека опознать нельзя."
       />
 
       {failure === undefined ? null : (
@@ -139,7 +142,7 @@ export default async function ErasureScreen({
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.fullName} — {client._count.projects}{' '}
-                {plural(client._count.projects, 'проект', 'проекта', 'проектов')}
+                {plural(client._count.projects, 'работа', 'работы', 'работ')}
               </option>
             ))}
           </Select>
@@ -219,7 +222,7 @@ export default async function ErasureScreen({
                 <td style={TABLE_CELL}>
                   {request.executedAt === null
                     ? '—'
-                    : `проектов ${report.projects ?? 0} · сообщений ${report.messages ?? 0} · версий ${report.versions ?? 0} · объектов изъято ${report.objectsPurged ?? 0} · заявок ${report.leads ?? 0} · текстов ${report.texts ?? 0}`}
+                    : `работ ${report.projects ?? 0} · сообщений ${report.messages ?? 0} · версий ${report.versions ?? 0} · объектов изъято ${report.objectsPurged ?? 0} · заявок ${report.leads ?? 0} · текстов ${report.texts ?? 0}`}
                 </td>
                 <td style={TABLE_CELL}>
                   {request.executedAt !== null ? (

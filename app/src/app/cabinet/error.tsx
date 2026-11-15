@@ -53,9 +53,18 @@ export default function CabinetError({ reset }: { error: Error; reset: () => voi
       </p>
       {/* Общая кнопка: своя разметка шла с начертанием 500 вместо 600 и
           без отклика на наведение и нажатие (решение Р-253). */}
-      <Button type="button" onClick={reset}>
-        Открыть снова
-      </Button>
+      {/* Два выхода: повторить и уйти на начальный экран роли. Прежде
+          выход был один, и при повторном сбое человек оставался на экране
+          без меню (решение Р-896). `/cabinet` сам ведёт вошедшего на
+          начальный экран его роли (Р-305). */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <Button type="button" onClick={reset}>
+          Открыть снова
+        </Button>
+        <Button type="button" tone="quiet" onClick={() => window.location.assign('/cabinet')}>
+          На начальный экран
+        </Button>
+      </div>
     </main>
   );
 }

@@ -25,10 +25,10 @@ import { NEW_CLIENT, candidateLine } from '../../../../../lib/cabinet/client-mat
 import { formDraft } from '../../../../../lib/cabinet/flash';
 import { nameCandidates } from '../../../../../lib/cabinet/manual-order';
 import { requireActor } from '../../../../../lib/cabinet/session';
-import { homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
+import { ORDERS_HREF, homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
 import { createOrder, parseOrderBrief } from '../../../actions';
 
-export const metadata: Metadata = { title: 'Новый заказ — ProDisser' };
+export const metadata: Metadata = { title: 'Новый заказ' };
 export const dynamic = 'force-dynamic';
 
 /**
@@ -59,12 +59,13 @@ export default async function NewOrderScreen({
     draft.clientChoiceNeeded === '1' ? await nameCandidates(actor, draft.customer ?? '') : [];
 
   return (
-    <Shell actor={actor} current="/cabinet/projects">
+    <Shell actor={actor} current="/cabinet/manage/orders/new">
       <ScreenHead
-        backHref="/cabinet/projects"
-        // Менеджеру — «Мои работы», руководителю — «Работы» (Р-703; решение
-        // Р-756).
-        backLabel={menuLabel(actor, '/cabinet/projects') ?? 'Работы'}
+        // «Новый заказ» — экран «Заказов» (Р-874): подсвечен их пункт меню
+        // и к ним же ведёт «назад». Прежде подсвечивались «Работы» и
+        // возврат вёл к ним (решение Р-895, уточняет Р-756).
+        backHref={ORDERS_HREF}
+        backLabel={menuLabel(actor, ORDERS_HREF) ?? 'Заказы'}
         title="Новый заказ"
         note={`Для заказа, пришедшего звонком, письмом или от постоянного клиента. Поля — как в книге заказов. Заказчик ищется по почте и телефону; если совпало только ФИО, выберите его карточку или заведите новую. Писем клиенту не уходит. Вход в кабинет открывается кнопкой «Открыть клиенту вход» в «Управлении работой» созданной работы: нужен адрес почты клиента.${
           head ? '' : ' Договор со стоимостью увидит руководитель: ему уходит уведомление и дело «Проверьте договор». Сумму и поступления дальше ведёте вы — на «Редактировать заказ» и «Оплатах и документах» работы.'
@@ -93,7 +94,7 @@ export default async function NewOrderScreen({
       ) : null}
       <Card>
         {fromBrief === null ? null : (
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             Поля заполнены из документа: проверьте их и нажмите «Завести заказ». Стоимость документ не несёт.
             {[...loaded!.brief.issues, ...fromBrief.notes].length === 0 ? null : (
               <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
@@ -111,12 +112,13 @@ export default async function NewOrderScreen({
             <Field
               label="Заказчик (ФИО)"
               name="customer"
+              autoComplete="off"
               required
               placeholder="Иванов Иван Иванович"
               defaultValue={draft.customer}
             />
-            <Field label="Почта" name="email" type="email" placeholder="необязательно" defaultValue={draft.email} />
-            <Field label="Телефон" name="phone" type="tel" placeholder="необязательно" defaultValue={draft.phone} />
+            <Field label="Почта" name="email" autoComplete="off" type="email" placeholder="необязательно" defaultValue={draft.email} />
+            <Field label="Телефон" name="phone" autoComplete="off" type="tel" placeholder="необязательно" defaultValue={draft.phone} />
           </FormRow>
           {candidates.length === 0 ? null : (
             <Select
@@ -138,7 +140,7 @@ export default async function NewOrderScreen({
             </Select>
           )}
           <FormRow>
-            <Select label="Вид работы" name="serviceTypeId" required defaultValue={draft.serviceTypeId}>
+            <Select label="Тип сопровождения" name="serviceTypeId" required defaultValue={draft.serviceTypeId}>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
@@ -181,11 +183,12 @@ export default async function NewOrderScreen({
             <Field
               label="Стоимость, ₽"
               name="cost"
+              inputMode="decimal"
               placeholder="125 000"
               hint="Пусто — договор заводится позже, на экране «Оплаты и документы»."
               defaultValue={draft.cost}
             />
-            <Field label="Оплачено, ₽" name="paid" placeholder="0" defaultValue={draft.paid} />
+            <Field label="Оплачено, ₽" name="paid" inputMode="decimal" placeholder="0" defaultValue={draft.paid} />
           </FormRow>
           <FormRow>
             <Select label="Состояние" name="status" defaultValue={draft.status || 'ACTIVE'}>

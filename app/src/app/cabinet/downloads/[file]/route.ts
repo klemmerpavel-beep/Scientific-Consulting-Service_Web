@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
+import { attachmentDisposition, safeContentType } from '../../../../lib/cabinet/disposition';
 import { download } from '../../../../lib/cabinet/downloads';
 import { currentActor, signInFirst } from '../../../../lib/cabinet/session';
 
@@ -20,7 +20,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   if (item === null) return new NextResponse('Не найдено', { status: 404 });
   return new NextResponse(new Uint8Array(item.bytes), {
     headers: {
-      'content-type': item.type,
+      // Шаблон практики загружает руководитель, и тип приходит с его
+      // браузера: опасный заменяется нейтральным (решение Р-902).
+      'content-type': safeContentType(item.type),
       'content-disposition': attachmentDisposition(item.file, item.ascii),
       'cache-control': 'private, no-store',
     },

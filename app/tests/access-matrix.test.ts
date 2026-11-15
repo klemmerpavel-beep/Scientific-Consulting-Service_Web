@@ -443,9 +443,11 @@ describe('меню подсвечивает раздел, в котором че
     // «Заказы» — свой пункт; «Новый заказ» — внутри него (Р-874).
     ['/cabinet/manage/orders', '/cabinet/manage/orders'],
     ['/cabinet/manage/orders/new', '/cabinet/manage/orders'],
-    // «Рекомендации» — свой пункт (РК-17, Р-350).
-    ['/cabinet/manage/recommendations', '/cabinet/manage/recommendations'],
-    ['/cabinet/manage/recommendations/calendar', '/cabinet/manage/recommendations'],
+    // «Рекомендации» — вкладка «Аналитики» (РК-17, Р-350; Р-913).
+    ['/cabinet/manage/recommendations', '/cabinet/manage/analytics'],
+    ['/cabinet/manage/recommendations/calendar', '/cabinet/manage/analytics'],
+    // «Реклама» — раздел «Управления» (Р-550; Р-913).
+    ['/cabinet/manage/ads', '/cabinet/manage/tools'],
     ['/cabinet/projects', '/cabinet/projects'],
     ['/cabinet/settings', '/cabinet/settings'],
   ];

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { RankChart, compactMoney } from '../../../../../components/cabinet/Charts';
 import {
   Chip,
@@ -11,6 +12,8 @@ import { products } from '../../../../../lib/cabinet/analytics/metrics';
 import { PRICE_GUIDE } from '../../../../../lib/cabinet/analytics/price-guide';
 import { formatAmount, formatRounded } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
+
+export const metadata: Metadata = { title: 'Аналитика: продукты' };
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +31,7 @@ export default async function AnalyticsProducts() {
       lead="Позиции берутся из справочника типов сопровождения. Исторические написания сведены к ним при переносе книги заказов."
     >
       {list.length === 0 ? (
-        <Empty title="Считать нечего">Проектов в системе нет.</Empty>
+        <Empty title="Считать нечего">Работ в системе нет.</Empty>
       ) : (
         <>
           <Tiles>
@@ -47,7 +50,7 @@ export default async function AnalyticsProducts() {
 
           {scattered.length === 0 ? null : (
             <div style={{ marginBottom: 28 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Разброс чека выше 40 % у позиций: ${scattered.map((product) => product.typeName).join(', ')}. Проверьте, объясняется ли он темой и сложностью работ. Медиана и диапазон в таблице — ${PRICE_GUIDE}.`}
               </Notice>
             </div>

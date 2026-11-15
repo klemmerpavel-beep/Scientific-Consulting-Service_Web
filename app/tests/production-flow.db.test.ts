@@ -192,7 +192,7 @@ describe('сквозной контур', { skip: !enabled }, async () => {
         managerId: ids.manager,
         title: 'Дубль',
       }),
-      /уже развёрнута/,
+      /уже открыта работа/,
     );
   });
 

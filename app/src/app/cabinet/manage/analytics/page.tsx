@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   BarChart,
   DonutChart,
@@ -16,6 +17,8 @@ import { leadConversion, leadResponse, leadRows, leadsByMonth, leadsBySource } f
 import { RESPONSE_NEXT, responseConclusion, workTime } from '../../../../lib/cabinet/analytics/response';
 import { leadSourceLabel } from '../../../../lib/cabinet/lead-labels';
 import { MONTHS_SHORT } from '../../../../lib/cabinet/analytics/metrics';
+
+export const metadata: Metadata = { title: 'Аналитика' };
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +85,7 @@ export default async function AnalyticsOverview() {
     >
       {rows.length === 0 ? (
         <Empty title="Считать нечего">
-          В системе нет ни одного проекта. Аналитика появится после переноса истории или первой
+          В системе нет ни одной работы. Аналитика появится после переноса истории или первой
           одобренной заявки.
         </Empty>
       ) : (
@@ -137,7 +140,7 @@ export default async function AnalyticsOverview() {
             Каждый вывод несёт действие, срок и — где величина считается честно — оценку
             эффекта. Уверенность: «подтверждено числами» — прямой счёт по своим данным,
             «вероятно» — спрос проверен, но повторение не гарантировано, «под вопросом» —
-            решение спорное, зато потенциал наибольший. Когда продвигать каждый вид работ — в{' '}
+            решение спорное, зато потенциал наибольший. Когда продвигать каждый тип сопровождения — в{' '}
             {/* Календарь продвижения (требование РК-16, решение Р-349). */}
             <a className="cab-mark" href="/cabinet/manage/recommendations/calendar">
               «Календаре продвижения»

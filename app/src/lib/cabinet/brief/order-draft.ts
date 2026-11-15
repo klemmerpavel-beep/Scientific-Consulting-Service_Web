@@ -97,8 +97,8 @@ export function orderDraftFromBrief(
   if (type === null) {
     const guess = guessServiceCode(brief);
     type = guess === null ? null : (types.find((item) => item.code === guess) ?? null);
-    if (type !== null) notes.push(`Вид работы определён по тексту документа: «${type.name}» — проверьте.`);
-    else notes.push('Вид работы не распознан — выберите вручную.');
+    if (type !== null) notes.push(`Тип сопровождения определён по тексту документа: «${type.name}» — проверьте.`);
+    else notes.push('Тип сопровождения не распознан — выберите вручную.');
   }
 
   const summary = composeSummary(fields);

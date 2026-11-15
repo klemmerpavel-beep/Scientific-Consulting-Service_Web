@@ -573,6 +573,36 @@ describe('этапы и работы', { skip: !enabled }, async () => {
     await assert.rejects(projects.setStageState(stranger.owner, stage.id, 'DONE'), /не разрешено/u);
   });
 
+  it('согласование и возврат по устаревшей странице — отказ: этап сдан заново (Р-905)', async () => {
+    const { projectId, owner } = await clientWithWork('RSN');
+    const first = new Date('2026-09-01T10:00:00.000Z');
+    const stage = await prisma.stage.create({
+      data: { projectId, position: 1, title: 'Глава 2', state: 'IN_APPROVAL', approvalSentAt: first },
+    });
+    // Менеджер снял этап в работу и сдал снова: момент отправки другой.
+    const second = new Date('2026-09-05T12:30:00.000Z');
+    await prisma.stage.update({ where: { id: stage.id }, data: { approvalSentAt: second } });
+
+    await assert.rejects(
+      projects.setStageState(owner, stage.id, 'DONE', null, first.toISOString()),
+      /отправлен на согласование заново/u,
+    );
+    await assert.rejects(
+      projects.returnStage(owner, stage.id, 'Замечания к прежней сдаче', first.toISOString()),
+      /отправлен на согласование заново/u,
+    );
+    assert.equal((await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } })).state, 'IN_APPROVAL');
+
+    // Со свежей страницы — проходит; без момента отправки сверки нет (практика, автопринятие).
+    await projects.setStageState(owner, stage.id, 'DONE', null, second.toISOString());
+    assert.equal((await prisma.stage.findUniqueOrThrow({ where: { id: stage.id } })).state, 'DONE');
+    const plain = await prisma.stage.create({
+      data: { projectId, position: 2, title: 'Глава 3', state: 'IN_APPROVAL', approvalSentAt: second },
+    });
+    await projects.setStageState(owner, plain.id, 'DONE');
+    assert.equal((await prisma.stage.findUniqueOrThrow({ where: { id: plain.id } })).state, 'DONE');
+  });
+
   it('согласование клиентом отмечается способом перехода (Р-281)', async () => {
     const { projectId, owner } = await clientWithWork('APR');
     const stage = await prisma.stage.create({

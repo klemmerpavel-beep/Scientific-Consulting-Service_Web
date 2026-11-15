@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { MONO } from '../../../../components/cabinet/tokens';
@@ -41,6 +42,7 @@ import {
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   CLOSED_FOR_PRACTICE,
+  CLIENT_HIDDEN_EVENTS,
   can,
   contributionRefusal,
   staffClientLine,
@@ -80,7 +82,7 @@ import { daysPast } from '../../../../lib/cabinet/clock';
 import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
 import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
-import { OUTCOME_ANCHOR, OUTCOME_FLAGS, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
 import { CuratorProfileFold } from '../../../../components/cabinet/CuratorProfile';
@@ -103,6 +105,7 @@ import { PAYMENT_CLOSED_STATUSES, formatAmount, orderBalance } from '../../../..
 import { orderMoneyLine } from '../../../../components/cabinet/OrderMoney';
 import { ownPayoutTotals, paymentDocumentLines, projectContract } from '../../../../lib/cabinet/finance';
 import { requireActor } from '../../../../lib/cabinet/session';
+import { menuLabel } from '../../../../lib/cabinet/nav';
 import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import {
   createStage,
@@ -117,6 +120,8 @@ import {
   openAccessForClient,
   rateWorkAction,
 } from '../../actions';
+
+export const metadata: Metadata = { title: 'Работа' };
 
 export const dynamic = 'force-dynamic';
 
@@ -145,18 +150,6 @@ const EVENT_LABEL: Record<string, string> = {
   CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
 };
 
-/**
- * Сдача этапа куратором — внутреннее дело практики: для клиента этап
- * остаётся «В работе» (требование Э-05, решение Р-325).
- */
-const CLIENT_HIDDEN_EVENTS = new Set([
-  // Что работа была у другого клиента, новому клиенту знать незачем (Р-873).
-  'CLIENT_CHANGED',
-  'EXPERT_ASSIGNED',
-  'STAGE_HANDED_OVER',
-  'STAGE_HANDOVER_RECALLED',
-  'STAGE_HANDED_BACK',
-]);
 
 /**
  * Строка истории: что именно произошло, а не какого рода было событие.
@@ -275,14 +268,18 @@ function eventLine(
     const where = stage === undefined ? 'Этап' : `Этап ${atPosition(data, stage)} «${stage.title}»`;
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? `${where} — срок снят` : `${where} — срок перенесён на ${to}`;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+    // Причину переноса пишут клиенту: куратору — без неё, как причину
+    // перевода этапа (Р-414; аудит 15.11.2026, П-4; решение Р-915).
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? line : `${line}: ${why}`;
   }
 
   // Перенос срока работы — с датой и причиной (УМ-12, Р-391).
   if (kind === 'PROJECT_DUE_CHANGED') {
     const to = typeof data.dueTo === 'string' ? formatDate(new Date(`${data.dueTo}T00:00:00Z`)) : null;
     const line = to === null ? 'Срок работы снят' : `Срок работы перенесён на ${to}`;
-    return typeof data.reason === 'string' && data.reason !== '' ? `${line}: ${data.reason}` : line;
+    const why = presentClientReason(actor, data.reason);
+    return why === null ? line : `${line}: ${why}`;
   }
 
   if (kind === 'PROJECT_STATUS_CHANGED') {
@@ -334,6 +331,7 @@ export default async function ProjectScreen({
     briefApplied?: string;
     rated?: string;
     created?: string;
+    done?: string;
   }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}`);
@@ -341,7 +339,9 @@ export default async function ProjectScreen({
   const { code } = await params;
   // Отказ действия «Управления работой»: причина у своей формы, свёртка
   // раскрыта, поля заполнены введённым (решение Р-279).
-  const { error: errorId, manage, briefApplied, rated, created } = await searchParams;
+  const { error: errorId, manage, briefApplied, rated, created, done: doneFlag } = await searchParams;
+  // Короткое подтверждение исхода действия (Ф-12, решение Р-923).
+  const doneText = doneLine(doneFlag);
   const failure = await flashEntry(errorId);
   const draft = (await formDraft(errorId)) ?? {};
   // Кнопки «Изменить карточку», «Куратор», «Менеджер» под названием открывают
@@ -530,7 +530,7 @@ export default async function ProjectScreen({
           {second.clientUploadedAt !== null
             ? `материалы к этапу «${second.title}» приложены ${formatDay(second.clientUploadedAt)}`
             : second.state === 'AWAITING_CLIENT'
-              ? `загрузить материалы к этапу «${second.title}»`
+              ? `приложить материалы к этапу «${second.title}»`
               : `согласовать этап «${second.title}»`}
         </a>
         {second.clientUploadedAt !== null
@@ -912,6 +912,8 @@ export default async function ProjectScreen({
     .filter((message) => message !== null)
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+  const worksHref = forClient ? '/cabinet/projects?state=all' : '/cabinet/projects';
+
   return (
     <Shell actor={actor} current="/cabinet/projects" board listHref={forClient ? '/cabinet/projects?state=all' : undefined}>
       {/* Шапка заказа — одной полосой. Прежде код, название и тема занимали
@@ -921,6 +923,17 @@ export default async function ProjectScreen({
       <ScreenTop style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         {/* Код работы с экранов убран (решение Р-189): человеку он
             ничего не сообщает, а взгляд цепляет первым. */}
+        {/* Возврат к перечню — как у вложенных экранов работы: у карточки
+            его не было, и к перечню вёл только пункт меню (решение Р-895).
+            Клиенту — перечень целиком: без отбора «Мои работы» единственной
+            работы ведут обратно на эту карточку (Р-311). */}
+        <a
+          className="cab-mark"
+          href={worksHref}
+          style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.4 }}
+        >
+          {menuLabel(actor, '/cabinet/projects') ?? 'Работы'}
+        </a>
         <Heading level={1} size={2}>
           {project.title}
         </Heading>
@@ -966,7 +979,7 @@ export default async function ProjectScreen({
                 запрещает этапы, а не учёт (Р-871). */}
             {mayMoney ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/payments#money`}>
-                Деньги по заказу
+                Оплаты и документы
               </ButtonLink>
             ) : null}
             {/* Исходные данные на утверждение — документом (Р-561). */}
@@ -1037,7 +1050,8 @@ export default async function ProjectScreen({
           )}
         </Outcome>
       )}
-      {created === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
+      {doneText === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneText}</Outcome>}
+      {created === undefined && doneFlag === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
       <Disclosure title="О работе">
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и
@@ -1156,7 +1170,7 @@ export default async function ProjectScreen({
                 ? 'foreign-head'
                 : 'curator'
           }
-          hasExpert={project.expertId !== null || (project.expertNameRaw ?? '').trim() !== ''}
+          hasExpert={project.expertId !== null || project.expertNamed}
         />
 
       {/* Две колонки, а не три: колонка «Материалы» с панели снята по
@@ -1166,6 +1180,7 @@ export default async function ProjectScreen({
           строка под планом работ. */}
       <Board columns={2}>
         <BoardColumn
+          follow
           title="План работ"
           href={`/cabinet/projects/${project.code}/materials`}
           hrefLabel={
@@ -1305,7 +1320,7 @@ export default async function ProjectScreen({
                 <Mono>{myTasks.length > 0 ? 'Что от вас ждут' : 'Описание текущего этапа'}</Mono>
                 {returnNote === null ? null : (
                   <div style={{ marginTop: 8 }}>
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {returnNote.head}
                       {returnNote.body === null ? null : (
                         <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnNote.body}</span>
@@ -1572,7 +1587,7 @@ export default async function ProjectScreen({
                   {/* Назначен без договора поручения: работа молча вставала —
                       эксперт не видел материалов (требование М-16, Р-298). */}
                   {project.expert !== null && project.expert.expertProfile?.ndaSignedAt == null ? (
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {`${project.expert.fullName} назначен без договора поручения: материалов клиента он не увидит, пока руководитель не отметит договор. ${
                         actor.role === 'MANAGER'
                           ? 'Руководителю отправлен вопрос.'
@@ -1584,7 +1599,7 @@ export default async function ProjectScreen({
                       гаснет (Э-05, Р-325) — предупреждение до сохранения
                       (улучшение УЭ-07, решение Р-384). */}
                   {project.expertId === null || !project.stages.some((stage) => stage.handedOverAt !== null) ? null : (
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {`Сдано куратором и ждёт вашей проверки: ${project.stages
                         .filter((stage) => stage.handedOverAt !== null)
                         .map((stage) => `«${stage.title}»`)

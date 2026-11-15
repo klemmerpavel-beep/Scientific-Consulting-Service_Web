@@ -45,7 +45,7 @@ describe('карточка: второе дело — ссылкой на его
   it('«Ещё: …» ведёт на экран следующего этапа, с его сроком и числом остальных', () => {
     assert.match(card, /const second = yourTurn\[1\] \?\? null;/u);
     assert.match(card, /<a href=\{`\/cabinet\/stages\/\$\{second\.id\}`\}>/u);
-    assert.match(card, /`загрузить материалы к этапу «\$\{second\.title\}»`/u);
+    assert.match(card, /`приложить материалы к этапу «\$\{second\.title\}»`/u);
     assert.match(card, /`согласовать этап «\$\{second\.title\}»`/u);
     assert.match(card, /yourTurn\.length > 2 \? ` и ещё \$\{yourTurn\.length - 2\}` : ''/u);
     assert.doesNotMatch(card, /`Ещё дел: \$\{yourTurn\.length - 1\}\.`/u);

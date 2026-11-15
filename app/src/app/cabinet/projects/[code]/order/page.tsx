@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -33,6 +34,8 @@ import { requireActor } from '../../../../../lib/cabinet/session';
 import { candidateLine } from '../../../../../lib/cabinet/client-match';
 import { clientCandidates, transferBlockers } from '../../../../../lib/cabinet/orders';
 import { moveOrderToClientAction, saveOrder } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Редактировать заказ' };
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +103,7 @@ export default async function OrderEditScreen({
             ? 'Работа перенесена из книги заказов. Правка карточки, суммы и состояния писем клиенту и куратору не шлёт.'
             : 'Правка полей карточки и суммы писем клиенту не шлёт. Письмо уходит только о переносе срока действующей работы и о смене состояния.'
         }
-        action={mayMoney ? <ButtonLink href={`${base}/payments#money`}>Деньги по заказу</ButtonLink> : undefined}
+        action={mayMoney ? <ButtonLink href={`${base}/payments#money`}>Оплаты и документы</ButtonLink> : undefined}
       />
       <ActionError id={sp.error} />
 
@@ -117,7 +120,7 @@ export default async function OrderEditScreen({
           <ActionError id={sp.error} slot="order" />
           <FormRow>
             <Field label="Название" name="title" scope="order" required maxLength={300} defaultValue={draft.title ?? project.title} />
-            <Select label="Вид работы" name="serviceTypeId" scope="order" required defaultValue={draft.serviceTypeId ?? project.serviceTypeId}>
+            <Select label="Тип сопровождения" name="serviceTypeId" scope="order" required defaultValue={draft.serviceTypeId ?? project.serviceTypeId}>
               {typeChoices.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
@@ -166,9 +169,18 @@ export default async function OrderEditScreen({
           </div>
           {mayMoney ? (
             <div id="money" style={{ scrollMarginTop: 24 }}>
+              {/* Сумма, показанная при открытии: служба меняет договор только
+                  поверх неё (решение Р-906). После отказа остаётся прежней —
+                  из черновика: повтор без обновления страницы не пройдёт. */}
+              <input
+                type="hidden"
+                name="contractTotalSeen"
+                value={draft.contractTotalSeen ?? (contract === null ? '' : formatAmount(contract.totalAmount))}
+              />
               <Field
                 label="Сумма договора, ₽"
                 name="contractTotal"
+                inputMode="decimal"
                 scope="order"
                 placeholder="120 000"
                 defaultValue={draft.contractTotal ?? (contract === null ? '' : formatAmount(contract.totalAmount))}
@@ -225,7 +237,7 @@ export default async function OrderEditScreen({
           <ActionError id={sp.error} slot="client" />
         </div>
         {blockers.length > 0 ? (
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {`К другому клиенту эта работа не переносится: перенос открыл бы новому клиенту то, что относится к прежнему — ${blockers.join('; ')}. Если это один человек с двумя карточками, руководитель сводит карточки в «Переносе книги заказов»; если работа заведена не на того клиента, заведите заказ заново на нужного.`}
           </Notice>
         ) : (

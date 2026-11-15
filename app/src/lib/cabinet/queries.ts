@@ -11,10 +11,12 @@ import {
   scopeMaterials,
   scopeProjects,
   scopeVersions,
+  narrowProjectFields,
   withoutStaffNames,
   type Actor,
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
+import { OWN_REQUESTS_MAX, OWN_REQUEST_OPEN, type OwnRequest } from './own-requests.ts';
 import { loadCalendar } from './approval.ts';
 import { previousWorkday, workMinutesBetween } from './workdays.ts';
 import { leadFirstResponseHours } from './practice-settings.ts';
@@ -200,7 +202,10 @@ export async function listProjects(
     },
   });
 
-  return { rows: withoutStaffNames(actor, rows), total, page: current, pages, all, filter: applied };
+  // Поля под роль — в данных (Р-903): куратору и клиенту без ФИО куратора
+  // из книги заказов.
+  const narrowed = withoutStaffNames(actor, rows).map((row) => narrowProjectFields(actor, row));
+  return { rows: narrowed, total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {
@@ -276,8 +281,11 @@ export async function projectByCode(actor: Actor, code: string) {
       },
     },
   });
-  // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б).
-  return withoutStaffNames(actor, project);
+  // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б);
+  // клиенту и куратору — без контактов клиента, ФИО куратора из книги и
+  // скрытых событий (Р-903).
+  const cleared = withoutStaffNames(actor, project);
+  return cleared === null ? null : narrowProjectFields(actor, cleared);
 }
 
 /**
@@ -1549,7 +1557,10 @@ export async function createCabinetRequest(
       eventKind: 'REQUEST_CREATED',
       // Номер — тот же, что видит заявитель после отправки (П-3, Р-763).
       subject: `Новая заявка ${leadNumberLabel(lead.number)} из кабинета`,
-      body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
+      // Сигнал без имени и темы: письмо уходит всем менеджерам и
+      // руководителям, а не тому, кто поведёт клиента; заявка — по ссылке
+      // в кабинете (аудит 15.11.2026, решение Р-901).
+      body: 'Заявка ждёт в очереди модерации.',
       dedupKey: `lead:${lead.id}:created:${moderator.id}`,
       path: `/cabinet/manage/leads/${lead.id}`,
     });
@@ -1575,6 +1586,32 @@ export async function ownRequestNumber(actor: Actor, number: number): Promise<nu
     select: { number: true },
   });
   return lead?.number ?? null;
+}
+
+/**
+ * Свои заявки клиента из кабинета, по которым ещё нет ни работы, ни
+ * отказа, — строкой над перечнем работ (аудит 15.11.2026, Ф-6; решение
+ * Р-914). Прежде заявка после экрана «Заявка принята» не была видна
+ * нигде: человек не знал, дошла ли она, и подавал её снова. Отбор тот
+ * же, что у `ownRequestNumber`: заявка из кабинета на почту этой учётной
+ * записи, ещё не ставшая работой. Закрытые без работы (консультация,
+ * отказ, спам) в перечень не входят: ответ по ним ушёл письмом.
+ */
+export async function ownOpenRequests(actor: Actor): Promise<OwnRequest[]> {
+  if (actor.role !== 'CLIENT' || !can(actor, 'REQUEST_CREATE')) return [];
+  const user = await prisma.user.findUnique({ where: { id: actor.id }, select: { email: true } });
+  if (user === null) return [];
+  return prisma.lead.findMany({
+    where: {
+      source: 'cabinet',
+      projectId: null,
+      status: { in: [...OWN_REQUEST_OPEN] },
+      contact: { equals: user.email, mode: 'insensitive' },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: OWN_REQUESTS_MAX,
+    select: { number: true, createdAt: true, topic: true, status: true },
+  });
 }
 
 /**

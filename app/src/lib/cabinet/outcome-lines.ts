@@ -138,3 +138,50 @@ export function workCreatedLine(input: {
   if (input.files === 'order') parts.push('документ заказа — в «Материалах работы»');
   return `${parts.join('; ')}.`;
 }
+
+/**
+ * Короткое подтверждение исхода действия (аудит 15.11.2026, находка Ф-12;
+ * решение Р-923). Десять действий — этап, куратор, состояние заявки и
+ * этапа, договор, транши, вознаграждение — перерисовывали экран молча:
+ * человек не видел, принято ли нажатие, и нажимал снова. Строка приходит
+ * признаком `done` в адресе и называет только род действия: имён, сумм и
+ * названий в ней нет, поэтому признак, набранный в адресе руками, ничего
+ * не раскрывает.
+ */
+export const DONE_LINES = {
+  'stage-added': 'Этап добавлен в план.',
+  'stage-state': 'Состояние этапа изменено.',
+  'curator-set': 'Куратор назначен.',
+  'curator-unset': 'Назначение куратора снято.',
+  'lead-status': 'Состояние заявки изменено.',
+  'contract-saved': 'Договор сохранён.',
+  'tranche-added': 'Транш добавлен.',
+  'tranche-dropped': 'Транш удалён.',
+  'tranche-invoiced': 'Отмечено: счёт выставлен.',
+  'tranche-paid': 'Оплата отмечена.',
+  'tranche-reversed': 'Поступление сторнировано: сумма снова числится к получению.',
+  'tranche-written-off': 'Транш списан: сумма больше не ждёт оплаты.',
+  'tranche-status': 'Состояние транша изменено.',
+  'payout-accrued': 'Вознаграждение начислено.',
+  'payout-paid': 'Выплата отмечена.',
+} as const;
+
+export type DoneCode = keyof typeof DONE_LINES;
+
+/** Строка подтверждения по признаку из адреса; незнакомый признак — `null`. */
+export function doneLine(code: string | undefined): string | null {
+  return code !== undefined && Object.hasOwn(DONE_LINES, code) ? DONE_LINES[code as DoneCode] : null;
+}
+
+/** Признак исхода смены состояния транша. */
+export function trancheDoneCode(status: string): DoneCode {
+  return status === 'INVOICED'
+    ? 'tranche-invoiced'
+    : status === 'PAID'
+      ? 'tranche-paid'
+      : status === 'REVERSED'
+        ? 'tranche-reversed'
+        : status === 'WRITTEN_OFF'
+          ? 'tranche-written-off'
+          : 'tranche-status';
+}

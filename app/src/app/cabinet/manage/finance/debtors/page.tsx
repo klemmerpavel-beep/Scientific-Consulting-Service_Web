@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Button,
   Checkbox,
@@ -26,6 +28,8 @@ import { debtsByClient, formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { moveTrancheDate, writeOffDebt } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Должники' };
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +67,7 @@ export default async function DebtorsScreen({
             : `Просрочено ${rows.length} ${plural(rows.length, 'платёж', 'платежа', 'платежей')} на ${formatAmount(total)} — та же сумма, что «Просрочено по траншам» на «Сводке».`
         }
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/debtors" />
       <ActionError id={flags.error} />
       {flags.moved === '1' ? (
         <div style={{ marginBottom: 16 }}>

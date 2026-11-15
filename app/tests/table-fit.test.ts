@@ -110,7 +110,7 @@ describe('Р-689. «Виды работ» календаря — в ширину
   const page = code(read(SCREENS, 'manage', 'recommendations', 'calendar', 'page.tsx'));
 
   it('«Заказ около» и окно — один столбец, пика в таблице нет', () => {
-    const heads = tableHeads(page, 'Виды работ');
+    const heads = tableHeads(page, 'Типы сопровождения');
     assert.ok(heads.includes('Окно — заказ около'), heads.join(' | '));
     assert.equal(heads.some((head) => /^Заказ около|^Пик заказов/u.test(head)), false, heads.join(' | '));
   });
@@ -122,7 +122,7 @@ describe('Р-689. «Виды работ» календаря — в ширину
   });
 
   it('многословные шапки переносятся', () => {
-    const start = page.indexOf('<TableCard label="Виды работ"');
+    const start = page.indexOf('<TableCard label="Типы сопровождения"');
     const head = page.slice(start, page.indexOf('</thead>', start));
     for (const title of ['Месяц сдачи (сроков / сезонов)', 'Медиана, дней', 'Окно — заказ около']) {
       assert.match(head, new RegExp(`whiteSpace: 'normal' \\}\\} scope="col">${title.replace(/[()]/gu, '\\$&')}<`, 'u'), title);
@@ -219,7 +219,7 @@ describe('Р-693. шапка числового столбца — по прав
     [['manage', 'import', 'page.tsx'], ['Строк']],
     [['manage', 'import', '[batchId]', 'page.tsx'], ['Строк', 'Стоимость', 'Оплачено']],
     [['manage', 'outbox', 'page.tsx'], ['Попыток']],
-    [['manage', 'directory', 'page.tsx'], ['Проектов']],
+    [['manage', 'directory', 'page.tsx'], ['Работ']],
   ];
   for (const [file, titles] of cases) {
     it(file.slice(0, -1).join('/'), () => {

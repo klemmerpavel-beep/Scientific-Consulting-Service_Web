@@ -189,7 +189,7 @@ describe('ответ заявителю при отказе', { skip: !enabled }
     });
     projectId = project.id;
     await prisma.lead.update({ where: { id: leadId }, data: { projectId } });
-    await assert.rejects(() => declineLead(manager(), leadId, 'Поздно.'), /развёрнута/u);
+    await assert.rejects(() => declineLead(manager(), leadId, 'Поздно.'), /уже открыта работа/u);
     assert.equal(await prisma.notificationOutbox.count({ where: { leadId } }), 0);
   });
 

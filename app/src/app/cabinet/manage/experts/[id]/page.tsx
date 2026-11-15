@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -26,6 +27,8 @@ import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { EXPERT_STATUS_LABEL, consentVersionLabel, experienceLabel } from '../../../../../lib/expert-application';
 import { removeExpertApplication, saveExpertReview } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Анкета кандидата' };
 
 export const dynamic = 'force-dynamic';
 

@@ -174,7 +174,7 @@ export async function createManualOrder(
       tx.serviceType.findUnique({ where: { id: input.serviceTypeId }, select: { id: true } }),
       tx.user.findUnique({ where: { id: managerId }, select: { role: true, status: true } }),
     ]);
-    if (type === null) throw new OrderInputError('Выберите вид работы из справочника.');
+    if (type === null) throw new OrderInputError('Выберите тип сопровождения из справочника.');
     if (manager === null || manager.status !== 'ACTIVE' || (manager.role !== 'MANAGER' && manager.role !== 'HEAD')) {
       throw new OrderInputError('Менеджером работы может быть только действующий менеджер или руководитель.');
     }

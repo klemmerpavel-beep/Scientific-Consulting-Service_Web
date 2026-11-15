@@ -61,10 +61,10 @@ describe('слова клиента на экране оплат (Р-746)', () =
     assert.match(page, /\{\(forClient \? CLIENT_STATUS_LABEL : STATUS_LABEL\)\[tranche\.status as TrancheStatus\]\}/u);
   });
 
-  it('клиент — по роли; доля и подпись — по сумме к оплате при корректировке', () => {
+  it('клиент — по роли; доля и подпись — по сумме к оплате при корректировке, одна для всех ролей (Р-921)', () => {
     assert.match(page, /const forClient = actor\.role === 'CLIENT';/u);
-    assert.match(page, /const ofPayable = forClient && money !== null && money\.adjustment > 0n;/u);
-    assert.match(page, /const progress = money === null \? 0 : paidPercent\(money, forClient\);/u);
+    assert.match(page, /const ofPayable = money !== null && money\.adjustment > 0n;/u);
+    assert.match(page, /const progress = money === null \? 0 : paidPercent\(money, true\);/u);
     assert.match(page, /Оплачено \{progress\}% \{ofPayable \? 'суммы к оплате' : 'суммы договора'\}/u);
   });
 
@@ -83,10 +83,10 @@ describe('слова клиента на экране оплат (Р-746)', () =
     assert.match(client, /href=\{`\/cabinet\/projects\/\$\{project\.code\}\/messages#body`\}>\s*вопрос — в переписке/u);
   });
 
-  it('у сотрудников строка платежа прежняя', () => {
+  it('у сотрудников строка платежа прежняя; дата оплаты — без повтора слова метки (Р-921)', () => {
     assert.match(
       page,
-      /: `срок \$\{formatDate\(tranche\.plannedDate\)\} · просрочен`\}\s*\{tranche\.paidOn === null\s*\? ''\s*: ` · оплачен \$\{formatDate\(tranche\.paidOn\)\}`\}/u,
+      /: `срок \$\{formatDate\(tranche\.plannedDate\)\} · просрочен`\}\s*\{tranche\.paidOn === null\s*\? ''\s*: ` · дата оплаты — \$\{formatDate\(tranche\.paidOn\)\}`\}/u,
     );
     assert.match(page, /'Файл договора пока не приложен\. Счета и акты прикладываются к траншам — так видно, какой платёж каким документом закрыт\.'/u);
   });

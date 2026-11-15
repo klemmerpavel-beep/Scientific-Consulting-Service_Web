@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
@@ -57,6 +58,8 @@ import {
   leadFirstResponseHours,
   reactionDays,
 } from '../../../../lib/cabinet/practice-settings';
+
+export const metadata: Metadata = { title: 'Справочники' };
 
 export const dynamic = 'force-dynamic';
 
@@ -124,8 +127,10 @@ export default async function DirectoryScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/directory">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title="Справочники"
-        note="Справочники задают единые названия, которыми кабинет пользуется везде. Типы сопровождения — перечень видов работ: из него выбирают вид при одобрении заявки, по нему считается аналитика. Исторические написания — как тот же вид записан в книге заказов («Диссертция», «Статья ВАК»): при переносе книги такие строки сами сводятся к нужной позиции. Шаблоны этапов — готовый план работ для вида, который заводится в работу одним действием. Заливка книги — что означает цвет строки в книге заказов. Производственный календарь — переносы выходных, по которым считается срок согласования этапа. Заходить сюда нужно редко: когда появляется новый вид работ или перенос книги сообщает о несведённом написании."
+        note="Справочники задают единые названия, которыми кабинет пользуется везде. Типы сопровождения — единый перечень: из него выбирают тип при одобрении заявки, по нему считается аналитика. Исторические написания — как тот же вид записан в книге заказов («Диссертция», «Статья ВАК»): при переносе книги такие строки сами сводятся к нужной позиции. Шаблоны этапов — готовый план работ для вида, который заводится в работу одним действием. Заливка книги — что означает цвет строки в книге заказов. Производственный календарь — переносы выходных, по которым считается срок согласования этапа. Заходить сюда нужно редко: когда появляется новый тип сопровождения или перенос книги сообщает о несведённом написании."
       />
 
       <FilterBar>
@@ -155,7 +160,7 @@ export default async function DirectoryScreen({
               <thead>
                 <tr>
                   <th style={TABLE_HEAD} scope="col">Позиция</th>
-                  <th style={TABLE_NUM_HEAD} scope="col">Проектов</th>
+                  <th style={TABLE_NUM_HEAD} scope="col">Работ</th>
                   <th style={TABLE_HEAD} scope="col">Базовая цена</th>
                   <th style={TABLE_HEAD} scope="col">Исторические написания</th>
                 </tr>
@@ -251,8 +256,8 @@ export default async function DirectoryScreen({
                   defaultValue={draft.code}
                 />
                 <Field label="Название" name="name" required placeholder="Научный перевод" defaultValue={draft.name} />
-                <Field label="Базовая цена" name="basePrice" placeholder="необязательно" defaultValue={draft.basePrice} />
-                <Field label="Порядок" name="sortOrder" placeholder="70" defaultValue={draft.sortOrder} />
+                <Field label="Базовая цена" name="basePrice" inputMode="decimal" placeholder="необязательно" defaultValue={draft.basePrice} />
+                <Field label="Порядок" name="sortOrder" inputMode="numeric" placeholder="70" defaultValue={draft.sortOrder} />
               </FormRow>
               <FormActions>
                 <Button>Сохранить</Button>
@@ -303,8 +308,8 @@ export default async function DirectoryScreen({
           )}
 
           <Text muted size={13} style={{ marginTop: 12, marginBottom: 12 }}>
-            Шаблон применяется при одобрении заявки и копирует строки в этапы проекта. Правка
-            шаблона задним числом живые проекты не переписывает: иначе изменение методики меняло бы
+            Шаблон применяется при одобрении заявки и копирует строки в этапы работы. Правка
+            шаблона задним числом действующие работы не переписывает: иначе изменение методики меняло бы
             план работ у тех, кто уже в работе.
           </Text>
 
@@ -321,6 +326,7 @@ export default async function DirectoryScreen({
                 <Field
                   label="Порядковый номер"
                   name="position"
+                  inputMode="numeric"
                   scope="template"
                   required
                   placeholder="1"
@@ -335,6 +341,7 @@ export default async function DirectoryScreen({
                 <Field
                   label="Длительность, дней"
                   name="durationDays"
+                  inputMode="numeric"
                   scope="template"
                   placeholder="необязательно"
                 />

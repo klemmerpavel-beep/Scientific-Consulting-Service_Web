@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { LeadStatusChip } from '../../../../components/cabinet/LeadStatus';
@@ -38,6 +39,8 @@ import { LEAD_LIST_PAGE_SIZE, leadList, leadStatusCounts } from '../../../../lib
 import { COLUMN_SETS, columnSet, leadColumns } from '../../../../lib/cabinet/table-views';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { SUMMARY_HREF, homeFor, menuLabel } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Все заявки' };
 
 export const dynamic = 'force-dynamic';
 
@@ -112,15 +115,18 @@ export default async function AllLeadsScreen({
       })),
   ];
 
+  const inMenu = menuLabel(actor, '/cabinet/manage/leads') !== null;
+
   return (
     <Shell actor={actor} current="/cabinet/manage/leads">
       <ScreenHead
-        backHref={SUMMARY_HREF}
-        // Экран-цель — по меню роли: менеджеру «Сегодня», руководителю
-        // «Сводка» (Р-703; решение Р-756).
-        backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
+        // У менеджера «Заявки» — пункт меню, и «назад» у экрана первого
+        // уровня вёл в соседний пункт (решение Р-895). Руководителю
+        // перечень открывает «Сводка» — к ней и возврат (Р-703, Р-756).
+        backHref={inMenu ? undefined : SUMMARY_HREF}
+        backLabel={inMenu ? undefined : (menuLabel(actor, SUMMARY_HREF) ?? 'Сводка')}
         title="Все заявки"
-        note={`Обращения с сайта целиком, включая разобранные. Очередь на «${
+        note={`Заявки с сайта целиком, включая разобранные. Очередь на «${
           actor.role === 'MANAGER' ? 'Сегодня' : 'Сводке'
         }» показывает только те, что ждут решения. Отзывы сюда не попадают — у них свой порядок.`}
       />
@@ -198,10 +204,10 @@ export default async function AllLeadsScreen({
           ]}
           resetHref="/cabinet/manage/leads"
         >
-          Обращения никуда не делись — они не подошли под это условие.
+          Заявки никуда не делись — они не подошли под это условие.
         </Empty>
       ) : (
-        <TableCard label="Обращения">
+        <TableCard label="Заявки">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, minWidth: set === 'full' ? 1900 : undefined }}>
             <thead>
               <tr>

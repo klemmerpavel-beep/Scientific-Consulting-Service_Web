@@ -14,6 +14,7 @@ import {
 import { record } from './audit.ts';
 import { declineLetterFor } from './lead-letter.ts';
 import { enqueue, enqueueToLead, notifyCurator, notifyExpert, pruneCuratorDigests } from './outbox.ts';
+import { workTitleLine } from './work-title-line.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
 import { materialKey, storage } from './storage.ts';
@@ -134,7 +135,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
 
   const lead = await prisma.lead.findUnique({ where: { id: input.leadId } });
   if (lead === null) throw new Error('Заявка не найдена');
-  if (lead.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  if (lead.projectId !== null) throw new Error('По заявке уже открыта работа');
   // Отклонённому ушло письмо «взяться не можем» (решение Р-217); работа по
   // той же заявке противоречила бы ему. Передумали — нужна новая заявка.
   if (lead.status === 'DECLINED') {
@@ -143,7 +144,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   // Отзыв и обращение без контакта в работу не разворачиваются: учётная
   // запись с пустой почтой собрала бы на себя все такие работы (Р-245).
   if (lead.form === 'review' || lead.contact.trim() === '') {
-    throw new Error('Это отзыв или обращение без контакта: работа по нему не заводится');
+    throw new Error('Это отзыв или заявка без контакта: работа по нему не заводится');
   }
 
   // Тип и название проверяются до захвата заявки и словами. Прежде пустое
@@ -367,7 +368,8 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
           ? `Заявка принята: работа «${title}»`
           : `Заведена новая работа «${title}»`,
         body:
-          `${title}${created.topic === null ? '' : ` — ${created.topic}`}.\n` +
+          // Тема — только когда она не повторяет название (решение Р-897).
+          `${workTitleLine(title, created.topic)}.\n` +
           (firstTime
             ? 'Ход работы, материалы и переписка с менеджером собраны в личном кабинете.\n' +
               `Откройте ${entrance} и укажите этот адрес почты — придёт ссылка для входа.\n` +
@@ -521,7 +523,7 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
   if (found === null) throw new Error('Заявка не найдена');
   // Отказ по заявке, уже ставшей работой, отправил бы человеку «нет» после
   // приглашения в кабинет.
-  if (found.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  if (found.projectId !== null) throw new Error('По заявке уже открыта работа');
   // Повторный отказ переписывал причину, а письмо — по ключу — оставалось
   // прежним: экран показывал новую причину рядом с «письмо ушло», хотя
   // человек получил старую (решение Р-227).
@@ -589,7 +591,7 @@ export async function assignExpert(
   role?: ExpertRoleKey | null,
 ) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const current = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
@@ -845,7 +847,7 @@ export async function transferAllWorks(
  */
 export async function assignManager(actor: Actor, projectId: string, managerId: string, reasonRaw = '') {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_SET_MANAGER', ref);
 
   // Менеджером может быть только действующий сотрудник практики: иначе
@@ -987,7 +989,7 @@ export interface AddStageInput {
 /** Завести этап. Название — свободный текст менеджера, состояние — из перечня. */
 export async function addStage(actor: Actor, input: AddStageInput) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
 
@@ -1030,7 +1032,7 @@ async function planStage(actor: Actor, stageId: string, action: 'STAGE_EDIT' | '
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, action, ref);
   await ensureProjectActive(ref.id);
   return stage;
@@ -1132,7 +1134,7 @@ export async function removeStage(actor: Actor, stageId: string) {
  */
 export async function applyStageTemplate(actor: Actor, projectId: string) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { serviceTypeId: true } });
@@ -1310,7 +1312,7 @@ export async function editStage(
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
 
@@ -1402,7 +1404,9 @@ export async function announceWorkDueChange(
       projectId,
       eventKind: 'PROJECT_DUE_CHANGED',
       subject: `Срок работы ${project.code} изменён`,
-      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}`,
+      // Куратору — без причины: её пишут клиенту, и в ней бывают его
+      // обстоятельства и контакты (Р-414; аудит 15.11.2026, П-4; Р-915).
+      body: `${workLine(project, false)}\n${line}`,
       dedupKey: `project:${projectId}:due-changed-expert:${stamp}`,
       path: `/cabinet/projects/${project.code}`,
     });
@@ -1479,7 +1483,8 @@ async function announceDueChange(
       projectId: project.id,
       eventKind: 'STAGE_DUE_CHANGED',
       subject: `Срок этапа «${stage.title}» изменён`,
-      body: `${workLine(project, false)}\n${line}\nПричина: ${reason}\n${stageLink(stageId)}`,
+      // Куратору — без причины, как и перенос срока работы (Р-414, Р-915).
+      body: `${workLine(project, false)}\n${line}\n${stageLink(stageId)}`,
       dedupKey: `stage:${stageId}:due-changed-expert:${dueKey(to) ?? 'none'}:${Date.now()}`,
       path: `/cabinet/stages/${stageId}`,
     });
@@ -1501,7 +1506,7 @@ export async function rescheduleStage(
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
   if (input.dueOn === null) throw new Error('Укажите новый срок этапа');
@@ -1552,7 +1557,7 @@ export async function editProject(
   },
 ) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
 
   const title = input.title.trim();
@@ -1674,7 +1679,7 @@ export async function setProjectStatus(
   reason?: string | null,
 ) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
   if (!Object.hasOwn(PROJECT_STATUS_LABEL, to)) throw new Error('Неизвестное состояние работы');
 
@@ -1835,7 +1840,7 @@ async function ensureProjectActive(projectId: string): Promise<void> {
     where: { id: projectId },
     select: { status: true },
   });
-  if (project === null) throw new Error('Проект не найден');
+  if (project === null) throw new Error('Работа не найдена');
   if (project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 }
 
@@ -1913,11 +1918,33 @@ export async function editStageOutcome(actor: Actor, stageId: string, text: stri
   if (saved.count === 0) throw new Error('Этап уже не на согласовании: обновите страницу');
 }
 
+/** Отказ согласования и возврата по устаревшей странице (Р-905). */
+export const APPROVAL_RESENT =
+  'Этап отправлен на согласование заново: обновите страницу и посмотрите последнюю версию материалов и итог';
+
+/**
+ * Этап на экране клиента — тот же, что в базе: момент отправки на
+ * согласование совпадает с тем, что нёс экран.
+ *
+ * Согласование захватывало этап только по состоянию. Клиент, державший
+ * страницу открытой, пока менеджер снял этап в работу, приложил новую
+ * версию и сдал снова, нажимал «Согласовать этап» на прежней странице — и
+ * принимал результат, которого не видел (аудит 15.11.2026, находка Ф-1,
+ * решение Р-905). `seenSentAt` не задан — сверки нет: так согласует
+ * практика за клиента и автопринятие по сроку.
+ */
+function sameSending(current: Date | null, seenSentAt: string | null | undefined): boolean {
+  if (seenSentAt === undefined || seenSentAt === null) return true;
+  return (current?.toISOString() ?? '') === seenSentAt;
+}
+
 export async function setStageState(
   actor: Actor,
   stageId: string,
   to: StageState,
   reason?: string | null,
+  /** Момент отправки на согласование, который видел клиент (Р-905). */
+  seenSentAt?: string | null,
 ) {
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
@@ -1950,6 +1977,7 @@ export async function setStageState(
   // Клиент после срока при включённом автозакрытии: этап принят по п. 7.3
   // оферты (Т-15, решение Р-290).
   if (action === 'STAGE_APPROVE' && actor.role === 'CLIENT') ensureApprovalOpen(stage.approvalDueOn);
+  if (action === 'STAGE_APPROVE' && !sameSending(stage.approvalSentAt, seenSentAt)) throw new Error(APPROVAL_RESENT);
   // Практика согласует за клиента только с основанием: согласование
   // закрывает этап по оферте, и клиент видит, на каком основании это
   // сделано от его имени (требование М-12, О-6, решение Р-292).
@@ -2048,7 +2076,13 @@ export async function setStageState(
     // записывались: история этапа получала два перехода из одного
     // состояния, клиент — два письма (решение Р-240).
     const claimed = await tx.stage.updateMany({
-      where: { id: stageId, state: from },
+      // Согласование клиентом — ещё и по моменту отправки: пересдача между
+      // чтением и захватом не проходит (Р-905).
+      where: {
+        id: stageId,
+        state: from,
+        ...(action === 'STAGE_APPROVE' && seenSentAt != null ? { approvalSentAt: stage.approvalSentAt } : {}),
+      },
       data: {
         state: to,
         blockedReason: to === 'AWAITING_CLIENT' ? (reason ?? '').trim() : null,
@@ -2299,7 +2333,13 @@ export const RETURN_TEXT_MAX = 10_000;
  * адресаты уведомлений. Новое состояние этапа не вводится — таблица
  * переходов (Р-229) уже знает «На согласовании → В работе».
  */
-export async function returnStage(actor: Actor, stageId: string, text: string) {
+export async function returnStage(
+  actor: Actor,
+  stageId: string,
+  text: string,
+  /** Момент отправки на согласование, который видел клиент (Р-905). */
+  seenSentAt?: string | null,
+) {
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
     include: {
@@ -2317,6 +2357,8 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
   // После срока при включённом автозакрытии этап принят по п. 7.3
   // оферты, и возврат опоздал (Т-15, решение Р-290).
   ensureApprovalOpen(stage.approvalDueOn);
+  // Замечания к прежней сдаче после пересдачи не принимаются (Р-905).
+  if (!sameSending(stage.approvalSentAt, seenSentAt)) throw new Error(APPROVAL_RESENT);
 
   const body = text.trim();
   if (body.length === 0) {
@@ -2334,7 +2376,11 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
     // Захват по состоянию: возврат и согласование, нажатые одновременно,
     // не проходят оба (как в Р-240).
     const claimed = await tx.stage.updateMany({
-      where: { id: stageId, state: 'IN_APPROVAL' },
+      where: {
+        id: stageId,
+        state: 'IN_APPROVAL',
+        ...(seenSentAt != null ? { approvalSentAt: stage.approvalSentAt } : {}),
+      },
       data: {
         state: 'IN_PROGRESS',
         completedAt: null,

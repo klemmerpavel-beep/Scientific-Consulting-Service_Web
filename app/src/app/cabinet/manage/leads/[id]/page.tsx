@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine } from '../../../../../lib/cabinet/outcome-lines';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -23,13 +26,18 @@ import {
   formatSize,
 } from '../../../../../components/cabinet/ui';
 import { ensure } from '../../../../../lib/cabinet/access';
-import { SUMMARY_HREF, menuLabel } from '../../../../../lib/cabinet/nav';
+import { menuLabel } from '../../../../../lib/cabinet/nav';
 import { chosenServiceType, contactHref, leadNumberLabel, leadSourceLabel } from '../../../../../lib/cabinet/lead-labels';
 import { declineLetterNote, leadAddress } from '../../../../../lib/cabinet/lead-letter';
 import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadStatus } from '../../../actions';
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
+
+export const metadata: Metadata = { title: 'Заявка' };
+
+/** Перечень заявок — экран, из которого карточку открывают. */
+const LEADS_HREF = '/cabinet/manage/leads';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +57,7 @@ export default async function LeadScreen({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; resent?: string }>;
+  searchParams: Promise<{ error?: string; resent?: string; done?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/manage/leads/${(await params).id}`);
   ensure(actor, 'REQUEST_MODERATE');
@@ -95,10 +103,13 @@ export default async function LeadScreen({
     <Shell actor={actor} current="/cabinet/manage/leads">
       <Narrow width={780}>
         <ScreenHead
-          backHref={SUMMARY_HREF}
-          // Менеджеру — «Сегодня», руководителю — «Сводка» (Р-703; решение
-          // Р-756).
-          backLabel={menuLabel(actor, SUMMARY_HREF) ?? 'Сводка'}
+          // Карточка заявки возвращает к перечню заявок: он подсвечен в
+          // меню и из него же заявку открывают. Прежде «назад» вело на
+          // «Сегодня» и «Сводку» — и тому, кто пришёл из перечня (решение
+          // Р-895, уточняет Р-756). Подпись — пункт меню роли (Р-703):
+          // менеджеру «Заявки», руководителю — название экрана.
+          backHref={LEADS_HREF}
+          backLabel={menuLabel(actor, LEADS_HREF) ?? 'Все заявки'}
           title={lead.name ?? 'Заявка без имени'}
           chips={
             <>
@@ -114,6 +125,9 @@ export default async function LeadScreen({
         />
 
         <ActionError id={flags.error} />
+        {/* Короткое подтверждение исхода действия (Ф-12, решение Р-923). */}
+        {doneLine(flags.done) === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneLine(flags.done)}</Outcome>}
+        {flags.done === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
         <Card style={{ marginBottom: 24 }}>
           {/* Связь в одно нажатие: сюда ведёт ссылка из сигнала в Telegram,
@@ -137,7 +151,7 @@ export default async function LeadScreen({
             </Text>
           )}
           {lead.message === null ? (
-            <Text muted>Обращение без текста: человек оставил только контакт.</Text>
+            <Text muted>Заявка без текста: человек оставил только контакт.</Text>
           ) : (
             <Text style={{ whiteSpace: 'pre-wrap' }}>{lead.message}</Text>
           )}
@@ -308,15 +322,15 @@ export default async function LeadScreen({
                 required
                 defaultValue={lead.contact}
               />
-              <Field label="Дополнительный телефон" name="phone" defaultValue={lead.phone ?? ''} />
+              <Field label="Дополнительный телефон" name="phone" inputMode="tel" autoComplete="off" defaultValue={lead.phone ?? ''} />
             </FormRow>
             <FormRow>
-              <Field label="Организация или вуз" name="organization" defaultValue={lead.organization ?? ''} />
+              <Field label="Организация или вуз" name="organization" autoComplete="off" defaultValue={lead.organization ?? ''} />
               <Field label="Желаемый срок" name="deadline" defaultValue={lead.deadline ?? ''} />
             </FormRow>
             <Field label="Тема" name="topic" defaultValue={lead.topic ?? ''} />
             <Field label="Что нужно" name="need" defaultValue={lead.need ?? ''} />
-            <Field label="Текст обращения" name="message" multiline defaultValue={lead.message ?? ''} />
+            <Field label="Текст заявки" name="message" multiline defaultValue={lead.message ?? ''} />
             <Text muted size={13} style={{ marginBottom: 12 }}>
               Отметки согласия не правятся: это журнал согласия заявителя. В журнал действий
               попадают названия исправленных полей, а не их значения.

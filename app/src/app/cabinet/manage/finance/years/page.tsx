@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import { SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
@@ -30,6 +32,8 @@ import { formatAmount } from '../../../../../lib/cabinet/money';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { removeFinanceYear, saveFinanceYear } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Итоги по годам' };
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +68,7 @@ export default async function FinanceYearsScreen({
         title="Итоги по годам"
         note="В строке года две величины рядом: введённая вами и посчитанная кабинетом по оплаченным траншам и выплатам кураторам. Пока история прошлых лет ведётся отдельно, они расходятся — колонка «расхождение» показывает, насколько, и считается по выручке. «Прибыль в кабинете» — выручка за вычетом выплаченного кураторам и расходов по статьям, внесённых в «Прибыли по месяцам»; расходы вне кабинета в неё не входят."
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/years" />
 
       <ActionError id={flags.error} />
       {flags.removed === '1' ? (
@@ -170,9 +175,9 @@ export default async function FinanceYearsScreen({
               вылезает за край на телефоне (решение Р-130). */}
           <Form action={saveFinanceYear} style={{ gridTemplateColumns: 'minmax(0,1fr)' }}>
             <FormRow>
-              <Field label="Год" name="year" required placeholder="2025" />
-              <Field label="Выручка за год, ₽" name="revenue" required placeholder="1 250 000" />
-              <Field label="Расходы за год, ₽" name="costs" required placeholder="480 000" />
+              <Field label="Год" name="year" inputMode="numeric" required placeholder="2025" />
+              <Field label="Выручка за год, ₽" name="revenue" inputMode="decimal" required placeholder="1 250 000" />
+              <Field label="Расходы за год, ₽" name="costs" inputMode="decimal" required placeholder="480 000" />
             </FormRow>
             <Field
               label="Заметка"

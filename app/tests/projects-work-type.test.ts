@@ -6,6 +6,10 @@
  * совпадает с видом, шапка и есть заголовок-ссылка; когда у работы своё
  * название, оно — заголовком под шапкой.
  *
+ * Шапка — у сотрудников. Клиенту заголовком стоит название или тема, а
+ * тип — строкой ниже (аудит 15.11.2026, Н-7; решение Р-916):
+ * `work-plate.test.ts`.
+ *
  * Проверка ходит по исходнику, как `cabinet-markup.test.ts`.
  */
 
@@ -28,8 +32,10 @@ describe('Р-831: вид работы вверху карточки по цен�
     assert.match(card, /\{project\.title === project\.serviceType\.name \? \(\s*<Heading level=\{2\} size=\{3\}>\s*<a href=\{`\/cabinet\/projects\/\$\{project\.code\}`\} className="cab-stretch"/u);
     assert.match(card, /\) : \(\s*<p style=\{WORK_TYPE_HEAD\}>\{project\.serviceType\.name\}<\/p>\s*\)\}/u);
     assert.match(card, /\{project\.title === project\.serviceType\.name \? null : \(\s*<Heading level=\{2\} size=\{3\} style=\{\{ marginBottom: 4 \}\}>/u);
-    // Заголовок-ссылка в карточке ровно один при любом названии.
-    assert.equal((card.match(/className="cab-stretch"/gu) ?? []).length, 2, 'ссылок-заголовков не две ветки');
+    // Заголовок-ссылка в карточке ровно один при любом названии: две
+    // ветки шапки сотрудника и ветка клиента (Р-916).
+    assert.equal((card.match(/className="cab-stretch"/gu) ?? []).length, 3, 'ссылок-заголовков не три ветки');
+    assert.match(page, /\{clientHead === null \? \(\s*<>\s*<div data-work-type=""/u);
   });
 
   it('прежнего чипа вида слева вверху нет', () => {

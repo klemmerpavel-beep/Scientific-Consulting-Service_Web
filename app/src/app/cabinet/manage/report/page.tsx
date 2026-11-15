@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from "next/navigation";
 
 import Shell from "../../../../components/cabinet/Shell";
@@ -46,6 +47,8 @@ import { moscowToday, now as clockNow } from "../../../../lib/cabinet/clock";
 import { analyticsSince } from "../../../../lib/cabinet/practice-settings";
 import { leadResponse } from "../../../../lib/cabinet/analytics/leads";
 import { responseConclusion } from "../../../../lib/cabinet/analytics/response";
+
+export const metadata: Metadata = { title: 'Отчёт практики' };
 
 export const dynamic = "force-dynamic";
 

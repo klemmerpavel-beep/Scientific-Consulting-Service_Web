@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -32,6 +33,8 @@ import { trancheForReminder } from '../../../../../lib/cabinet/finance';
 import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
 import { insertMessageTemplate, postInternalMessage, postMessage } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Переписка' };
 
 export const dynamic = 'force-dynamic';
 

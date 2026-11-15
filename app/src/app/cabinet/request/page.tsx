@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -36,6 +37,8 @@ import { homeFor } from '../../../lib/cabinet/nav';
 import { parseRequestBrief, submitCabinetRequest } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
 import { formDraft } from '../../../lib/cabinet/flash';
+
+export const metadata: Metadata = { title: 'Новая заявка' };
 
 export const dynamic = 'force-dynamic';
 
@@ -87,9 +90,9 @@ export default async function NewRequestScreen({
   return (
     <Shell actor={actor} current="/cabinet/request">
       <Narrow width={680}>
-        <ScreenHead title="Обращение по новой работе" />
+        <ScreenHead title="Новая заявка" />
         <Text style={{ marginBottom: 24 }}>
-          Заявка попадёт в ту же очередь, что и обращения с сайта. Мы рассмотрим её и либо
+          Заявка попадёт в ту же очередь, что и заявки с сайта. Мы рассмотрим её и либо
           откроем новую работу, либо ответим с причиной. Что известно из вашей карточки, уже
           подставлено.
         </Text>
@@ -148,6 +151,7 @@ export default async function NewRequestScreen({
               <Field
                 label="Ваши ФИО"
                 name="applicantName"
+                autoComplete="name"
                 required
                 defaultValue={draft.applicantName ?? filled('applicantName') ?? defaults.fullName}
                 hint="Подставлено из вашей карточки. Если работа оформляется на другого человека, укажите его ФИО."
@@ -208,6 +212,7 @@ export default async function NewRequestScreen({
                 <Field
                   label="Организация или вуз"
                   name="organization"
+                  autoComplete="organization"
                   defaultValue={draft.organization ?? filled('organization') ?? defaults.organization}
                   placeholder="Горный университет"
                 />
@@ -220,6 +225,7 @@ export default async function NewRequestScreen({
                 <Field
                   label="Контактный телефон"
                   name="phone"
+                  autoComplete="tel"
                   type="tel"
                   defaultValue={draft.phone ?? defaults.phone}
                   hint="Для срочной связи; письма по-прежнему идут на адрес, которым вы вошли."

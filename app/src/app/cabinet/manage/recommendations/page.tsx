@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
+import AnalyticsTabs from '../../../../components/cabinet/AnalyticsTabs';
 import CardSlider from '../../../../components/cabinet/CardSlider';
 import RecommendationMarks, {
   CalendarRecommendationCard,
@@ -19,6 +21,8 @@ import { laneOrder, limitedLane } from '../../../../lib/cabinet/recommendation-o
 import { calendarKey, recommendationsNow } from '../../../../lib/cabinet/recommendations';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { markRecommendationAction } from '../../actions';
+
+export const metadata: Metadata = { title: 'Рекомендации' };
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +86,9 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
         title="Рекомендации"
         note={`Описательные правила по истории практики, не прогноз. Ждут решения: ${unmarked}. Принятое, отклонённое, отложенное и сделанное в это число не входит.`}
       />
+      {/* Раздел — вкладка «Аналитики»: полоса та же, что на её экранах
+          (решение Р-913). */}
+      <AnalyticsTabs current={RECOMMENDATIONS_HREF} />
       <ActionError id={flags.error} />
 
       {/* Три блока — три отдельные плашки; рекомендации блока — карточками
@@ -135,7 +142,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
             {priceLane.map((row) => (
               <RecommendationCard
                 key={row.key}
-                kind="Чек вида работ"
+                kind="Чек типа сопровождения"
                 title={priceSpread(row)}
                 details={`${priceGuide(row)} · средний чек ${formatAmount(row.averageCheck)}${row.before === null ? '' : ` · окно продвижения вида — с ${formatDate(row.before)}`}`}
                 marked={marks.has(row.key)}
@@ -189,7 +196,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   back="recommendations"
                   action={markRecommendationAction}
                   assignHref={assignHref(
-                    `Связаться с клиентом «${row.clientName}»${row.next === null ? '' : ` и предложить «${row.next.toName}»`}${row.consent ? '' : ' — согласия на рассылку нет: только ответ на его обращение'}`,
+                    `Связаться с клиентом «${row.clientName}»${row.next === null ? '' : ` и предложить «${row.next.toName}»`}${row.consent ? '' : ' — согласия на рассылку нет: только ответ на его заявку'}`,
                   )}
                 />
               </RecommendationCard>

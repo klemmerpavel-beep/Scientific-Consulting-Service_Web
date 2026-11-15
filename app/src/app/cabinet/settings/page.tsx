@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Fragment } from 'react';
 import { flashEntry, formDraft } from '../../../lib/cabinet/flash';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -85,6 +86,8 @@ import {
   notifyMoment,
   notifyStatus,
 } from '../../../lib/cabinet/notify-log';
+
+export const metadata: Metadata = { title: 'Настройки' };
 
 export const dynamic = 'force-dynamic';
 

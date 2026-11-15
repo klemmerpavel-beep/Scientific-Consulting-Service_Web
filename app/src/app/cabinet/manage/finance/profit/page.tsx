@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Button,
   Card,
@@ -27,6 +29,8 @@ import { expenseCategories, monthlyProfit } from '../../../../../lib/cabinet/pro
 import { serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addExpenseAction, removeExpenseAction } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Прибыль по месяцам' };
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +72,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
         title="Прибыль по месяцам"
         note={`Поступления по дате поступления минус выплаты кураторам по дате выплаты минус расходы по статьям; двенадцать месяцев по текущий. Сумма месяцев года сходится с «Итогами по годам».${profit.fallbackDated === 0 ? '' : ` Поступлений без даты оплаты — ${profit.fallbackDated}: по строкам перенесённой книги они отнесены к дате договора или заказа.`}`}
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/profit" />
       <ActionError id={flags.error} />
 
       <TableCard label="Прибыль по месяцам" style={{ marginBottom: 20 }}>
@@ -109,7 +114,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
           </caption>
           <thead>
             <tr>
-              <th style={TABLE_HEAD} scope="col">Вид работ</th>
+              <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
               <th style={TABLE_NUM_HEAD} scope="col">Поступления</th>
               <th style={TABLE_NUM_HEAD} scope="col">Выплаты кураторам</th>
               <th style={TABLE_NUM_HEAD} scope="col">Расходы</th>
@@ -151,8 +156,8 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
                 </option>
               ))}
             </Select>
-            <Field label="Сумма, ₽" name="amount" required defaultValue={draft.amount ?? ''} placeholder="25 000" />
-            <Select label="Вид работ, если расход на него" name="serviceTypeId" defaultValue={draft.serviceTypeId ?? ''}>
+            <Field label="Сумма, ₽" name="amount" inputMode="decimal" required defaultValue={draft.amount ?? ''} placeholder="25 000" />
+            <Select label="Тип сопровождения, если расход на него" name="serviceTypeId" defaultValue={draft.serviceTypeId ?? ''}>
               <option value="">Общий расход</option>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>

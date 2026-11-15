@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import { WaveBar } from './Charts.tsx';
 import { FilePick } from './FilePick.tsx';
+import OutcomeFocus from './OutcomeFocus.tsx';
 import {
   BUTTON_PRIMARY,
   BUTTON_QUIET,
@@ -369,6 +370,8 @@ export function Field({
   dense = false,
   maxLength,
   describedBy,
+  autoComplete,
+  inputMode,
 }: {
   label: string;
   name: string;
@@ -398,6 +401,19 @@ export function Field({
    * подсказка под самим полем сбила бы ряд (карточка работы, Р-722).
    */
   describedBy?: string;
+  /**
+   * Что браузер вправе подставить (WCAG 1.3.5, решение Р-910). Свои данные
+   * человека — `email`, `name`, `tel`; данные другого человека, которые
+   * вносит сотрудник, — `off`: иначе браузер подставит почту сотрудника
+   * в карточку клиента.
+   */
+  autoComplete?: string;
+  /**
+   * Клавиатура телефона (Р-910): суммам — `decimal`, целым — `numeric`.
+   * Тип поля остаётся текстовым: сумму набирают с пробелами («240 000»),
+   * а `type="number"` их не принимает и меняет значение колесом мыши.
+   */
+  inputMode?: 'decimal' | 'numeric' | 'tel' | 'email' | 'search';
 }) {
   // Рамка — `--pd-field-edge`, не светлее 3:1 к белому и к тихой
   // поверхности: прежняя кромка давала 1,65:1 (решение Р-253).
@@ -418,7 +434,7 @@ export function Field({
       {multiline ? (
         <textarea id={id} {...shared} rows={4} style={{ ...box, resize: 'vertical' }} />
       ) : (
-        <input id={id} type={type} {...shared} style={box} />
+        <input id={id} type={type} {...shared} autoComplete={autoComplete} inputMode={inputMode} style={box} />
       )}
       {/* Подсказка — строка текста: абзацем, и ссылка в ней — строчная
           ссылка текста, а не отдельная цель нажатия (Р-57; решение Р-761). */}
@@ -1276,10 +1292,17 @@ export function Select({
 export function Notice({
   children,
   tone = 'ok',
-  role = 'status',
+  role,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error' | 'quiet';
+  /**
+   * Живая область — только у исхода действия (`Outcome`): постоянная
+   * плашка на экране событием не является, и объявлять её читалке при
+   * каждой перерисовке незачем. Прежде `status` стоял по умолчанию и
+   * достался примерно двадцати пяти постоянным плашкам (аудит 15.11.2026,
+   * Д-4; решение Р-920).
+   */
   role?: 'status' | 'alert';
 }) {
   const paint =
@@ -1298,7 +1321,9 @@ export function Notice({
           };
   return (
     <div
-      role={role}
+      // Зелёная и красная плашка — исход действия и живая область, как
+      // прежде; спокойная — только когда роль задана явно (Р-920).
+      role={role ?? (tone === 'quiet' ? undefined : 'status')}
       className={tone === 'quiet' ? undefined : 'cab-outcome'}
       style={{
         padding: '14px 16px',
@@ -1330,15 +1355,19 @@ export function Outcome({
   children,
   tone = 'ok',
   id,
+  mark,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error';
   /** Якорь: после действия окно открывается на строке исхода (Р-725). */
   id?: string;
+  /** Отметка исхода: новый отказ в той же форме снова получает фокус (Р-919). */
+  mark?: string;
 }) {
   return (
     // Отступ над строкой при переходе по якорю: она не прилипает к краю окна.
-    <div className="cab-outcome" id={id} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
+    <div className="cab-outcome" id={id} tabIndex={-1} style={{ marginBottom: 20, scrollMarginTop: 24 }}>
+      <OutcomeFocus mark={mark ?? id ?? tone} />
       <Notice tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
         {children}
       </Notice>
@@ -2176,6 +2205,15 @@ export function ScreenHead({
 }
 
 /**
+ * Предел высоты тела колонки панели: от окна (Р-190), но не ниже 285 px
+ * (решение Р-918). Страница при этом прокручивается (Р-180).
+ */
+export const BOARD_BODY_MAX = 'max(285px, min(70vh, calc(100dvh - 520px)))';
+
+/** Нижний предел колонки, идущей по высоте соседней: шапка и три этапа плана. */
+export const BOARD_FOLLOW_MIN = 480;
+
+/**
  * Панель экрана заказа: ряд колонок высотой по остатку окна.
  *
  * Экран заказа собирался лентой во всю ширину 1220 px: готовность, этапы,
@@ -2246,6 +2284,7 @@ export function BoardColumn({
   fit = false,
   flow = false,
   children,
+  follow = false,
 }: {
   title: string;
   /** Полный перечень на своём экране: в колонке видно главное. */
@@ -2282,6 +2321,14 @@ export function BoardColumn({
    * по-прежнему прокручиваются внутри себя.
    */
   flow?: boolean;
+  /**
+   * Колонка берёт высоту соседней и прокручивается внутри неё: своим
+   * содержимым высоту ряда она не задаёт. Нужно плану работ: он длиннее
+   * любой переписки, и соседняя колонка с формой задаёт разумную высоту
+   * ряда. Нижний предел — три этапа (ответ владельца на вопрос 3 квиза,
+   * решение Р-918).
+   */
+  follow?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -2289,7 +2336,7 @@ export function BoardColumn({
     // панель из трёх колонок читается как одно устройство экрана и
     // считается одним блоком — решение заказчика (Р-183).
     <section
-      className="cab-card"
+      className={flow ? 'cab-card' : 'cab-card cab-board-col'}
       style={{
         background: 'var(--pd-ink-inverse)',
         border: '1px solid var(--pd-border)',
@@ -2298,7 +2345,13 @@ export function BoardColumn({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        ...(fit ? { alignSelf: 'start', maxHeight: '100%' } : {}),
+        // Колонка `follow` своей высоты не задаёт: она берёт высоту
+        // соседней, но не меньше трёх этапов плана (аудит 15.11.2026, В-1;
+        // решение Р-918). Прежде план ограничивался сам — 380 px из 669 в
+        // окне 900 px, 200 px в окне 720 px, — а растянутая по соседней
+        // колонка пустовала под обрезанным планом.
+        ...(follow && !flow ? { contain: 'size', minHeight: BOARD_FOLLOW_MIN } : {}),
+        ...(fit ? { alignSelf: 'start' } : {}),
       }}
     >
       <div
@@ -2355,21 +2408,18 @@ export function BoardColumn({
           // висеть посреди белого поля, а её подвал не доходил до низа
           // карточки (решение Р-182). Нижний предел оставлен от Р-180:
           // при окне ниже девятисот тело ужималось до полутора строк.
-          flex: fit || flow ? '0 1 auto' : '1 1 auto',
-          minHeight: fit ? 0 : 200,
+          flex: fit || flow ? '0 1 auto' : follow ? '1 1 0' : '1 1 auto',
+          minHeight: fit || follow ? 0 : 200,
+          // Предел высоты тела считается от окна (Р-190), но не ниже
+          // 285 px: с шапкой и формой переписки это 480 px — столько же,
+          // сколько нижний предел колонки плана, и под формой не остаётся
+          // пустого поля (решение Р-918). Колонка `follow` предела не
+          // несёт: её высоту задаёт соседняя.
           ...(flow
             ? { maxHeight: 'none', overflowY: 'visible' }
-            : {
-                // Предел высоты тела считается от окна, а не от одного
-                // только его роста: на экране заказа над рядом колонок
-                // стоят шапка сайта, шапка экрана, описание работы и блок
-                // готовности, под ним — свёртки и подвал, и вместе они
-                // занимают около 520 пикселей. Пока предел был равен семи
-                // десятым окна, колонка с планом на пяти этапах
-                // выталкивала экран на полторы высоты (решение Р-190).
-                maxHeight: 'min(70vh, calc(100dvh - 520px))',
-                overflowY: 'auto',
-              }),
+            : follow
+              ? { overflowY: 'auto' }
+              : { maxHeight: BOARD_BODY_MAX, overflowY: 'auto' }),
           padding: '16px 18px',
           ...(anchor === 'end' ? { display: 'flex', flexDirection: 'column-reverse' } : {}),
         }}
@@ -2470,6 +2520,10 @@ export function ScrollCard({
  * ото дня и ломал побайтную воспроизводимость снимков, на которой держится
  * приёмка облика.
  */
+/** Клиенту: этапы пройдены, работа ещё действует (решение Р-911). */
+export const ALL_STAGES_DONE_CLIENT =
+  'Все этапы завершены. Работа ещё не закрыта — о следующих шагах сообщит менеджер.';
+
 /**
  * Что сейчас с работой — одной фразой, по роли читающего.
  *
@@ -2502,7 +2556,11 @@ function panelAnswer(
     if (total === 0) {
       return staff ? 'План работ не заведён.' : 'План работ составляет менеджер — этапы появятся здесь.';
     }
-    return staff ? 'Все этапы закрыты.' : 'Работа закрыта. Материалы остаются доступны здесь.';
+    // Этапы закрыты, а работа действует: остаток не оплачен или менеджер
+    // ещё не завершил работу. «Работа закрыта» здесь говорила бы клиенту
+    // то, чего нет (аудит 15.11.2026, Ф-7; решение Р-911). Закрытая работа
+    // отвечает выше, по состоянию работы.
+    return staff ? 'Все этапы закрыты.' : ALL_STAGES_DONE_CLIENT;
   }
   if (!staff) return 'Сейчас от вас ничего не требуется — работа идёт.';
   return `${turnLabel(current.state, turnViewer, hasExpert, current.handedOverAt ?? null)}.`;
@@ -2810,9 +2868,11 @@ export function Disclosure({
       </summary>
       <div
         className={tall ? 'cab-fold-body cab-fold-tall' : 'cab-fold-body'}
-        role="region"
-        aria-label={title}
-        tabIndex={0}
+        // Областью с остановкой Tab свёртка служит, только когда её тело
+        // прокручивается, — это «История работы» на панели (Р-197, Р-918).
+        // Прежде остановку несло тело каждой свёртки: 2–4 лишних нажатия
+        // Tab на экран (аудит 15.11.2026, Д-4; решение Р-920).
+        {...(tall ? { role: 'region', 'aria-label': title, tabIndex: 0 } : {})}
         style={{ padding: '4px 18px 18px' }}
       >
         {children}

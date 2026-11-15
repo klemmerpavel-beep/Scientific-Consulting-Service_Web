@@ -17,6 +17,9 @@ export const ANALYTICS_TABS = [
   { href: '/cabinet/manage/analytics/products', label: 'Продукты' },
   { href: '/cabinet/manage/analytics/projects', label: 'Сроки' },
   { href: '/cabinet/manage/analytics/losses', label: 'Потери' },
+  // Выводы, по которым принимают решение: прежде — отдельный пункт меню
+  // (Р-350), теперь — вкладка раздела (решение Р-913).
+  { href: '/cabinet/manage/recommendations', label: 'Рекомендации' },
 ] as const;
 
 export default function AnalyticsTabs({ current }: { current: string }) {

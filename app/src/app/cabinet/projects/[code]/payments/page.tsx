@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import DropFlag from '../../../../../components/cabinet/DropFlag';
+import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine } from '../../../../../lib/cabinet/outcome-lines';
 import Shell from '../../../../../components/cabinet/Shell';
 import { MONO, SANS } from '../../../../../components/cabinet/tokens';
 import {
@@ -8,6 +11,7 @@ import {
   Block,
   Outcome,
   Card,
+  Checkbox,
   Chip,
   Disclosure,
   Field,
@@ -61,6 +65,8 @@ import {
   uploadFinanceDocument,
 } from '../../../actions';
 
+export const metadata: Metadata = { title: 'Оплаты и документы' };
+
 export const dynamic = 'force-dynamic';
 
 /**
@@ -90,7 +96,7 @@ export default async function PaymentsScreen({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ exceeds?: string; error?: string; received?: string }>;
+  searchParams: Promise<{ exceeds?: string; error?: string; received?: string; done?: string }>;
 }) {
   const actor = await requireActor(`/cabinet/projects/${(await params).code}/payments`);
 
@@ -135,11 +141,21 @@ export default async function PaymentsScreen({
   // договорённости; экран сотрудников и арифметика прежние (Р-315, решение
   // Р-746).
   const forClient = actor.role === 'CLIENT';
-  const ofPayable = forClient && money !== null && money.adjustment > 0n;
-  const progress = money === null ? 0 : paidPercent(money, forClient);
+  // Доля оплаты — одна для всех ролей: от суммы к оплате, когда есть
+  // корректировка. Прежде клиент читал «74 % суммы к оплате», а
+  // руководитель по тому же договору — «66 % суммы договора»
+  // (аудит 15.11.2026, Ф-14; решение Р-921; правило клиента — Р-746).
+  const ofPayable = money !== null && money.adjustment > 0n;
+  const progress = money === null ? 0 : paidPercent(money, true);
   // «Записать поступление» и исправление записи — тому, кто ведёт деньги
   // работы (Р-870, Р-871): отказ у своей формы, с набранным (Р-722).
   const failure = mayEdit ? await flashEntry(flags.error) : undefined;
+  // Формы нового транша, документа и начисления свёрнуты: на виду —
+  // состояние и главное действие строки, остальное за одним нажатием
+  // (аудит 15.11.2026, В-2; решение Р-926; правило §12 `CABINET.md`). После
+  // отказа без своей формы они раскрыты: причина стоит вверху экрана, и
+  // форма, к которой она относится, не прячется.
+  const formsOpen = flags.error !== undefined && failure?.slot === undefined;
   const draft = mayEdit ? ((await formDraft(flags.error)) ?? {}) : {};
   const received = mayEdit && flags.received === '1' && flags.error === undefined;
   // По обезличенному клиенту новые денежные записи не заводятся (Р-244):
@@ -156,6 +172,9 @@ export default async function PaymentsScreen({
       />
 
       <ActionError id={flags.error} />
+      {/* Короткое подтверждение исхода действия (Ф-12, решение Р-923). */}
+      {doneLine(flags.done) === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneLine(flags.done)}</Outcome>}
+      {flags.done === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
 
       {/* Дела руководителя по работе: закрываются актом или отметкой
           (требование РК-12, решение Р-338). */}
@@ -240,7 +259,10 @@ export default async function PaymentsScreen({
                 <div>
                   <Mono>{money.adjustment > 0n ? 'Корректировка суммы' : 'Оплачено сверх суммы договора'}</Mono>
                   <Text size={20} style={{ marginTop: 6, color: 'var(--pd-ink)' }}>
-                    {formatAmount(money.adjustment > 0n ? money.adjustment : -money.adjustment)}
+                    {/* Корректировка уменьшает сумму к оплате и стоит со знаком
+                        «−», как в строке арифметики; оплаченное сверх договора
+                        — без знака (решение Р-921). */}
+                    {formatAmount(-money.adjustment)}
                   </Text>
                   {money.adjustment > 0n && !money.cancelled ? (
                     <Text muted size={13} style={{ marginTop: 4 }}>
@@ -389,7 +411,9 @@ export default async function PaymentsScreen({
                                 : isTrancheOverdue(tranche, project.status, today)
                                   ? `срок оплаты прошёл ${formatDate(tranche.plannedDate)}`
                                   : `срок ${formatDate(tranche.plannedDate)}`,
-                              tranche.paidOn === null ? null : `оплачен ${formatDate(tranche.paidOn)}`,
+                              // «Оплачен» говорит метка состояния справа: в строке
+                              // — только дата, без повтора слова (В-8, Р-921).
+                              tranche.paidOn === null ? null : `дата оплаты — ${formatDate(tranche.paidOn)}`,
                             ]
                               .filter((part) => part !== null)
                               .join(' · ')}
@@ -411,7 +435,7 @@ export default async function PaymentsScreen({
                                 : `срок ${formatDate(tranche.plannedDate)} · просрочен`}
                             {tranche.paidOn === null
                               ? ''
-                              : ` · оплачен ${formatDate(tranche.paidOn)}`}
+                              : ` · дата оплаты — ${formatDate(tranche.paidOn)}`}
                           </Text>
                         )}
                       </div>
@@ -461,6 +485,14 @@ export default async function PaymentsScreen({
                                   placeholder={next === 'REVERSED' ? 'Причина: ошибка отметки или возврат' : 'Причина списания'}
                                   minWidth={240}
                                 />
+                                {/* Необратимое действие — с отметкой, одной
+                                    на все денежные действия (решение Р-909). */}
+                                <Checkbox
+                                  name="confirm"
+                                  required
+                                  nowrap
+                                  label={next === 'REVERSED' ? 'Подтверждаю сторно' : 'Подтверждаю списание'}
+                                />
                                 <Button tone="quiet">{TRANCHE_ACTION[next]}</Button>
                               </Form>
                             ) : (
@@ -496,6 +528,7 @@ export default async function PaymentsScreen({
                                 <Field
                                   label="Сумма"
                                   name="amount"
+                                  inputMode="decimal"
                                   scope={`correct-${tranche.id}`}
                                   required
                                   defaultValue={formatAmount(tranche.amount)}
@@ -530,6 +563,7 @@ export default async function PaymentsScreen({
                         <Form action={dropTranche} inline>
                           <input type="hidden" name="trancheId" value={tranche.id} />
                           <input type="hidden" name="code" value={project.code} />
+                          <Checkbox name="confirm" required nowrap label="Подтверждаю удаление" />
                           <Button tone="quiet">Удалить транш</Button>
                         </Form>
                       ) : null}
@@ -562,35 +596,36 @@ export default async function PaymentsScreen({
                         )}
 
                         {mayEdit ? (
-                          <Form
-                            action={uploadFinanceDocument}
-                            encType="multipart/form-data"
-                            inline
-                            style={{ marginTop: 8 }}
-                          >
-                            <input type="hidden" name="projectId" value={project.id} />
-                            <input type="hidden" name="code" value={project.code} />
-                            <input type="hidden" name="trancheId" value={tranche.id} />
-                            <Select
-                              label={`Вид документа: ${tranche.title}`}
-                              labelHidden
-                              name="kind"
-                              scope={tranche.id}
-                              defaultValue="INVOICE"
-                              minWidth={150}
+                          <Disclosure title={`Приложить документ к платежу: ${tranche.title}`} open={formsOpen} style={{ marginTop: 8 }}>
+                            <Form
+                              action={uploadFinanceDocument}
+                              encType="multipart/form-data"
+                              inline
                             >
-                              <option value="INVOICE">счёт</option>
-                              <option value="ACT">акт</option>
-                            </Select>
-                            <FileField
-                              label={`Файл документа: ${tranche.title}`}
-                              labelHidden
-                              name="file"
-                              scope={tranche.id}
-                              required
-                            />
-                            <Button tone="quiet">Приложить</Button>
-                          </Form>
+                              <input type="hidden" name="projectId" value={project.id} />
+                              <input type="hidden" name="code" value={project.code} />
+                              <input type="hidden" name="trancheId" value={tranche.id} />
+                              <Select
+                                label={`Вид документа: ${tranche.title}`}
+                                labelHidden
+                                name="kind"
+                                scope={tranche.id}
+                                defaultValue="INVOICE"
+                                minWidth={150}
+                              >
+                                <option value="INVOICE">счёт</option>
+                                <option value="ACT">акт</option>
+                              </Select>
+                              <FileField
+                                label={`Файл документа: ${tranche.title}`}
+                                labelHidden
+                                name="file"
+                                scope={tranche.id}
+                                required
+                              />
+                              <Button tone="quiet">Приложить</Button>
+                            </Form>
+                          </Disclosure>
                         ) : null}
                       </div>
                     </li>
@@ -615,43 +650,40 @@ export default async function PaymentsScreen({
                   (`ensureMoneyWritable`), и форма, которая всегда
                   отказывает, не показывается (решение Р-257). */}
               {mayEdit && !money.cancelled ? (
-                <Form
-                  action={addContractTranche}
-                  style={{
-                    marginTop: 20,
-                    paddingTop: 20,
-                    borderTop: '1px solid var(--pd-divider)',
-                  }}
-                >
-                  <input type="hidden" name="contractId" value={contract.id} />
-                  <input type="hidden" name="code" value={project.code} />
-                  <FormRow>
-                    <Field
-                      label="Назначение транша"
-                      name="title"
-                      scope="tranche"
-                      required
-                      placeholder="Старт работ"
-                    />
-                    <Field label="Сумма" name="amount" scope="tranche" required placeholder="240 000" />
-                    <Field label="Плановая дата" name="plannedDate" scope="tranche" type="date" />
-                  </FormRow>
-                  {/* Этап, за который транш: по нему подсказка «Следующий
-                      этап не оплачен» (требование РК-12, решение Р-338). */}
-                  {project.stages.length === 0 ? null : (
-                    <Select label="Этап" name="stageId" scope="tranche" defaultValue="">
-                      <option value="">По работе в целом</option>
-                      {project.stages.map((stage) => (
-                        <option key={stage.id} value={stage.id}>
-                          {`Этап ${stage.position}: ${stage.title}`}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                  <FormActions>
-                    <Button tone="quiet">Добавить транш</Button>
-                  </FormActions>
-                </Form>
+                <Disclosure title="Добавить транш" open={formsOpen} style={{ marginTop: 20 }}>
+                  <Form
+                    action={addContractTranche}
+                  >
+                    <input type="hidden" name="contractId" value={contract.id} />
+                    <input type="hidden" name="code" value={project.code} />
+                    <FormRow>
+                      <Field
+                        label="Назначение транша"
+                        name="title"
+                        scope="tranche"
+                        required
+                        placeholder="Старт работ"
+                      />
+                      <Field label="Сумма" name="amount" inputMode="decimal" scope="tranche" required placeholder="240 000" />
+                      <Field label="Плановая дата" name="plannedDate" scope="tranche" type="date" />
+                    </FormRow>
+                    {/* Этап, за который транш: по нему подсказка «Следующий
+                        этап не оплачен» (требование РК-12, решение Р-338). */}
+                    {project.stages.length === 0 ? null : (
+                      <Select label="Этап" name="stageId" scope="tranche" defaultValue="">
+                        <option value="">По работе в целом</option>
+                        {project.stages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {`Этап ${stage.position}: ${stage.title}`}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    <FormActions>
+                      <Button tone="quiet">Добавить транш</Button>
+                    </FormActions>
+                  </Form>
+                </Disclosure>
               ) : null}
             </Card>
           </Block>
@@ -682,7 +714,7 @@ export default async function PaymentsScreen({
                       </Text>
                       <Text muted size={13}>
                         {document.versions[0] === undefined
-                          ? 'файл не загружен'
+                          ? 'файл не приложен'
                           : `${formatSize(document.versions[0].sizeBytes)} · ${formatDay(document.versions[0].uploadedAt)}`}
                       </Text>
                     </li>
@@ -691,33 +723,30 @@ export default async function PaymentsScreen({
               )}
 
               {mayEdit ? (
-                <Form
-                  action={uploadFinanceDocument}
-                  encType="multipart/form-data"
-                  style={{
-                    marginTop: 20,
-                    paddingTop: 20,
-                    borderTop: '1px solid var(--pd-divider)',
-                  }}
-                >
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="code" value={project.code} />
-                  <input type="hidden" name="contractId" value={contract.id} />
-                  <input type="hidden" name="kind" value="CONTRACT" />
-                  <FormRow>
-                    <Field
-                      label="Название"
-                      name="title"
-                      maxLength={300}
-                      scope="contract"
-                      placeholder="Договор № Д-2026-001"
-                    />
-                    <FileField label="Файл" name="file" scope="contract" required />
-                  </FormRow>
-                  <FormActions>
-                    <Button tone="quiet">Приложить договор</Button>
-                  </FormActions>
-                </Form>
+                <Disclosure title="Приложить документ к договору" open={formsOpen} style={{ marginTop: 20 }}>
+                  <Form
+                    action={uploadFinanceDocument}
+                    encType="multipart/form-data"
+                  >
+                    <input type="hidden" name="projectId" value={project.id} />
+                    <input type="hidden" name="code" value={project.code} />
+                    <input type="hidden" name="contractId" value={contract.id} />
+                    <input type="hidden" name="kind" value="CONTRACT" />
+                    <FormRow>
+                      <Field
+                        label="Название"
+                        name="title"
+                        maxLength={300}
+                        scope="contract"
+                        placeholder="Договор № Д-2026-001"
+                      />
+                      <FileField label="Файл" name="file" scope="contract" required />
+                    </FormRow>
+                    <FormActions>
+                      <Button tone="quiet">Приложить договор</Button>
+                    </FormActions>
+                  </Form>
+                </Disclosure>
               ) : null}
             </Card>
           </Block>
@@ -781,6 +810,7 @@ export default async function PaymentsScreen({
                               required
                               minWidth={170}
                             />
+                            <Checkbox name="confirm" required nowrap label="Подтверждаю выплату" />
                             <Button tone="quiet">Отметить выплату</Button>
                           </Form>
                         )}
@@ -789,42 +819,40 @@ export default async function PaymentsScreen({
                   </ul>
                 )}
 
-                <Form
-                  action={accruePayout}
-                  style={{
-                    marginTop: 20,
-                    paddingTop: 20,
-                    borderTop: '1px solid var(--pd-divider)',
-                  }}
-                >
-                  <input type="hidden" name="projectId" value={project.id} />
-                  <input type="hidden" name="code" value={project.code} />
-                  <FormRow>
-                    <Field
-                      label="Сумма начисления"
-                      name="amount"
-                      scope="payout"
-                      required
-                      placeholder="80 000"
-                    />
-                    <Field label="За что" name="comment" scope="payout" placeholder="Глава 2" />
-                  </FormRow>
-                  {/* Начисление по этапу — куратор видит его с названием
-                      этапа (требование РК-11, решение Р-339). */}
-                  {project.stages.length === 0 ? null : (
-                    <Select label="Этап" name="stageId" scope="payout" defaultValue="">
-                      <option value="">По работе в целом</option>
-                      {project.stages.map((stage) => (
-                        <option key={stage.id} value={stage.id}>
-                          {`Этап ${stage.position}: ${stage.title}`}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                  <FormActions>
-                    <Button tone="quiet">Начислить</Button>
-                  </FormActions>
-                </Form>
+                <Disclosure title="Начислить вознаграждение" open={formsOpen} style={{ marginTop: 20 }}>
+                  <Form
+                    action={accruePayout}
+                  >
+                    <input type="hidden" name="projectId" value={project.id} />
+                    <input type="hidden" name="code" value={project.code} />
+                    <FormRow>
+                      <Field
+                        label="Сумма начисления"
+                        name="amount"
+                        inputMode="decimal"
+                        scope="payout"
+                        required
+                        placeholder="80 000"
+                      />
+                      <Field label="За что" name="comment" scope="payout" placeholder="Глава 2" />
+                    </FormRow>
+                    {/* Начисление по этапу — куратор видит его с названием
+                        этапа (требование РК-11, решение Р-339). */}
+                    {project.stages.length === 0 ? null : (
+                      <Select label="Этап" name="stageId" scope="payout" defaultValue="">
+                        <option value="">По работе в целом</option>
+                        {project.stages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {`Этап ${stage.position}: ${stage.title}`}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    <FormActions>
+                      <Button tone="quiet">Начислить</Button>
+                    </FormActions>
+                  </Form>
+                </Disclosure>
               </Card>
             </Block>
           ) : null}
@@ -850,6 +878,7 @@ export default async function PaymentsScreen({
               <Field
                 label="Сумма договора"
                 name="totalAmount"
+                inputMode="decimal"
                 required
                 defaultValue={formatAmount(contract.totalAmount)}
               />
@@ -872,7 +901,7 @@ export default async function PaymentsScreen({
             <FormRow>
               <Field label="Номер" name="number" required placeholder="14-2026" />
               <Field label="Дата подписания" name="signedOn" type="date" />
-              <Field label="Сумма договора" name="totalAmount" required placeholder="600 000" />
+              <Field label="Сумма договора" name="totalAmount" inputMode="decimal" required placeholder="600 000" />
             </FormRow>
             <FormActions>
               <Button>Сохранить</Button>

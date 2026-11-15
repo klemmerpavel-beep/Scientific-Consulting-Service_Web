@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
@@ -62,6 +63,8 @@ import {
   consentStatusForHead,
   type ConsentKind,
 } from '../../../../lib/cabinet/curator-consents';
+
+export const metadata: Metadata = { title: 'Учётные записи' };
 
 export const dynamic = 'force-dynamic';
 
@@ -149,6 +152,8 @@ export default async function UsersScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/users">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title="Учётные записи"
         note="Роль назначается здесь и нигде больше: она не приходит с формы входа и не меняется самим пользователем. При смене роли и при приостановке доступа все сессии отзываются."
       />
@@ -202,11 +207,12 @@ export default async function UsersScreen({
             <Field
               label="Имя и отчество"
               name="fullName"
+              autoComplete="off"
               required
               placeholder="Соловьёв Дмитрий Викторович"
               defaultValue={draft.fullName}
             />
-            <Field label="Почта" name="email" type="email" required placeholder="expert@example.org" defaultValue={draft.email} />
+            <Field label="Почта" name="email" autoComplete="off" type="email" required placeholder="expert@example.org" defaultValue={draft.email} />
             <Select label="Роль" name="role" defaultValue={ROLES.includes(draft.role as Role) ? draft.role : 'EXPERT'}>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -549,6 +555,7 @@ export default async function UsersScreen({
                     <Field
                       label="Ставка по умолчанию, ₽"
                       name="defaultPayout"
+                      inputMode="decimal"
                       scope={`profile-${user.id}`}
                       placeholder="15 000"
                       defaultValue={

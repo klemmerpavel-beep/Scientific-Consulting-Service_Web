@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -38,6 +39,8 @@ import {
 } from '../../../../lib/cabinet/journals';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Журналы' };
 
 // Работа — ссылкой в строке текста ячейки: цель нажатия добирается
 // отступом, строка не раздвигается (Р-679; решение Р-758).
@@ -94,6 +97,8 @@ export default async function AuditScreen({
   return (
     <Shell actor={actor} current="/cabinet/manage/audit">
       <ScreenHead
+        backHref="/cabinet/manage/tools"
+        backLabel="Управление"
         title={files ? 'Доступ к файлам' : 'Журнал действий'}
         note={
           files
@@ -172,7 +177,7 @@ export default async function AuditScreen({
                   <th style={TABLE_HEAD} scope="col">Когда</th>
                   <th style={TABLE_HEAD} scope="col">Кто</th>
                   <th style={TABLE_HEAD} scope="col">Действие</th>
-                  <th style={TABLE_HEAD} scope="col">Проект</th>
+                  <th style={TABLE_HEAD} scope="col">Работа</th>
                   <th style={TABLE_HEAD} scope="col">Файл</th>
                   <th style={TABLE_HEAD} scope="col">Адрес</th>
                 </tr>

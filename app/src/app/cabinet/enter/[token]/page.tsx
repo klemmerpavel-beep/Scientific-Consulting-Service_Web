@@ -6,7 +6,7 @@ import { loginLinkOwner } from '../../../../lib/cabinet/auth';
 import { enterByLink } from '../../actions';
 
 export const metadata: Metadata = {
-  title: 'Вход в личный кабинет — ProDisser',
+  title: 'Вход в личный кабинет',
   robots: { index: false, follow: false },
   // Ссылка несёт одноразовый ключ: адрес страницы не должен уходить
   // заголовком Referer ни на какой другой узел.

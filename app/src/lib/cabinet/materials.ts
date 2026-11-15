@@ -75,7 +75,7 @@ export interface UploadInput {
 
 export async function uploadVersion(actor: Actor, input: UploadInput, ip?: string | null) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
 
   // Следующая версия ложится в существующий материал, и всё о нём берётся
   // из базы, а не из формы. Прежде вид материала приходил с формы, а
@@ -368,7 +368,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         subject: `Новая версия материала: ${material.title}`,
         body:
           `${workLine(project, recipient.role === 'CLIENT')}\n` +
-          `Загружена версия v${version.number}. Открыть можно в личном кабинете.` +
+          `Приложена версия v${version.number}. Открыть можно в личном кабинете.` +
           (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
         path: materialPath(project.code, material.stageId, material.kind),
@@ -588,7 +588,7 @@ export async function moderateVersion(
           `${workLine(project, false)}\n` +
           `Менеджер не опубликовал клиенту версию v${version.number} материала «${version.material.title}».\n` +
           `Причина: ${reason}\n` +
-          'Исправленную версию можно загрузить в личном кабинете.',
+          'Исправленную версию можно приложить в личном кабинете.',
         dedupKey: `version:${version.id}:rejected`,
         path: materialPath(project.code, version.material.stageId),
       });
@@ -640,7 +640,7 @@ export async function moderateVersion(
         subject: `Новая версия материала: ${version.material.title}`,
         body:
           `${workLine(project, true)}\n` +
-          `Загружена версия v${version.number}. Открыть можно в личном кабинете.`,
+          `Приложена версия v${version.number}. Открыть можно в личном кабинете.`,
         dedupKey: `version:${version.id}:uploaded:${project.client.userId}`,
         path: materialPath(project.code, version.material.stageId),
       });
@@ -707,12 +707,13 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
   // Документ скрытого транша — «не найдено» и по прямой ссылке (УК-01, Р-356).
   if (!trancheDocumentVisible(actor, version.material)) return null;
 
+  // Потоком, а не целиком (решение Р-247). Объект открывается до записи в
+  // журнал доступа: строка «файл выдан» о файле, которого в хранилище нет,
+  // была бы ложной (решение Р-907).
+  const opened = await openObject(storage(), version.storageKey);
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
   });
-
-  // Потоком, а не целиком (решение Р-247).
-  const opened = await openObject(storage(), version.storageKey);
   return {
     stream: opened.stream,
     sizeBytes: opened.sizeBytes,
@@ -765,7 +766,7 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   // замечание к неопубликованной версии публикуется только вместе с ней:
   // оно висело бы у менеджера «ожидает публикации» без выхода (решение Р-671).
   if (actor.role === 'EXPERT' && version.moderation?.status === 'REJECTED') {
-    throw new Error('Версия не опубликована менеджером: загрузите исправленную версию');
+    throw new Error('Версия не опубликована менеджером: приложите исправленную версию');
   }
   // И к документу скрытого транша — тоже (УК-01, Р-356).
   if (!trancheDocumentVisible(actor, version.material)) throw new Error('Версия не найдена');

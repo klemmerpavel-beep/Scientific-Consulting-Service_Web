@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -43,6 +44,8 @@ import {
   type FeedbackStatus,
 } from '../../../../lib/feedback';
 import { saveFeedbackReview } from '../../actions';
+
+export const metadata: Metadata = { title: 'Отзывы о кабинете' };
 
 export const dynamic = 'force-dynamic';
 
@@ -99,7 +102,7 @@ export default async function FeedbackScreen({
       <ScreenHead
         backHref="/cabinet/manage/tools"
         backLabel="Управление"
-        title="Замечания"
+        title="Отзывы о кабинете"
         note="Замечания с кнопки справа внизу — с сайта и из кабинета. Виджет не собирает персональные данные: ни имени, ни контакта, ни адреса страницы с идентификаторами. Разбираются раз в неделю."
         action={
           digest.total > 0 ? (

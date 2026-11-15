@@ -18,7 +18,7 @@ import { uploadFailedText } from '../../lib/cabinet/staff-texts';
 import { withError } from '../../lib/cabinet/flash';
 import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
-import { OUTCOME_ANCHOR } from '../../lib/cabinet/outcome-lines';
+import { OUTCOME_ANCHOR, trancheDoneCode, type DoneCode } from '../../lib/cabinet/outcome-lines';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { editOrder, moveOrderToClient } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
@@ -72,6 +72,7 @@ import {
 } from '../../lib/cabinet/finance';
 import { removeYear, saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import { formDate } from '../../lib/cabinet/form-date';
 import {
   addAlias,
   createUser,
@@ -169,8 +170,19 @@ async function actorOrRedirect() {
  * фиксированная фраза, а подробности идут в журнал сервера.
  */
 
+/**
+ * Чужой объект в ответе действия неотличим от несуществующего, как на
+ * экранах, где оба дают «не найдено» (решение Р-912). Прежде отказ в
+ * праве и отсутствие записи отвечали разными словами, и перебором
+ * идентификаторов читалось, какие транши, версии и этапы существуют.
+ */
+const HIDDEN_OR_MISSING = 'Запись не найдена или недоступна для вашей роли';
+
+/** «Транш не найден», «Учётная запись не найдена» — отсутствие самой записи. */
+const MISSING = /^[А-ЯЁ][а-яё]+(?: [а-яё]+)? не найден[аоы]?$/u;
+
 function reasonOf(error: unknown, fallback: string): string {
-  if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
+  if (error instanceof AccessDenied) return HIDDEN_OR_MISSING;
   // Системная ошибка (диск, сеть) — тоже `Error`, но с кодом `ENOTDIR`,
   // `ENOSPC` и т. п. и путём на сервере в тексте: человеку она ничего не
   // скажет, а путь показывать незачем. Для неё — общая фраза (Р-255).
@@ -181,7 +193,9 @@ function reasonOf(error: unknown, fallback: string): string {
   // (решение Р-469).
   if (code === 'P2002') return 'Это уже изменили в другой вкладке или другой сотрудник: обновите страницу и повторите';
   const system = typeof code === 'string';
-  if (error instanceof Error && error.constructor === Error && !system) return error.message;
+  if (error instanceof Error && error.constructor === Error && !system) {
+    return MISSING.test(error.message) ? HIDDEN_OR_MISSING : error.message;
+  }
   console.error('[cabinet] сбой действия', error);
   return fallback;
 }
@@ -294,11 +308,20 @@ export async function enterByLink(form: FormData): Promise<void> {
 export async function approveStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
+  // Момент отправки на согласование, который нёс экран клиента (Р-905).
+  const sentAt = form.get('sentAt');
   let failure: string | null = null;
-  try {
-    await setStageState(actor, stageId, 'DONE');
-  } catch (error) {
-    failure = reasonOf(error, 'Не удалось согласовать этап');
+  // Согласование запускает сроки по оферте и клиентом не отменяется:
+  // он подтверждает, что посмотрел последнюю версию (ответ владельца
+  // 15.11.2026 на вопрос 1 аудита, решение Р-905).
+  if (form.get('seen') !== 'on') {
+    failure = 'Отметьте, что посмотрели последнюю версию материалов, — и согласуйте этап';
+  } else {
+    try {
+      await setStageState(actor, stageId, 'DONE', null, typeof sentAt === 'string' ? sentAt : null);
+    } catch (error) {
+      failure = reasonOf(error, 'Не удалось согласовать этап');
+    }
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   // Клиенту — «Этап согласован … Дальше — …» (решение Р-725).
@@ -330,9 +353,10 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
   const text = String(form.get('remarks') ?? '');
+  const sentAt = form.get('sentAt');
   let failure: string | null = null;
   try {
-    await returnStage(actor, stageId, text);
+    await returnStage(actor, stageId, text, typeof sentAt === 'string' ? sentAt : null);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось вернуть этап');
   }
@@ -437,7 +461,7 @@ export async function changeStageState(form: FormData): Promise<void> {
   redirect(
     to === 'IN_APPROVAL'
       ? withOutcome(`/cabinet/stages/${stageId}`, 'done', 'approval')
-      : `/cabinet/stages/${stageId}`,
+      : withOutcome(`/cabinet/stages/${stageId}`, 'done', 'stage-state'),
   );
 }
 
@@ -634,7 +658,7 @@ export async function createStage(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось завести этап');
   }
   if (failure !== null) redirect(await withError(`/cabinet/projects/${code}`, failure));
-  redirect(`/cabinet/projects/${code}`);
+  redirect(withOutcome(`/cabinet/projects/${code}`, 'done', 'stage-added'));
 }
 
 /** Перестановка этапа в плане (требование М-11, решение Р-303). */
@@ -780,6 +804,8 @@ export async function saveOrder(form: FormData): Promise<void> {
   try {
     const days = String(form.get('approvalDays') ?? '').trim();
     const total = String(form.get('contractTotal') ?? '').trim();
+    // Сумма, показанная формой при открытии: пусто — договора не было (Р-906).
+    const seen = form.get('contractTotalSeen');
     await editOrder(actor, {
       projectId: String(form.get('projectId') ?? ''),
       updatedAt: String(form.get('updatedAt') ?? '') || null,
@@ -792,6 +818,7 @@ export async function saveOrder(form: FormData): Promise<void> {
       ...(days === '' ? {} : { approvalDays: Number(days) }),
       // Пустое поле суммы не снимает договор: сумма просто не меняется.
       contractTotal: total === '' ? null : parseAmount(total),
+      ...(typeof seen === 'string' ? { contractTotalSeen: seen.trim() === '' ? null : parseAmount(seen) } : {}),
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить заказ: попробуйте ещё раз. Введённое сохранено в форме.');
@@ -800,7 +827,7 @@ export async function saveOrder(form: FormData): Promise<void> {
     redirect(
       await withError(back, failure, {
         slot: 'order',
-        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal']),
+        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal', 'contractTotalSeen']),
         anchor: 'card',
       }),
     );
@@ -999,7 +1026,7 @@ export async function setExpert(form: FormData): Promise<void> {
   } catch (error) {
     await manageFailure(code, 'expert', error, { expertId, expertRole });
   }
-  redirect(`/cabinet/projects/${code}`);
+  redirect(withOutcome(`/cabinet/projects/${code}`, 'done', expertId === '' ? 'curator-unset' : 'curator-set'));
 }
 
 /** Передача работы другому менеджеру — с причиной. Доступна руководителю. */
@@ -1463,12 +1490,14 @@ export async function dropTelegram(): Promise<void> {
   redirect('/cabinet/settings?saved=1');
 }
 
-/** Дата из поля формы. Пустое значение — это отсутствие даты, а не «сегодня». */
+/**
+ * Дата из поля формы. Пустое значение — это отсутствие даты, а не
+ * «сегодня»; несуществующий день и нечитаемое значение — отказ, а не
+ * молчаливая подмена (решение Р-908). Все вызовы стоят внутри `try`
+ * действия: отказ возвращается причиной у формы.
+ */
 function dateOrNull(value: FormDataEntryValue | null): Date | null {
-  const raw = String(value ?? '').trim();
-  if (raw.length === 0) return null;
-  const date = new Date(`${raw}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return formDate(value);
 }
 
 /**
@@ -1476,7 +1505,12 @@ function dateOrNull(value: FormDataEntryValue | null): Date | null {
  * внутренний комментарий (решение Р-270). Каждое действие возвращает на
  * экран заявки; отказ — с причиной.
  */
-async function leadStep(form: FormData, step: (actor: Actor, leadId: string) => Promise<void>, fallback: string) {
+async function leadStep(
+  form: FormData,
+  step: (actor: Actor, leadId: string) => Promise<void>,
+  fallback: string,
+  done?: DoneCode,
+) {
   const actor = await actorOrRedirect();
   const leadId = String(form.get('leadId') ?? '');
   const back = `/cabinet/manage/leads/${leadId}`;
@@ -1487,11 +1521,12 @@ async function leadStep(form: FormData, step: (actor: Actor, leadId: string) => 
     failure = error instanceof LeadWorkError ? error.message : reasonOf(error, fallback);
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  // Исход действия назван строкой, когда действие его задаёт (Р-923).
+  redirect(done === undefined ? back : withOutcome(back, 'done', done));
 }
 
 export async function switchLeadStatus(form: FormData): Promise<void> {
-  await leadStep(form, (actor, id) => setLeadStatus(actor, id, String(form.get('status') ?? '')), 'Не удалось сменить состояние');
+  await leadStep(form, (actor, id) => setLeadStatus(actor, id, String(form.get('status') ?? '')), 'Не удалось сменить состояние', 'lead-status');
 }
 
 export async function saveLead(form: FormData): Promise<void> {
@@ -1613,7 +1648,7 @@ export async function saveProjectContract(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось сохранить договор');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'contract-saved'));
 }
 
 export async function addContractTranche(form: FormData): Promise<void> {
@@ -1637,7 +1672,7 @@ export async function addContractTranche(form: FormData): Promise<void> {
   if (failure !== null) redirect(await withError(back, failure));
   // Превышение суммы договора показывается на экране, а не теряется
   // (решение Р-224).
-  redirect(`${back}${exceeds ? '?exceeds=1' : ''}`);
+  redirect(exceeds ? `${back}?exceeds=1` : withOutcome(back, 'done', 'tranche-added'));
 }
 
 export async function changeTrancheStatus(form: FormData): Promise<void> {
@@ -1646,6 +1681,17 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
+    // Сторно и списание необратимы: подтверждаются отметкой, как списание
+    // в «Должниках» (ответ владельца 15.11.2026 на вопрос 5 аудита,
+    // решение Р-909).
+    const status = String(form.get('status') ?? '');
+    if ((status === 'REVERSED' || status === 'WRITTEN_OFF') && form.get('confirm') !== 'on') {
+      throw new Error(
+        status === 'REVERSED'
+          ? 'Подтвердите сторно: поступление снимается, сумма снова числится к получению'
+          : 'Подтвердите списание: сумма больше не будет ждать оплаты',
+      );
+    }
     await setTrancheStatus(
       actor,
       String(form.get('trancheId') ?? ''),
@@ -1654,10 +1700,10 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
       String(form.get('reason') ?? ''),
     );
   } catch (error) {
-    failure = reasonOf(error, 'Не удалось сменить статус транша');
+    failure = reasonOf(error, 'Не удалось сменить состояние транша');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', trancheDoneCode(String(form.get('status') ?? ''))));
 }
 
 /**
@@ -1768,12 +1814,13 @@ export async function dropTranche(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите удаление транша: вернуть его нельзя');
     await removeTranche(actor, String(form.get('trancheId') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось удалить транш');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'tranche-dropped'));
 }
 
 export async function saveFinanceYear(form: FormData): Promise<void> {
@@ -1811,7 +1858,7 @@ export async function accruePayout(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось начислить');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'payout-accrued'));
 }
 
 export async function payPayout(form: FormData): Promise<void> {
@@ -1822,12 +1869,13 @@ export async function payPayout(form: FormData): Promise<void> {
   try {
     const paidOn = dateOrNull(form.get('paidOn'));
     if (paidOn === null) throw new Error('Для выплаты нужна дата');
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите выплату: отметка «выплачено» не снимается');
     await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить выплату');
   }
   if (failure !== null) redirect(await withError(back, failure));
-  redirect(back);
+  redirect(withOutcome(back, 'done', 'payout-paid'));
 }
 
 /**

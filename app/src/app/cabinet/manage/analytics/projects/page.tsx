@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   RankChart,
   compactNumber } from '../../../../../components/cabinet/Charts'; import { Card,
@@ -10,6 +11,8 @@ import {
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
+
+export const metadata: Metadata = { title: 'Аналитика: сроки' };
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +34,7 @@ export default async function AnalyticsProjects() {
       lead="Срок оценивается по Каплану — Мейеру: незавершённые работы не выбрасываются, а цензурируют кривую. Среднее по закрытым занижало бы срок, потому что длинные работы ещё идут. Отменённая работа не считается завершённой: наблюдение за ней обрывается в день отмены."
     >
       {rows.length === 0 ? (
-        <Empty title="Считать нечего">Проектов в системе нет.</Empty>
+        <Empty title="Считать нечего">Работ в системе нет.</Empty>
       ) : (
         <>
           <Tiles>

@@ -145,7 +145,7 @@ const money = (kopecks: bigint) => ({ kopecks });
  */
 export const FINANCE_COLUMNS: readonly Column<FinanceRowView>[] = [
   { key: 'code', head: 'Код', short: false, value: (row) => row.code },
-  { key: 'title', head: 'Проект', short: true, value: (row) => row.title },
+  { key: 'title', head: 'Работа', short: true, value: (row) => row.title },
   { key: 'client', head: 'Клиент', short: true, value: (row) => row.client },
   {
     key: 'status',

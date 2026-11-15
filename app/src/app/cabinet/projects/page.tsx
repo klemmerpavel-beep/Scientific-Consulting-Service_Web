@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Fragment, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
@@ -43,6 +44,7 @@ import {
   curators,
   experts,
   liveWorks,
+  ownOpenRequests,
   pausedWorksCount,
   pendingActions,
   type ProjectFilter,
@@ -52,8 +54,10 @@ import { daysPast, now } from '../../../lib/cabinet/clock';
 import { missedStages, workDuePassed } from '../../../lib/cabinet/missed';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
-import { requireActor } from '../../../lib/cabinet/session';
-import { soleWorkTarget } from '../../../lib/cabinet/nav';
+import { currentActor, requireActor } from '../../../lib/cabinet/session';
+import { menuLabel, soleWorkTarget } from '../../../lib/cabinet/nav';
+import { ownRequestLine } from '../../../lib/cabinet/own-requests';
+import { clientPlateHead, plateCode } from '../../../lib/cabinet/work-plate';
 import { welcomeState } from '../../../lib/cabinet/channels';
 import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -64,6 +68,17 @@ import { myAssignments } from '../../../lib/cabinet/assignments';
 import { MONTH_NAMES } from '../../../lib/cabinet/analytics/calendar';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Заголовок документа — название пункта меню роли (решение Р-894): экран
+ * один, а называется он у ролей по-разному. Без сеанса — общее название:
+ * экран всё равно уведёт на вход.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const actor = await currentActor();
+  const label = actor === null ? null : menuLabel(actor, '/cabinet/projects');
+  return { title: label ?? 'Работы' };
+}
 
 const FILTERS: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
 
@@ -116,6 +131,8 @@ export default async function ProjectsScreen({
     projects.map((p) => ({ id: p.id, clientId: p.clientId, managerId: p.managerId, expertId: p.expertId, serviceCode: p.serviceType.code })),
   );
   const forClient = actor.role === 'CLIENT';
+  // Заявки клиента, по которым ещё нет ни работы, ни отказа (Р-914).
+  const ownRequests = forClient ? await ownOpenRequests(actor) : [];
   // Блок первого входа — пока клиент его не закрыл (требование Т-10,
   // решение Р-310).
   const welcome = await welcomeState(actor);
@@ -184,7 +201,7 @@ export default async function ProjectsScreen({
   const waitingLine = (stage: { state: string; title: string }) =>
     forClient
       ? stage.state === 'AWAITING_CLIENT'
-        ? `Загрузить материалы: ${stage.title}`
+        ? `Приложить материалы: ${stage.title}`
         : `Согласовать этап: ${stage.title}`
       : stage.state === 'AWAITING_CLIENT'
         ? `Ждём материалов клиента: ${stage.title}`
@@ -465,6 +482,26 @@ export default async function ProjectsScreen({
             ) : undefined
           }
         />
+      )}
+      {/* Поданная заявка видна до ответа менеджера: прежде после экрана
+          «Заявка принята» её не было нигде, и человек подавал её снова
+          (аудит 15.11.2026, Ф-6; решение Р-914). */}
+      {ownRequests.length === 0 ? null : (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            {ownRequests.length === 1 ? 'Заявка на рассмотрении' : 'Заявки на рассмотрении'}
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+            {ownRequests.map((request) => (
+              <li key={request.number}>
+                <Text size={15}>{ownRequestLine(request, (date) => formatDate(date) ?? '', clip)}</Text>
+              </li>
+            ))}
+          </ul>
+          <Text muted size={13} style={{ marginTop: 10 }}>
+            Ответ придёт на вашу почту. После одобрения заявка станет работой в этом перечне.
+          </Text>
+        </Card>
       )}
       {/* Отказ «Сообщить руководителю» — под ответом, где кнопка (Р-735). */}
       {awaitingNda ? <ActionError id={sp.error} /> : null}
@@ -799,6 +836,16 @@ export default async function ProjectsScreen({
               // руководителю — менеджер и куратор ссылками ниже (РК-03).
               forClient || forExpert || forHead ? null : staffExpertLine(project.expert, project.expertNameRaw),
             ].filter((fact) => fact !== null);
+            // Код работы — сотруднику, последним в строке фактов и тем же
+            // приглушённым шрифтом: по нему работу находят из письма
+            // (Р-362). Клиенту кода нет; на остальных экранах — тоже
+            // (Р-189, решение Р-916).
+            const code = plateCode(project.code, forClient);
+            // Клиенту заголовком плашки — то, что отличает работу: её
+            // название, а когда оно равно типу — тема (Н-7, решение Р-916).
+            const clientHead = forClient
+              ? clientPlateHead({ title: project.title, topic: project.topic, type: project.serviceType.name })
+              : null;
 
             const waiting = onPage.get(project.code) ?? null;
             // Куратору — строка его дела и рамка у плашки с делом; строка
@@ -849,27 +896,58 @@ export default async function ProjectsScreen({
                     блок «Требует внимания» появляется не всегда, и при его
                     отсутствии третий уровень оказывался сразу после
                     первого — пропуск, который ловит правило облика. */}
-                <div data-work-type="" style={{ textAlign: 'center', padding: '0 0 10px', margin: '0 0 10px', borderBottom: '1px solid var(--pd-divider)' }}>
-                  {project.title === project.serviceType.name ? (
-                    <Heading level={2} size={3}>
+                {clientHead === null ? (
+                  <>
+                    <div data-work-type="" style={{ textAlign: 'center', padding: '0 0 10px', margin: '0 0 10px', borderBottom: '1px solid var(--pd-divider)' }}>
+                      {project.title === project.serviceType.name ? (
+                        <Heading level={2} size={3}>
+                          <a href={`/cabinet/projects/${project.code}`} className="cab-stretch" style={{ color: 'var(--pd-ink)' }}>
+                            {project.title}
+                          </a>
+                        </Heading>
+                      ) : (
+                        <p style={WORK_TYPE_HEAD}>{project.serviceType.name}</p>
+                      )}
+                    </div>
+                    {project.title === project.serviceType.name ? null : (
+                      <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+                        <a
+                          href={`/cabinet/projects/${project.code}`}
+                          className="cab-stretch"
+                          style={{ color: 'var(--pd-ink)' }}
+                        >
+                          {project.title}
+                        </a>
+                      </Heading>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Клиенту: заголовок — название или тема, тип — строкой
+                        ниже. Тема доходит до трёхсот пятидесяти знаков и
+                        режется тремя строками; целиком она на экране работы
+                        (решение Р-916; Р-169). */}
+                    <Heading
+                      level={2}
+                      size={3}
+                      style={{
+                        marginBottom: 4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
                       <a href={`/cabinet/projects/${project.code}`} className="cab-stretch" style={{ color: 'var(--pd-ink)' }}>
-                        {project.title}
+                        {clientHead.heading}
                       </a>
                     </Heading>
-                  ) : (
-                    <p style={WORK_TYPE_HEAD}>{project.serviceType.name}</p>
-                  )}
-                </div>
-                {project.title === project.serviceType.name ? null : (
-                  <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                    <a
-                      href={`/cabinet/projects/${project.code}`}
-                      className="cab-stretch"
-                      style={{ color: 'var(--pd-ink)' }}
-                    >
-                      {project.title}
-                    </a>
-                  </Heading>
+                    {clientHead.typeLine === null ? null : (
+                      <Text muted size={13} style={{ margin: '0 0 10px' }}>
+                        {clientHead.typeLine}
+                      </Text>
+                    )}
+                  </>
                 )}
 
                 {/* Короткое описание заказа: у перенесённых работ заголовок —
@@ -878,7 +956,7 @@ export default async function ProjectsScreen({
                     до трёхсот пятидесяти знаков, и одна такая работа
                     растягивала весь ряд плашек (решение Р-169). Целиком
                     тема стоит на экране заказа. */}
-                {project.topic === null || project.topic === project.title ? null : (
+                {project.topic === null || project.topic === project.title || clientHead?.topicAsHeading === true ? null : (
                   <Text
                     muted
                     size={13}
@@ -1011,7 +1089,7 @@ export default async function ProjectsScreen({
                     последний в плашке: раскрытие «Этапы» стоит над ним, и
                     у плашек ряда подвал встаёт на одни линии, есть план
                     или нет (Р-272). */}
-                {facts.length === 0 && project.dueOn === null && !forHead && !stageMissed ? (
+                {facts.length === 0 && code === null && project.dueOn === null && !forHead && !stageMissed ? (
                   <span aria-hidden="true" style={{ marginTop: 'auto' }} />
                 ) : (
                   <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
@@ -1031,9 +1109,15 @@ export default async function ProjectsScreen({
                         )}
                       </Text>
                     )}
-                    {facts.length === 0 ? null : (
+                    {facts.length === 0 && code === null ? null : (
                       <Text muted size={13} style={{ margin: 0 }}>
                         {facts.join(' · ')}
+                        {code === null ? null : (
+                          <>
+                            {facts.length === 0 ? '' : ' · '}
+                            <span data-work-code="">{code}</span>
+                          </>
+                        )}
                       </Text>
                     )}
                     {/* Руководителю — менеджер и куратор ссылками на

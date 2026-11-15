@@ -1,27 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { attachmentDisposition } from '../../../../lib/cabinet/disposition';
+import { attachmentDisposition, safeContentType } from '../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../lib/cabinet/access';
+import { OBJECT_MISSING_TEXT, ObjectMissing } from '../../../../lib/cabinet/storage';
 import { readLeadAttachment } from '../../../../lib/cabinet/queries';
 import { currentActor, requestIp, signInFirst } from '../../../../lib/cabinet/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Выдача файла, приложенного к заявке.
- *
- * Отдельный маршрут от выдачи материалов: у вложения нет работы, а значит
- * нет и обычной выборки прав по проекту — открыт он только тому, кто
- * разбирает заявки. Порядок тот же: разрешение, запись в журнал, байты;
- * отказ и отсутствие неразличимы (решение Р-191).
- */
-const RISKY =
-  /^(text\/html|image\/svg|application\/xhtml|text\/xml|application\/xml|text\/css|application\/javascript|text\/javascript)/iu;
-
-function safeType(contentType: string): string {
-  return RISKY.test(contentType) ? 'application/octet-stream' : contentType;
-}
 
 export async function GET(
   request: NextRequest,
@@ -39,13 +26,21 @@ export async function GET(
     return new NextResponse(file.stream, {
       headers: {
         'content-length': String(file.sizeBytes),
-        'content-type': safeType(file.contentType),
+        'content-type': safeContentType(file.contentType),
         'content-disposition': attachmentDisposition(file.originalName),
         'cache-control': 'private, no-store',
       },
     });
   } catch (error) {
     if (error instanceof AccessDenied) return new NextResponse('Не найдено', { status: 404 });
+    // Право есть, объекта нет: понятный ответ вместо ошибки 500 (Р-907).
+    if (error instanceof ObjectMissing) {
+      console.error(`[storage] объект не найден: ${error.key}`);
+      return new NextResponse(OBJECT_MISSING_TEXT, {
+        status: 404,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' },
+      });
+    }
     throw error;
   }
 }

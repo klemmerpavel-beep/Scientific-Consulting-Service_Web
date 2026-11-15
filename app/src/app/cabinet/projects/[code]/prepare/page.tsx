@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -19,6 +20,8 @@ import { PREPARE_MEMO } from '../../../../../lib/cabinet/memos';
 import { prepareView } from '../../../../../lib/cabinet/prepare';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Что подготовить' };
 
 export const dynamic = 'force-dynamic';
 

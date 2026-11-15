@@ -204,7 +204,7 @@ describe('вложения заявки', { skip: !enabled }, async () => {
         },
         'v1',
       ),
-      /«setup\.EXE» не принят: исполняемые файлы и установщики загружать нельзя/u,
+      /«setup\.EXE» не принят: исполняемые файлы и установщики прикладывать нельзя/u,
     );
     const after = await prisma.lead.count({ where: { contact: { startsWith: 'lead-client-' } } });
     assert.equal(after, before, 'заявка заведена, хотя вложение отвергнуто');

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Fragment } from 'react';
 import { redirect } from 'next/navigation';
 
@@ -27,6 +28,8 @@ import { flaggedMessages } from '../../../../lib/cabinet/messages';
 import { clientRegistry, expertRegistry } from '../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Реестры' };
 
 export const dynamic = 'force-dynamic';
 

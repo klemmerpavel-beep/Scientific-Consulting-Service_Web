@@ -77,7 +77,7 @@ async function ensureMoneyWritable(projectId: string, fresh: boolean): Promise<{
     where: { id: projectId },
     select: { status: true, client: { select: { erasedAt: true } } },
   });
-  if (project === null) throw new Error('Проект не найден');
+  if (project === null) throw new Error('Работа не найдена');
   const erased = project.client.erasedAt !== null;
   if (fresh && erased) {
     throw new Error('Данные клиента удалены по его требованию: новые денежные записи по работе не заводятся');
@@ -119,7 +119,7 @@ export interface ContractInput {
 /** Завести или изменить договор. Один проект — один договор. */
 export async function saveContract(actor: Actor, input: ContractInput) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
 
   if (input.totalAmount <= 0n) throw new Error('Сумма договора должна быть больше нуля');
@@ -272,7 +272,7 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
     include: { tranches: true },
   });
   const ref = await projectRef(contract.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
 
   if (input.amount <= 0n) throw new Error('Сумма транша должна быть больше нуля');
@@ -313,14 +313,22 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
       },
       tx,
     );
+    // Ручной транш — часть того же договора: плановый «Остаток по договору»
+    // уменьшается на него тем же правилом, что при поступлении. Прежде
+    // остаток оставался прежним, планов становилось больше договора, и
+    // клиент видел платежей на сумму выше «Осталось оплатить» (аудит
+    // 15.11.2026, находка Ф-3, решение Р-904).
+    await settleRest(tx, input.contractId);
     return created;
   });
 
-  // Сторнированный транш денег не несёт и в сверку с договором не входит.
-  const planned =
-    contract.tranches
-      .filter((t) => t.status !== 'REVERSED')
-      .reduce((sum, t) => sum + t.amount, 0n) + input.amount;
+  // Сверка с договором — по траншам после пересчёта остатка: сторнированный
+  // транш денег не несёт и в неё не входит.
+  const after = await prisma.tranche.findMany({
+    where: { contractId: input.contractId, status: { not: 'REVERSED' } },
+    select: { amount: true },
+  });
+  const planned = after.reduce((sum, t) => sum + t.amount, 0n);
   return { tranche, exceedsContract: planned > contract.totalAmount };
 }
 
@@ -341,10 +349,10 @@ export async function setTrancheStatus(
     include: { contract: { select: { projectId: true } } },
   });
   const ref = await projectRef(tranche.contract.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
 
-  if (!isTrancheStatus(status)) throw new Error('Неизвестный статус транша');
+  if (!isTrancheStatus(status)) throw new Error('Неизвестное состояние транша');
   if (!canChangeTrancheStatus(tranche.status as TrancheStatus, status)) {
     throw new Error(
       `Транш «${STATUS_LABEL[tranche.status as TrancheStatus]}» в «${STATUS_LABEL[status]}» не переводится`,
@@ -383,7 +391,7 @@ export async function setTrancheStatus(
       },
     });
     if (claimed.count === 0) {
-      throw new Error('Статус транша уже изменён другим действием: обновите страницу');
+      throw new Error('Состояние транша уже изменено другим действием: обновите страницу');
     }
     const row = await tx.tranche.findUniqueOrThrow({ where: { id: trancheId } });
     // Сторнированное снова к получению: плановый остаток растёт обратно
@@ -406,7 +414,7 @@ export async function setTrancheStatus(
         userId,
         projectId: tranche.contract.projectId,
         eventKind: 'PAYMENT_STATUS_CHANGED',
-        subject: `Статус платежа изменился: ${row.title}`,
+        subject: `Состояние платежа изменилось: ${row.title}`,
         body:
           `${project === null ? '' : `${workLine(project, true)}\n`}` +
           `Транш «${row.title}» переведён в состояние «${STATUS_LABEL[status]}».\n` +
@@ -450,21 +458,30 @@ export async function removeTranche(actor: Actor, trancheId: string) {
     },
   });
   const ref = await projectRef(tranche.contract.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
   if (tranche.documents.length > 0) {
     throw new Error('К траншу приложены документы: такой транш не удаляется');
   }
-  const removed = await prisma.tranche.deleteMany({ where: { id: trancheId, status: 'PLANNED' } });
-  if (removed.count === 0) {
-    throw new Error('Удалить можно только плановый транш: выставленный отзывается, оплаченный остаётся');
-  }
-  await record(actor, {
-    action: 'TRANCHE_REMOVED',
-    objectType: 'Tranche',
-    objectId: trancheId,
-    projectId: tranche.contract.projectId,
-    payload: { amount: money(tranche.amount) },
+  // Удаление, пересчёт остатка и журнал — одна транзакция: снятый ручной
+  // транш возвращает свою сумму плановому «Остатку по договору» (Р-904).
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.tranche.deleteMany({ where: { id: trancheId, status: 'PLANNED' } });
+    if (removed.count === 0) {
+      throw new Error('Удалить можно только плановый транш: выставленный отзывается, оплаченный остаётся');
+    }
+    await settleRest(tx, tranche.contractId);
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_REMOVED',
+        objectType: 'Tranche',
+        objectId: trancheId,
+        projectId: tranche.contract.projectId,
+        payload: { amount: money(tranche.amount) },
+      },
+      tx,
+    );
   });
 }
 
@@ -495,6 +512,10 @@ const dayKey = (day: Date | null) => day?.toISOString().slice(0, 10) ?? null;
  * меняется: разносить остаток по траншам за человека кабинет не берётся.
  */
 export async function settleRest(db: Db, contractId: string): Promise<void> {
+  // Замок договора: два поступления или транша, записанные одновременно,
+  // считали остаток каждый без чужой строки, и последний писал неверную
+  // сумму. Второй теперь ждёт первого и видит его строку (Р-904).
+  await db.$queryRaw`SELECT 1 FROM "Contract" WHERE "id" = ${contractId} FOR UPDATE`;
   const contract = await db.contract.findUnique({
     where: { id: contractId },
     select: {
@@ -552,7 +573,7 @@ export interface ReceiptInput {
  */
 export async function recordReceipt(actor: Actor, input: ReceiptInput) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
   if (input.amount <= 0n) throw new Error('Сумма поступления должна быть больше нуля');
   if (input.paidOn === null || Number.isNaN(input.paidOn.getTime())) throw new Error('Укажите дату поступления');
@@ -604,7 +625,7 @@ export async function correctReceipt(
   });
   if (tranche === null) throw new Error('Поступление не найдено');
   const ref = await projectRef(tranche.contract.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
   if (tranche.status !== 'PAID') throw new Error('Исправляется только поступление — оплаченный транш');
   if (input.amount <= 0n) throw new Error('Сумма поступления должна быть больше нуля');
@@ -659,7 +680,7 @@ export async function addPayout(
   },
 ) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYOUT_MANAGE', ref);
   if (input.amount <= 0n) throw new Error('Сумма начисления должна быть больше нуля');
   // Начисление без исполнителя уменьшало маржу, а видеть его было некому
@@ -705,7 +726,7 @@ export async function addPayout(
 export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Date) {
   const payout = await prisma.expertPayout.findUniqueOrThrow({ where: { id: payoutId } });
   const ref = await projectRef(payout.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYOUT_MANAGE', ref);
   ensurePastDate(paidOn, 'Дата выплаты');
 
@@ -1378,7 +1399,7 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
   });
   if (tranche === null) throw new Error('Транш не найден');
   const ref = await projectRef(tranche.contract.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PAYMENT_EDIT', ref);
   if (tranche.status !== 'PLANNED' && tranche.status !== 'INVOICED') {
     throw new Error('Переносится только запланированный платёж или выставленный счёт');
@@ -1395,7 +1416,7 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
     where: { id: trancheId, status: tranche.status },
     data: { plannedDate: date },
   });
-  if (moved.count === 0) throw new Error('Статус транша уже изменён другим действием: обновите страницу');
+  if (moved.count === 0) throw new Error('Состояние транша уже изменено другим действием: обновите страницу');
   await record(actor, {
     action: 'TRANCHE_RESCHEDULED',
     objectType: 'Tranche',

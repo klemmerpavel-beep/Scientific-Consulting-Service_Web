@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -27,6 +28,8 @@ import { assignmentLoad } from '../../../../lib/cabinet/assignments';
 import { MONTH_NAMES } from '../../../../lib/cabinet/analytics/calendar';
 import { ratingSummary } from '../../../../lib/cabinet/ratings';
 import { formatAverage } from '../../../../lib/cabinet/rating-stats';
+
+export const metadata: Metadata = { title: 'Команда' };
 
 export const dynamic = 'force-dynamic';
 

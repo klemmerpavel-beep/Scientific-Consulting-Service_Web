@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import { ADS_REGISTRY } from '../../../../../../../content/ads-registry.generated';
@@ -7,6 +8,8 @@ import { Card, ScreenHead } from '../../../../../../components/cabinet/ui';
 import { can } from '../../../../../../lib/cabinet/access';
 import { homeFor } from '../../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Документ рекламы' };
 
 export const dynamic = 'force-dynamic';
 

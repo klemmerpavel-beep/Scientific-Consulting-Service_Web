@@ -82,7 +82,7 @@ function cleanBody(body: string): string {
 
 export async function sendMessage(actor: Actor, projectId: string, body: string) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'MESSAGE_WRITE', ref);
 
   const text = cleanBody(body);
@@ -558,7 +558,7 @@ export async function readInternal(actor: Actor, projectId: string): Promise<voi
  */
 export async function sendInternal(actor: Actor, projectId: string, body: string) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'INTERNAL_MESSAGE', ref);
   const text = cleanBody(body);
   const message = await prisma.message.create({

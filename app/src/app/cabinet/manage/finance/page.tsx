@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../components/cabinet/FinanceTabs';
 import {
   BarChart,
   DonutChart,
@@ -39,6 +41,8 @@ import { formatAmount } from '../../../../lib/cabinet/money';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
+
+export const metadata: Metadata = { title: 'Деньги' };
 
 export const dynamic = 'force-dynamic';
 
@@ -137,18 +141,8 @@ export default async function FinanceScreen({
         title="Деньги"
         note="Маржа — полученное и ожидаемое по договору за вычетом начислений куратору: списанное и неоплаченный остаток отменённой работы в неё не входят; у исторических работ, где куратор не указан, начислений нет. «К получению» не считает отменённые работы: их неоплаченное учтено в потерях."
       />
-      <Text style={{ marginBottom: 24 }}>
-        <a href="/cabinet/manage/finance/years">Итоги по годам</a> — выручка и прибыль по годам:
-        введённые вами рядом с посчитанными кабинетом.{' '}
-        <a href="/cabinet/manage/finance/payouts">Вознаграждение кураторов</a> — начислено, выплачено и
-        к выплате по каждому куратору.{' '}
-        <a href="/cabinet/manage/finance/debtors">Должники</a> — просроченные платежи: напомнить,
-        перенести дату или списать.{' '}
-        <a href="/cabinet/manage/finance/receipts">Поступления</a> — когда придут деньги по
-        заключённым договорам, по месяцам.{' '}
-        <a href="/cabinet/manage/finance/profit">Прибыль по месяцам</a> — поступления, выплаты
-        кураторам и расходы по статьям; здесь же вносятся расходы.
-      </Text>
+      {/* Подразделы — вкладками, а не ссылками в абзаце (Н-5, Р-924). */}
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance" />
 
       <Tiles>
         {tiles.map((tile) => (

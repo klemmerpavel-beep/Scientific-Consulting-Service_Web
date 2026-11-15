@@ -209,4 +209,33 @@ describe('перенос работы к другому клиенту', { skip:
     assert.deepEqual(found.map((row) => row.id), [ids.newCard]);
     assert.deepEqual(await orders.clientCandidates(manager(), work.id, 'Прежний'), []);
   });
+
+  it('по части почты или телефона менеджер находит только клиентов своих работ (Р-922)', async () => {
+    const work = await newWork('Q');
+    const lone = await prisma.clientProfile.create({
+      data: {
+        fullName: 'Ничей Заказчик',
+        normalizedName: `oc ничей ${stamp}`,
+        email: `oc-lone-${stamp}@example.org`,
+        phone: '+7 900 555-44-33',
+      },
+    });
+    cards.push(lone.id);
+    const found = async (who: Actor, query: string) =>
+      (await orders.clientCandidates(who, work.id, query)).some((row) => row.id === lone.id);
+
+    // Карточка без единой работы: часть почты и часть телефона её не находят.
+    assert.equal(await found(manager(), `oc-lone-${stamp}`), false, 'часть почты');
+    assert.equal(await found(manager(), `lone-${stamp}@exam`), false, 'середина почты');
+    assert.equal(await found(manager(), '5554433'), false, 'семь цифр телефона');
+    // Почта целиком и ФИО — находят: их знают, а не подбирают.
+    assert.equal(await found(manager(), `OC-LONE-${stamp}@example.org`), true, 'почта целиком');
+    assert.equal(await found(manager(), 'ничей'), true, 'ФИО');
+    // Руководитель ищет по части контакта, как прежде.
+    assert.equal(await found(head(), `oc-lone-${stamp}`), true, 'руководитель');
+
+    // С работой этого менеджера карточка находится и по части почты.
+    await newWork('QW', { clientId: lone.id });
+    assert.equal(await found(manager(), `oc-lone-${stamp}`), true, 'клиент своей работы');
+  });
 });

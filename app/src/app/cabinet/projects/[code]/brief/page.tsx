@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -19,6 +20,8 @@ import {
 import { previewWorkBrief } from '../../../../../lib/cabinet/brief/work-apply';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { applyWorkBriefAction, parseWorkBrief } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Обновить из документа' };
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +90,7 @@ export default async function WorkBriefScreen({
       ) : (
         <Card>
           {loaded.brief.issues.length === 0 && loaded.brief.manual.length === 0 ? null : (
-            <Notice tone="quiet" role="status">
+            <Notice tone="quiet">
               Проверьте до утверждения:
               <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
                 {[...loaded.brief.issues, ...loaded.brief.manual].map((item) => (
