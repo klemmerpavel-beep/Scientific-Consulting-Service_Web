@@ -72,6 +72,7 @@ import {
 } from '../../lib/cabinet/finance';
 import { removeYear, saveYear } from '../../lib/cabinet/finance-years';
 import { parseAmount, type TrancheStatus } from '../../lib/cabinet/money';
+import { formDate } from '../../lib/cabinet/form-date';
 import {
   addAlias,
   createUser,
@@ -1476,12 +1477,14 @@ export async function dropTelegram(): Promise<void> {
   redirect('/cabinet/settings?saved=1');
 }
 
-/** Дата из поля формы. Пустое значение — это отсутствие даты, а не «сегодня». */
+/**
+ * Дата из поля формы. Пустое значение — это отсутствие даты, а не
+ * «сегодня»; несуществующий день и нечитаемое значение — отказ, а не
+ * молчаливая подмена (решение Р-908). Все вызовы стоят внутри `try`
+ * действия: отказ возвращается причиной у формы.
+ */
 function dateOrNull(value: FormDataEntryValue | null): Date | null {
-  const raw = String(value ?? '').trim();
-  if (raw.length === 0) return null;
-  const date = new Date(`${raw}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return formDate(value);
 }
 
 /**
