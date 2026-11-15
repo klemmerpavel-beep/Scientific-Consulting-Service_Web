@@ -429,7 +429,7 @@ export async function flaggedMessages(actor: Actor) {
 /* Внутренние ветки (требование РК-07, решение Р-336)                  */
 /* ------------------------------------------------------------------ */
 
-type InternalThread = 'WORK_INTERNAL' | 'HEAD_STAFF';
+type InternalThread = 'WORK_INTERNAL' | 'HEAD_STAFF' | 'WORK_CURATOR';
 
 /** Ключ ветки для курсора прочтения: `{ветка}:{работа или сотрудник}`. */
 export function threadKey(thread: InternalThread, target: string): string {
@@ -442,7 +442,9 @@ const AUTHOR = { author: { select: { id: true, fullName: true, role: true } } } 
 function threadWhere(thread: InternalThread, target: string) {
   return thread === 'WORK_INTERNAL'
     ? { thread: 'WORK_INTERNAL' as const, projectId: target }
-    : { thread: 'HEAD_STAFF' as const, staffId: target };
+    : thread === 'WORK_CURATOR'
+      ? { thread: 'WORK_CURATOR' as const, projectId: target }
+      : { thread: 'HEAD_STAFF' as const, staffId: target };
 }
 
 /** Непрочитанное участником: чужие сообщения ветки новее его курсора. */
@@ -469,7 +471,7 @@ async function signalThread(
   thread: InternalThread,
   target: string,
   messageId: string,
-  letter: { eventKind: 'INTERNAL_MESSAGE' | 'STAFF_QUESTION' | 'HEAD_REPLY'; subject: string; body: string; path: string; projectId: string | null },
+  letter: { eventKind: 'INTERNAL_MESSAGE' | 'STAFF_QUESTION' | 'HEAD_REPLY' | 'CURATOR_MESSAGE'; subject: string; body: string; path: string; projectId: string | null },
 ): Promise<void> {
   for (const userId of recipients) {
     // Новое сообщение уже лежит в ветке: «есть ещё непрочитанное» — больше одного.
@@ -592,6 +594,96 @@ export async function sendInternal(actor: Actor, projectId: string, body: string
 }
 
 /** Сотрудник ветки «руководитель — сотрудник» — действующий менеджер. */
+/* ------------------------------------------------------------------ */
+/* Ветка «куратор — менеджер» по работе (решение Р-935)               */
+/* ------------------------------------------------------------------ */
+
+/** Отказ писать куратору, которого у работы нет. */
+export const NO_CURATOR = 'У работы нет куратора: писать некому';
+
+/** Ветка «куратор — менеджер»: сообщения по порядку. */
+export async function listCurator(actor: Actor, projectId: string, options: ListOptions = {}) {
+  const ref = await projectRef(projectId);
+  if (ref === null) return [];
+  ensure(actor, 'CURATOR_MESSAGE', ref);
+  const rows = await prisma.message.findMany({
+    where: threadWhere('WORK_CURATOR', projectId),
+    ...orderOf(options.last),
+    include: AUTHOR,
+  });
+  return chronological(rows, options.last);
+}
+
+/** Непрочитанное смотрящим в ветке «куратор — менеджер». */
+export async function curatorUnread(actor: Actor, projectId: string): Promise<number> {
+  const ref = await projectRef(projectId);
+  if (ref === null) return 0;
+  ensure(actor, 'CURATOR_MESSAGE', ref);
+  return unreadFor(actor.id, 'WORK_CURATOR', projectId);
+}
+
+export async function readCurator(actor: Actor, projectId: string): Promise<void> {
+  const ref = await projectRef(projectId);
+  if (ref === null) return;
+  ensure(actor, 'CURATOR_MESSAGE', ref);
+  await markThread(actor, 'WORK_CURATOR', projectId);
+}
+
+/**
+ * Написать в ветку «куратор — менеджер». Куратор пишет — сигнал менеджеру
+ * работы (нет действующего менеджера — руководителям); практика пишет —
+ * куратору, если у него есть доступ к работе. Письмо называет только код
+ * работы: текста сообщения, имени клиента и темы в нём нет.
+ */
+export async function sendCurator(actor: Actor, projectId: string, body: string) {
+  const ref = await projectRef(projectId);
+  if (ref === null) throw new Error('Работа не найдена');
+  ensure(actor, 'CURATOR_MESSAGE', ref);
+  if (ref.expertId === null) throw new Error(NO_CURATOR);
+  const text = cleanBody(body);
+  const message = await prisma.message.create({
+    data: { projectId, thread: 'WORK_CURATOR', authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
+  });
+  await markThread(actor, 'WORK_CURATOR', projectId);
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
+  const fromCurator = actor.id === ref.expertId;
+  let recipients: string[];
+  if (fromCurator) {
+    recipients = await practiceSide(prisma, ref.managerId);
+  } else {
+    const curator = await prisma.user.findUnique({
+      where: { id: ref.expertId },
+      select: { status: true, expertProfile: { select: { ndaSignedAt: true } } },
+    });
+    // Куратору без договора поручения работа закрыта — и письмо не уходит.
+    recipients =
+      curator !== null && curator.status === 'ACTIVE' && (curator.expertProfile?.ndaSignedAt ?? null) !== null
+        ? [ref.expertId]
+        : [];
+  }
+  await signalThread(
+    recipients.filter((id) => id !== actor.id),
+    'WORK_CURATOR',
+    projectId,
+    message.id,
+    {
+      eventKind: 'CURATOR_MESSAGE',
+      subject: fromCurator ? `Вопрос куратора по работе ${project.code}` : `Сообщение менеджера по работе ${project.code}`,
+      body: 'В переписке куратора и менеджера по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+      path: `/cabinet/projects/${project.code}/messages?tab=curator`,
+      projectId,
+    },
+  );
+  await record(actor, {
+    action: 'MESSAGE_SENT',
+    objectType: 'Message',
+    objectId: message.id,
+    projectId,
+    payload: { thread: 'WORK_CURATOR' },
+  });
+  return message;
+}
+
 async function staffOf(staffId: string) {
   const staff = await prisma.user.findUnique({ where: { id: staffId }, select: { id: true, fullName: true, role: true, status: true } });
   if (staff === null || staff.role !== 'MANAGER') throw new Error('Сотрудник не найден');

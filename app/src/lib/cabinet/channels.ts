@@ -315,6 +315,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'REQUEST_CREATED', title: 'Новая заявка из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Внутренняя переписка по работе и ветка с руководителем (РК-07, Р-336).
   { kind: 'INTERNAL_MESSAGE', title: 'Сообщение во внутренней переписке по работе', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  // Ветка «куратор — менеджер» по работе (Н-6, решение Р-935).
+  { kind: 'CURATOR_MESSAGE', title: 'Сообщение в переписке куратора и менеджера', group: 'Переписка и работы', roles: ['EXPERT', 'MANAGER', 'HEAD'] },
   { kind: 'HEAD_REPLY', title: 'Руководитель ответил в переписке', group: 'Переписка и работы', roles: ['MANAGER'] },
   // Поручения руководителя (РК-19, Р-352).
   { kind: 'ASSIGNMENT_CREATED', title: 'Руководитель поставил поручение', group: 'Переписка и работы', roles: ['MANAGER'] },

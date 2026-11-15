@@ -906,6 +906,8 @@ enum MessageThread {
   WORK_INTERNAL
   /// Руководитель — сотрудник, без работы.
   HEAD_STAFF
+  /// Куратор работы — её менеджер; руководитель читает и пишет (решение Р-935).
+  WORK_CURATOR
 }
 
 model Message {

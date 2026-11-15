@@ -14,7 +14,8 @@ describe('блок первого входа куратора', () => {
     assert.equal(CURATOR_WELCOME.lines.length, 3);
     assert.match(CURATOR_WELCOME.lines[0], /«Назначенных работ»/u);
     assert.match(CURATOR_WELCOME.lines[1], /«Сдать этап менеджеру»/u);
-    assert.equal(CURATOR_WELCOME.lines[2], 'Вопрос по заданию — письмом менеджеру работы, почта — в «О работе» на карточке работы.');
+    // Вопрос — в кабинете, в ветке «куратор — менеджер» (Р-935).
+    assert.equal(CURATOR_WELCOME.lines[2], 'Вопрос по заданию — менеджеру работы в кабинете: «вопрос менеджеру» на карточке работы.');
   });
 
   it('два правила работы', () => {

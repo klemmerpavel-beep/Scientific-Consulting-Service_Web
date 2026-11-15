@@ -48,7 +48,7 @@ import {
   uploadVersion,
   type MaterialKind,
 } from '../../lib/cabinet/materials';
-import { sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
+import { sendCurator, sendInternal, sendMessage, sendStaff } from '../../lib/cabinet/messages';
 import {
   saveAnalyticsSince,
   saveConfidenceThresholds,
@@ -1400,6 +1400,22 @@ export async function postInternalMessage(form: FormData): Promise<void> {
   let failure: string | null = null;
   try {
     await sendInternal(actor, String(form.get('projectId') ?? ''), body);
+  } catch (error) {
+    failure = reasonOf(error, 'Не удалось отправить сообщение');
+  }
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  redirect(target);
+}
+
+/** Сообщение в ветке «куратор — менеджер» по работе (Н-6, решение Р-935). */
+export async function postCuratorMessage(form: FormData): Promise<void> {
+  const actor = await actorOrRedirect();
+  const code = String(form.get('code') ?? '');
+  const body = String(form.get('body') ?? '');
+  const target = `/cabinet/projects/${code}/messages?tab=curator`;
+  let failure: string | null = null;
+  try {
+    await sendCurator(actor, String(form.get('projectId') ?? ''), body);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить сообщение');
   }

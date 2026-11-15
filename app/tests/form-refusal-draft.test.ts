@@ -120,7 +120,7 @@ describe('предел длины — при вводе', () => {
   const messages = read('projects', '[code]', 'messages', 'page.tsx');
 
   it('поля сообщения, комментария и замечаний ограничены 10 000 знаками', () => {
-    assert.equal(messages.match(/maxLength=\{MESSAGE_MAX\}/gu)?.length, 2, 'обе ветки переписки');
+    assert.equal(messages.match(/maxLength=\{MESSAGE_MAX\}/gu)?.length, 3, 'три ветки переписки: с клиентом, внутренняя, с куратором (Р-935)');
     assert.match(read('projects', '[code]', 'page.tsx'), /maxLength=\{MESSAGE_MAX\}/u);
     assert.match(stage, /maxLength=\{COMMENT_MAX\}/u);
     assert.match(stage, /maxLength=\{RETURN_TEXT_MAX\}/u);

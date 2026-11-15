@@ -81,7 +81,7 @@ import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
-import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { MESSAGE_MAX, curatorUnread, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
@@ -397,6 +397,10 @@ export default async function ProjectScreen({
   // работы и руководителю: клиенту и куратору число не считается и в данные
   // экрана не попадает (решение Р-739; Р-336).
   const internalNew = can(actor, 'INTERNAL_MESSAGE', ref) ? await internalUnread(actor, project.id) : 0;
+  // Ветка «куратор — менеджер» (Н-6, решение Р-935): есть, пока у работы
+  // есть куратор; куратору она — единственный путь вопроса в кабинете.
+  const mayCuratorThread = can(actor, 'CURATOR_MESSAGE', ref) && project.expertId !== null;
+  const curatorNew = mayCuratorThread ? await curatorUnread(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
@@ -1268,7 +1272,13 @@ export default async function ProjectScreen({
                     href: `/cabinet/projects/${project.code}/messages?tab=internal#body`,
                     label: `внутренняя · ${internalNew} ${plural(internalNew, 'новое', 'новых', 'новых')}`,
                   }
-                : undefined
+                : // Новое от куратора — так же, ссылкой на его вкладку (Р-935).
+                  curatorNew > 0
+                  ? {
+                      href: `/cabinet/projects/${project.code}/messages?tab=curator#body`,
+                      label: `куратор · ${curatorNew} ${plural(curatorNew, 'новое', 'новых', 'новых')}`,
+                    }
+                  : undefined
             }
             anchor="end"
             footer={
@@ -1320,6 +1330,19 @@ export default async function ProjectScreen({
             title="Ваша работа"
             href="/cabinet/payout"
             hrefLabel="вознаграждение"
+            // Вопрос менеджеру — в кабинете, а не письмом из почты (Н-6,
+            // решение Р-935).
+            extra={
+              mayCuratorThread
+                ? {
+                    href: `/cabinet/projects/${project.code}/messages#body`,
+                    label:
+                      curatorNew > 0
+                        ? `вопрос менеджеру · ${curatorNew} ${plural(curatorNew, 'новое', 'новых', 'новых')}`
+                        : 'вопрос менеджеру',
+                  }
+                : undefined
+            }
             footer={
               mayUpload && workRefusal === null ? (
                 <Form action={uploadMaterialWithNote} encType="multipart/form-data">
@@ -1386,13 +1409,12 @@ export default async function ProjectScreen({
                         : 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
                     : (current.summary ?? (
-                        // Письмо менеджеру с темой этапа — одним нажатием
-                        // (решение Р-749).
+                        // Вопрос менеджеру — в кабинете, в ветке «куратор —
+                        // менеджер» (решение Р-935); прежде — письмом из
+                        // почтовой программы (Р-749).
                         <>
-                          {'Менеджер не описал этап: спросите его письмом — '}
-                          <a href={managerMailHref(project.manager.email, current.title)}>
-                            написать менеджеру
-                          </a>
+                          {'Менеджер не описал этап: спросите его — '}
+                          <a href={`/cabinet/projects/${project.code}/messages#body`}>написать менеджеру</a>
                           .
                         </>
                       ))}
