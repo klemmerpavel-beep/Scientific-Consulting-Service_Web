@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { attachmentDisposition } from '../../../../../../lib/cabinet/disposition';
+import { attachmentDisposition, safeContentType } from '../../../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../../../lib/cabinet/access';
 import { openExpertFile } from '../../../../../../lib/cabinet/expert-applications';
 import { currentActor, requestIp, signInFirst } from '../../../../../../lib/cabinet/session';
@@ -27,7 +27,7 @@ export async function GET(
     return new NextResponse(file.stream, {
       headers: {
         'content-length': String(file.sizeBytes),
-        'content-type': file.contentType,
+        'content-type': safeContentType(file.contentType),
         'content-disposition': attachmentDisposition(file.fileName, `anketa-file${ext}`),
         'cache-control': 'private, no-store',
       },
