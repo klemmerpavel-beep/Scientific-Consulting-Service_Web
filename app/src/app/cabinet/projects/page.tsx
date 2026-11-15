@@ -44,6 +44,7 @@ import {
   curators,
   experts,
   liveWorks,
+  ownOpenRequests,
   pausedWorksCount,
   pendingActions,
   type ProjectFilter,
@@ -55,6 +56,7 @@ import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
 import { currentActor, requireActor } from '../../../lib/cabinet/session';
 import { menuLabel, soleWorkTarget } from '../../../lib/cabinet/nav';
+import { ownRequestLine } from '../../../lib/cabinet/own-requests';
 import { welcomeState } from '../../../lib/cabinet/channels';
 import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -128,6 +130,8 @@ export default async function ProjectsScreen({
     projects.map((p) => ({ id: p.id, clientId: p.clientId, managerId: p.managerId, expertId: p.expertId, serviceCode: p.serviceType.code })),
   );
   const forClient = actor.role === 'CLIENT';
+  // Заявки клиента, по которым ещё нет ни работы, ни отказа (Р-914).
+  const ownRequests = forClient ? await ownOpenRequests(actor) : [];
   // Блок первого входа — пока клиент его не закрыл (требование Т-10,
   // решение Р-310).
   const welcome = await welcomeState(actor);
@@ -477,6 +481,26 @@ export default async function ProjectsScreen({
             ) : undefined
           }
         />
+      )}
+      {/* Поданная заявка видна до ответа менеджера: прежде после экрана
+          «Заявка принята» её не было нигде, и человек подавал её снова
+          (аудит 15.11.2026, Ф-6; решение Р-914). */}
+      {ownRequests.length === 0 ? null : (
+        <Card style={{ marginBottom: 24 }}>
+          <Heading level={2} size={3} style={{ marginBottom: 10 }}>
+            {ownRequests.length === 1 ? 'Заявка на рассмотрении' : 'Заявки на рассмотрении'}
+          </Heading>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+            {ownRequests.map((request) => (
+              <li key={request.number}>
+                <Text size={15}>{ownRequestLine(request, (date) => formatDate(date) ?? '', clip)}</Text>
+              </li>
+            ))}
+          </ul>
+          <Text muted size={13} style={{ marginTop: 10 }}>
+            Ответ придёт на вашу почту. После одобрения заявка станет работой в этом перечне.
+          </Text>
+        </Card>
       )}
       {/* Отказ «Сообщить руководителю» — под ответом, где кнопка (Р-735). */}
       {awaitingNda ? <ActionError id={sp.error} /> : null}

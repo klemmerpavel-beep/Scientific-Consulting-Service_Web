@@ -16,6 +16,7 @@ import {
   type Actor,
 } from './access.ts';
 import { fileRefusal } from './file-guard.ts';
+import { OWN_REQUESTS_MAX, OWN_REQUEST_OPEN, type OwnRequest } from './own-requests.ts';
 import { loadCalendar } from './approval.ts';
 import { previousWorkday, workMinutesBetween } from './workdays.ts';
 import { leadFirstResponseHours } from './practice-settings.ts';
@@ -1585,6 +1586,32 @@ export async function ownRequestNumber(actor: Actor, number: number): Promise<nu
     select: { number: true },
   });
   return lead?.number ?? null;
+}
+
+/**
+ * Свои заявки клиента из кабинета, по которым ещё нет ни работы, ни
+ * отказа, — строкой над перечнем работ (аудит 15.11.2026, Ф-6; решение
+ * Р-914). Прежде заявка после экрана «Заявка принята» не была видна
+ * нигде: человек не знал, дошла ли она, и подавал её снова. Отбор тот
+ * же, что у `ownRequestNumber`: заявка из кабинета на почту этой учётной
+ * записи, ещё не ставшая работой. Закрытые без работы (консультация,
+ * отказ, спам) в перечень не входят: ответ по ним ушёл письмом.
+ */
+export async function ownOpenRequests(actor: Actor): Promise<OwnRequest[]> {
+  if (actor.role !== 'CLIENT' || !can(actor, 'REQUEST_CREATE')) return [];
+  const user = await prisma.user.findUnique({ where: { id: actor.id }, select: { email: true } });
+  if (user === null) return [];
+  return prisma.lead.findMany({
+    where: {
+      source: 'cabinet',
+      projectId: null,
+      status: { in: [...OWN_REQUEST_OPEN] },
+      contact: { equals: user.email, mode: 'insensitive' },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: OWN_REQUESTS_MAX,
+    select: { number: true, createdAt: true, topic: true, status: true },
+  });
 }
 
 /**
