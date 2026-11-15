@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import { SANS } from '../../../../../components/cabinet/tokens';
 import {
   Button,
@@ -67,6 +68,7 @@ export default async function FinanceYearsScreen({
         title="Итоги по годам"
         note="В строке года две величины рядом: введённая вами и посчитанная кабинетом по оплаченным траншам и выплатам кураторам. Пока история прошлых лет ведётся отдельно, они расходятся — колонка «расхождение» показывает, насколько, и считается по выручке. «Прибыль в кабинете» — выручка за вычетом выплаченного кураторам и расходов по статьям, внесённых в «Прибыли по месяцам»; расходы вне кабинета в неё не входят."
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/years" />
 
       <ActionError id={flags.error} />
       {flags.removed === '1' ? (

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Empty,
   ScreenHead,
@@ -50,6 +51,7 @@ export default async function CuratorPayoutsScreen({
         title="Вознаграждение кураторов"
         note={`К выплате всего: ${formatAmount(total)}. «К выплате» — начисленное без выплаченного.`}
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/payouts" />
       {rows.length === 0 ? (
         <Empty title="Начислений пока нет">Начисления ставятся на экране «Оплаты и документы» работы.</Empty>
       ) : (

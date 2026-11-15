@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Button,
   Checkbox,
@@ -66,6 +67,7 @@ export default async function DebtorsScreen({
             : `Просрочено ${rows.length} ${plural(rows.length, 'платёж', 'платежа', 'платежей')} на ${formatAmount(total)} — та же сумма, что «Просрочено по траншам» на «Сводке».`
         }
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/debtors" />
       <ActionError id={flags.error} />
       {flags.moved === '1' ? (
         <div style={{ marginBottom: 16 }}>

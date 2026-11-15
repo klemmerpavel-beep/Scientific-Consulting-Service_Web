@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
 import Shell from '../../../../../components/cabinet/Shell';
+import FinanceTabs from '../../../../../components/cabinet/FinanceTabs';
 import {
   Button,
   Card,
@@ -71,6 +72,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
         title="Прибыль по месяцам"
         note={`Поступления по дате поступления минус выплаты кураторам по дате выплаты минус расходы по статьям; двенадцать месяцев по текущий. Сумма месяцев года сходится с «Итогами по годам».${profit.fallbackDated === 0 ? '' : ` Поступлений без даты оплаты — ${profit.fallbackDated}: по строкам перенесённой книги они отнесены к дате договора или заказа.`}`}
       />
+      <FinanceTabs actor={actor} current="/cabinet/manage/finance/profit" />
       <ActionError id={flags.error} />
 
       <TableCard label="Прибыль по месяцам" style={{ marginBottom: 20 }}>
