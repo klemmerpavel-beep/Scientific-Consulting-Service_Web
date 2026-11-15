@@ -313,14 +313,22 @@ export async function addTranche(actor: Actor, input: TrancheInput) {
       },
       tx,
     );
+    // Ручной транш — часть того же договора: плановый «Остаток по договору»
+    // уменьшается на него тем же правилом, что при поступлении. Прежде
+    // остаток оставался прежним, планов становилось больше договора, и
+    // клиент видел платежей на сумму выше «Осталось оплатить» (аудит
+    // 15.11.2026, находка Ф-3, решение Р-904).
+    await settleRest(tx, input.contractId);
     return created;
   });
 
-  // Сторнированный транш денег не несёт и в сверку с договором не входит.
-  const planned =
-    contract.tranches
-      .filter((t) => t.status !== 'REVERSED')
-      .reduce((sum, t) => sum + t.amount, 0n) + input.amount;
+  // Сверка с договором — по траншам после пересчёта остатка: сторнированный
+  // транш денег не несёт и в неё не входит.
+  const after = await prisma.tranche.findMany({
+    where: { contractId: input.contractId, status: { not: 'REVERSED' } },
+    select: { amount: true },
+  });
+  const planned = after.reduce((sum, t) => sum + t.amount, 0n);
   return { tranche, exceedsContract: planned > contract.totalAmount };
 }
 
@@ -455,16 +463,25 @@ export async function removeTranche(actor: Actor, trancheId: string) {
   if (tranche.documents.length > 0) {
     throw new Error('К траншу приложены документы: такой транш не удаляется');
   }
-  const removed = await prisma.tranche.deleteMany({ where: { id: trancheId, status: 'PLANNED' } });
-  if (removed.count === 0) {
-    throw new Error('Удалить можно только плановый транш: выставленный отзывается, оплаченный остаётся');
-  }
-  await record(actor, {
-    action: 'TRANCHE_REMOVED',
-    objectType: 'Tranche',
-    objectId: trancheId,
-    projectId: tranche.contract.projectId,
-    payload: { amount: money(tranche.amount) },
+  // Удаление, пересчёт остатка и журнал — одна транзакция: снятый ручной
+  // транш возвращает свою сумму плановому «Остатку по договору» (Р-904).
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.tranche.deleteMany({ where: { id: trancheId, status: 'PLANNED' } });
+    if (removed.count === 0) {
+      throw new Error('Удалить можно только плановый транш: выставленный отзывается, оплаченный остаётся');
+    }
+    await settleRest(tx, tranche.contractId);
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_REMOVED',
+        objectType: 'Tranche',
+        objectId: trancheId,
+        projectId: tranche.contract.projectId,
+        payload: { amount: money(tranche.amount) },
+      },
+      tx,
+    );
   });
 }
 
@@ -495,6 +512,10 @@ const dayKey = (day: Date | null) => day?.toISOString().slice(0, 10) ?? null;
  * меняется: разносить остаток по траншам за человека кабинет не берётся.
  */
 export async function settleRest(db: Db, contractId: string): Promise<void> {
+  // Замок договора: два поступления или транша, записанные одновременно,
+  // считали остаток каждый без чужой строки, и последний писал неверную
+  // сумму. Второй теперь ждёт первого и видит его строку (Р-904).
+  await db.$queryRaw`SELECT 1 FROM "Contract" WHERE "id" = ${contractId} FOR UPDATE`;
   const contract = await db.contract.findUnique({
     where: { id: contractId },
     select: {

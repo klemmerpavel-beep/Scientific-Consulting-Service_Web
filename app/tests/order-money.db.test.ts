@@ -267,6 +267,35 @@ describe('деньги по заказу', { skip: !enabled }, async () => {
     await assert.rejects(finance.recordReceipt(manager(), { projectId: live, amount: 0n, paidOn: day(-1) }), /больше нуля/u);
   });
 
+  it('ручной транш уменьшает плановый остаток, удаление возвращает его (Р-904)', async () => {
+    // Договор 200 000, получено 100 000, плановый остаток 100 000 — случай аудита.
+    const { projectId, contractId } = await newWork('RT', {}, 20_000_000n);
+    await finance.recordReceipt(manager(), { projectId, amount: 10_000_000n, paidOn: day(-3) });
+    const rest = async () =>
+      (await prisma.tranche.findMany({ where: { contractId, title: REST_TRANCHE_TITLE, status: 'PLANNED' } })).map((t) => t.amount);
+    const planned = async () =>
+      (await prisma.tranche.findMany({ where: { contractId, status: { in: ['PLANNED', 'INVOICED'] } } })).reduce((sum, t) => sum + t.amount, 0n);
+    assert.deepEqual(await rest(), [10_000_000n]);
+
+    const added = await finance.addTranche(manager(), { contractId, title: 'Аванс', amount: 4_000_000n });
+    assert.deepEqual(await rest(), [6_000_000n], 'остаток не уменьшился на ручной транш');
+    assert.equal(added.exceedsContract, false, 'после пересчёта планы не превышают договор');
+    // К получению по траншам равно «Осталось оплатить»: клиент видит одно число.
+    assert.equal(await planned(), (await balance(projectId)).rest);
+
+    await finance.removeTranche(manager(), added.tranche.id);
+    assert.deepEqual(await rest(), [10_000_000n], 'остаток не вернулся после удаления транша');
+    assert.equal(await planned(), (await balance(projectId)).rest);
+
+    // Ручной транш на весь остаток снимает плановый остаток, а не оставляет ноль.
+    const whole = await finance.addTranche(manager(), { contractId, title: 'Вторая часть', amount: 10_000_000n });
+    assert.deepEqual(await rest(), []);
+    assert.equal(whole.exceedsContract, false);
+    // Транш сверх договора остаётся превышением: остатка, чтобы его покрыть, уже нет.
+    const over = await finance.addTranche(manager(), { contractId, title: 'Сверх договора', amount: 1_000_000n });
+    assert.equal(over.exceedsContract, true);
+  });
+
   it('журнал: поступление — сумма, дата и признак комментария, без текста', async () => {
     const { projectId } = await newWork('J');
     const tranche = await finance.recordReceipt(manager(), { projectId, amount: 700_000n, paidOn: day(-1), note: 'секрет' });
