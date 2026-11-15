@@ -1549,7 +1549,10 @@ export async function createCabinetRequest(
       eventKind: 'REQUEST_CREATED',
       // Номер — тот же, что видит заявитель после отправки (П-3, Р-763).
       subject: `Новая заявка ${leadNumberLabel(lead.number)} из кабинета`,
-      body: `${user.fullName}: ${draft.topic}\nЗаявка ждёт в очереди модерации.`,
+      // Сигнал без имени и темы: письмо уходит всем менеджерам и
+      // руководителям, а не тому, кто поведёт клиента; заявка — по ссылке
+      // в кабинете (аудит 15.11.2026, решение Р-901).
+      body: 'Заявка ждёт в очереди модерации.',
       dedupKey: `lead:${lead.id}:created:${moderator.id}`,
       path: `/cabinet/manage/leads/${lead.id}`,
     });
