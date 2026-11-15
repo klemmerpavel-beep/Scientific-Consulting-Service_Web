@@ -11,6 +11,7 @@ import {
   scopeMaterials,
   scopeProjects,
   scopeVersions,
+  narrowProjectFields,
   withoutStaffNames,
   type Actor,
 } from './access.ts';
@@ -200,7 +201,10 @@ export async function listProjects(
     },
   });
 
-  return { rows: withoutStaffNames(actor, rows), total, page: current, pages, all, filter: applied };
+  // Поля под роль — в данных (Р-903): куратору и клиенту без ФИО куратора
+  // из книги заказов.
+  const narrowed = withoutStaffNames(actor, rows).map((row) => narrowProjectFields(actor, row));
+  return { rows: narrowed, total, page: current, pages, all, filter: applied };
 }
 
 export async function projectByCode(actor: Actor, code: string) {
@@ -276,8 +280,11 @@ export async function projectByCode(actor: Actor, code: string) {
       },
     },
   });
-  // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б).
-  return withoutStaffNames(actor, project);
+  // Клиенту — без ФИО сотрудников и в данных, не только на экране (Р-297, ОЭ-3б);
+  // клиенту и куратору — без контактов клиента, ФИО куратора из книги и
+  // скрытых событий (Р-903).
+  const cleared = withoutStaffNames(actor, project);
+  return cleared === null ? null : narrowProjectFields(actor, cleared);
 }
 
 /**

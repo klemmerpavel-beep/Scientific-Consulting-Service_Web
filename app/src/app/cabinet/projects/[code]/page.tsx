@@ -42,6 +42,7 @@ import {
 import { SANS } from '../../../../components/cabinet/tokens';
 import {
   CLOSED_FOR_PRACTICE,
+  CLIENT_HIDDEN_EVENTS,
   can,
   contributionRefusal,
   staffClientLine,
@@ -149,18 +150,6 @@ const EVENT_LABEL: Record<string, string> = {
   CLIENT_CHANGED: 'Работа перенесена к другому клиенту',
 };
 
-/**
- * Сдача этапа куратором — внутреннее дело практики: для клиента этап
- * остаётся «В работе» (требование Э-05, решение Р-325).
- */
-const CLIENT_HIDDEN_EVENTS = new Set([
-  // Что работа была у другого клиента, новому клиенту знать незачем (Р-873).
-  'CLIENT_CHANGED',
-  'EXPERT_ASSIGNED',
-  'STAGE_HANDED_OVER',
-  'STAGE_HANDOVER_RECALLED',
-  'STAGE_HANDED_BACK',
-]);
 
 /**
  * Строка истории: что именно произошло, а не какого рода было событие.
@@ -1173,7 +1162,7 @@ export default async function ProjectScreen({
                 ? 'foreign-head'
                 : 'curator'
           }
-          hasExpert={project.expertId !== null || (project.expertNameRaw ?? '').trim() !== ''}
+          hasExpert={project.expertId !== null || project.expertNamed}
         />
 
       {/* Две колонки, а не три: колонка «Материалы» с панели снята по
