@@ -294,11 +294,20 @@ export async function enterByLink(form: FormData): Promise<void> {
 export async function approveStage(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
+  // Момент отправки на согласование, который нёс экран клиента (Р-905).
+  const sentAt = form.get('sentAt');
   let failure: string | null = null;
-  try {
-    await setStageState(actor, stageId, 'DONE');
-  } catch (error) {
-    failure = reasonOf(error, 'Не удалось согласовать этап');
+  // Согласование запускает сроки по оферте и клиентом не отменяется:
+  // он подтверждает, что посмотрел последнюю версию (ответ владельца
+  // 15.11.2026 на вопрос 1 аудита, решение Р-905).
+  if (form.get('seen') !== 'on') {
+    failure = 'Отметьте, что посмотрели последнюю версию материалов, — и согласуйте этап';
+  } else {
+    try {
+      await setStageState(actor, stageId, 'DONE', null, typeof sentAt === 'string' ? sentAt : null);
+    } catch (error) {
+      failure = reasonOf(error, 'Не удалось согласовать этап');
+    }
   }
   if (failure !== null) redirect(await withError(`/cabinet/stages/${stageId}`, failure));
   // Клиенту — «Этап согласован … Дальше — …» (решение Р-725).
@@ -330,9 +339,10 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
   const stageId = String(form.get('stageId') ?? '');
   const text = String(form.get('remarks') ?? '');
+  const sentAt = form.get('sentAt');
   let failure: string | null = null;
   try {
-    await returnStage(actor, stageId, text);
+    await returnStage(actor, stageId, text, typeof sentAt === 'string' ? sentAt : null);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось вернуть этап');
   }

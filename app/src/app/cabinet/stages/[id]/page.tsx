@@ -6,6 +6,7 @@ import {
   ButtonLink,
   Block,
   Card,
+  Checkbox,
   Chip,
   Disclosure,
   Field,
@@ -944,9 +945,16 @@ export default async function StageScreen({
               )}
             </Text>
           )}
-          <Form action={approveStage} inline>
+          {/* Согласование — с отметкой и по моменту отправки (решение Р-905):
+              действие запускает сроки по оферте и клиентом не отменяется, а
+              страница могла устареть — этап сдан заново с другой версией. */}
+          <Form action={approveStage}>
             <input type="hidden" name="stageId" value={stage.id} />
-            <Button>Согласовать этап</Button>
+            <input type="hidden" name="sentAt" value={stage.approvalSentAt?.toISOString() ?? ''} />
+            <Checkbox name="seen" required label="Я посмотрел последнюю версию материалов и итог этапа" />
+            <FormActions>
+              <Button>Согласовать этап</Button>
+            </FormActions>
           </Form>
           {/* Второе действие — нейтральное и под раскрытием: акцент на
               экране один, а форма замечаний нужна не каждому
@@ -960,6 +968,7 @@ export default async function StageScreen({
             >
               <Form action={returnStageWithRemarks}>
                 <input type="hidden" name="stageId" value={stage.id} />
+                <input type="hidden" name="sentAt" value={stage.approvalSentAt?.toISOString() ?? ''} />
                 <ActionError id={errorId} slot="return" />
                 <Field
                   label="Что исправить или дополнить"

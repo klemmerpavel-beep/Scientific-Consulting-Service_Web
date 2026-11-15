@@ -1915,11 +1915,33 @@ export async function editStageOutcome(actor: Actor, stageId: string, text: stri
   if (saved.count === 0) throw new Error('Этап уже не на согласовании: обновите страницу');
 }
 
+/** Отказ согласования и возврата по устаревшей странице (Р-905). */
+export const APPROVAL_RESENT =
+  'Этап отправлен на согласование заново: обновите страницу и посмотрите последнюю версию материалов и итог';
+
+/**
+ * Этап на экране клиента — тот же, что в базе: момент отправки на
+ * согласование совпадает с тем, что нёс экран.
+ *
+ * Согласование захватывало этап только по состоянию. Клиент, державший
+ * страницу открытой, пока менеджер снял этап в работу, приложил новую
+ * версию и сдал снова, нажимал «Согласовать этап» на прежней странице — и
+ * принимал результат, которого не видел (аудит 15.11.2026, находка Ф-1,
+ * решение Р-905). `seenSentAt` не задан — сверки нет: так согласует
+ * практика за клиента и автопринятие по сроку.
+ */
+function sameSending(current: Date | null, seenSentAt: string | null | undefined): boolean {
+  if (seenSentAt === undefined || seenSentAt === null) return true;
+  return (current?.toISOString() ?? '') === seenSentAt;
+}
+
 export async function setStageState(
   actor: Actor,
   stageId: string,
   to: StageState,
   reason?: string | null,
+  /** Момент отправки на согласование, который видел клиент (Р-905). */
+  seenSentAt?: string | null,
 ) {
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
@@ -1952,6 +1974,7 @@ export async function setStageState(
   // Клиент после срока при включённом автозакрытии: этап принят по п. 7.3
   // оферты (Т-15, решение Р-290).
   if (action === 'STAGE_APPROVE' && actor.role === 'CLIENT') ensureApprovalOpen(stage.approvalDueOn);
+  if (action === 'STAGE_APPROVE' && !sameSending(stage.approvalSentAt, seenSentAt)) throw new Error(APPROVAL_RESENT);
   // Практика согласует за клиента только с основанием: согласование
   // закрывает этап по оферте, и клиент видит, на каком основании это
   // сделано от его имени (требование М-12, О-6, решение Р-292).
@@ -2050,7 +2073,13 @@ export async function setStageState(
     // записывались: история этапа получала два перехода из одного
     // состояния, клиент — два письма (решение Р-240).
     const claimed = await tx.stage.updateMany({
-      where: { id: stageId, state: from },
+      // Согласование клиентом — ещё и по моменту отправки: пересдача между
+      // чтением и захватом не проходит (Р-905).
+      where: {
+        id: stageId,
+        state: from,
+        ...(action === 'STAGE_APPROVE' && seenSentAt != null ? { approvalSentAt: stage.approvalSentAt } : {}),
+      },
       data: {
         state: to,
         blockedReason: to === 'AWAITING_CLIENT' ? (reason ?? '').trim() : null,
@@ -2301,7 +2330,13 @@ export const RETURN_TEXT_MAX = 10_000;
  * адресаты уведомлений. Новое состояние этапа не вводится — таблица
  * переходов (Р-229) уже знает «На согласовании → В работе».
  */
-export async function returnStage(actor: Actor, stageId: string, text: string) {
+export async function returnStage(
+  actor: Actor,
+  stageId: string,
+  text: string,
+  /** Момент отправки на согласование, который видел клиент (Р-905). */
+  seenSentAt?: string | null,
+) {
   const stage = await prisma.stage.findUnique({
     where: { id: stageId },
     include: {
@@ -2319,6 +2354,8 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
   // После срока при включённом автозакрытии этап принят по п. 7.3
   // оферты, и возврат опоздал (Т-15, решение Р-290).
   ensureApprovalOpen(stage.approvalDueOn);
+  // Замечания к прежней сдаче после пересдачи не принимаются (Р-905).
+  if (!sameSending(stage.approvalSentAt, seenSentAt)) throw new Error(APPROVAL_RESENT);
 
   const body = text.trim();
   if (body.length === 0) {
@@ -2336,7 +2373,11 @@ export async function returnStage(actor: Actor, stageId: string, text: string) {
     // Захват по состоянию: возврат и согласование, нажатые одновременно,
     // не проходят оба (как в Р-240).
     const claimed = await tx.stage.updateMany({
-      where: { id: stageId, state: 'IN_APPROVAL' },
+      where: {
+        id: stageId,
+        state: 'IN_APPROVAL',
+        ...(seenSentAt != null ? { approvalSentAt: stage.approvalSentAt } : {}),
+      },
       data: {
         state: 'IN_PROGRESS',
         completedAt: null,
