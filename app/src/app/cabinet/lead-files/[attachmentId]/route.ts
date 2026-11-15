@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { attachmentDisposition, safeContentType } from '../../../../lib/cabinet/disposition';
 import { AccessDenied } from '../../../../lib/cabinet/access';
+import { OBJECT_MISSING_TEXT, ObjectMissing } from '../../../../lib/cabinet/storage';
 import { readLeadAttachment } from '../../../../lib/cabinet/queries';
 import { currentActor, requestIp, signInFirst } from '../../../../lib/cabinet/session';
 
@@ -32,6 +33,14 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof AccessDenied) return new NextResponse('Не найдено', { status: 404 });
+    // Право есть, объекта нет: понятный ответ вместо ошибки 500 (Р-907).
+    if (error instanceof ObjectMissing) {
+      console.error(`[storage] объект не найден: ${error.key}`);
+      return new NextResponse(OBJECT_MISSING_TEXT, {
+        status: 404,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' },
+      });
+    }
     throw error;
   }
 }

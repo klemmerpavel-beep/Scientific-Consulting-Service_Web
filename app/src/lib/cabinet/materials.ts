@@ -707,12 +707,13 @@ export async function readVersion(actor: Actor, versionId: string, ip?: string |
   // Документ скрытого транша — «не найдено» и по прямой ссылке (УК-01, Р-356).
   if (!trancheDocumentVisible(actor, version.material)) return null;
 
+  // Потоком, а не целиком (решение Р-247). Объект открывается до записи в
+  // журнал доступа: строка «файл выдан» о файле, которого в хранилище нет,
+  // была бы ложной (решение Р-907).
+  const opened = await openObject(storage(), version.storageKey);
   await prisma.fileAccessLog.create({
     data: { versionId, userId: actor.id, action: 'DOWNLOAD', ip: ip ?? null },
   });
-
-  // Потоком, а не целиком (решение Р-247).
-  const opened = await openObject(storage(), version.storageKey);
   return {
     stream: opened.stream,
     sizeBytes: opened.sizeBytes,
