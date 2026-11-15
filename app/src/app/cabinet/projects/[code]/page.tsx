@@ -1176,6 +1176,7 @@ export default async function ProjectScreen({
           строка под планом работ. */}
       <Board columns={2}>
         <BoardColumn
+          follow
           title="План работ"
           href={`/cabinet/projects/${project.code}/materials`}
           hrefLabel={
