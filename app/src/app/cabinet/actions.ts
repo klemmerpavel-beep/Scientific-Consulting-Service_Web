@@ -1662,6 +1662,17 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
+    // Сторно и списание необратимы: подтверждаются отметкой, как списание
+    // в «Должниках» (ответ владельца 15.11.2026 на вопрос 5 аудита,
+    // решение Р-909).
+    const status = String(form.get('status') ?? '');
+    if ((status === 'REVERSED' || status === 'WRITTEN_OFF') && form.get('confirm') !== 'on') {
+      throw new Error(
+        status === 'REVERSED'
+          ? 'Подтвердите сторно: поступление снимается, сумма снова числится к получению'
+          : 'Подтвердите списание: сумма больше не будет ждать оплаты',
+      );
+    }
     await setTrancheStatus(
       actor,
       String(form.get('trancheId') ?? ''),
@@ -1784,6 +1795,7 @@ export async function dropTranche(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите удаление транша: вернуть его нельзя');
     await removeTranche(actor, String(form.get('trancheId') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось удалить транш');
@@ -1838,6 +1850,7 @@ export async function payPayout(form: FormData): Promise<void> {
   try {
     const paidOn = dateOrNull(form.get('paidOn'));
     if (paidOn === null) throw new Error('Для выплаты нужна дата');
+    if (form.get('confirm') !== 'on') throw new Error('Подтвердите выплату: отметка «выплачено» не снимается');
     await markPayoutPaid(actor, String(form.get('payoutId') ?? ''), paidOn);
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отметить выплату');

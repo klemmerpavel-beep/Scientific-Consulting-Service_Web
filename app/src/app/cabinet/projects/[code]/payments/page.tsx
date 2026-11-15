@@ -9,6 +9,7 @@ import {
   Block,
   Outcome,
   Card,
+  Checkbox,
   Chip,
   Disclosure,
   Field,
@@ -464,6 +465,14 @@ export default async function PaymentsScreen({
                                   placeholder={next === 'REVERSED' ? 'Причина: ошибка отметки или возврат' : 'Причина списания'}
                                   minWidth={240}
                                 />
+                                {/* Необратимое действие — с отметкой, одной
+                                    на все денежные действия (решение Р-909). */}
+                                <Checkbox
+                                  name="confirm"
+                                  required
+                                  nowrap
+                                  label={next === 'REVERSED' ? 'Подтверждаю сторно' : 'Подтверждаю списание'}
+                                />
                                 <Button tone="quiet">{TRANCHE_ACTION[next]}</Button>
                               </Form>
                             ) : (
@@ -533,6 +542,7 @@ export default async function PaymentsScreen({
                         <Form action={dropTranche} inline>
                           <input type="hidden" name="trancheId" value={tranche.id} />
                           <input type="hidden" name="code" value={project.code} />
+                          <Checkbox name="confirm" required nowrap label="Подтверждаю удаление" />
                           <Button tone="quiet">Удалить транш</Button>
                         </Form>
                       ) : null}
@@ -784,6 +794,7 @@ export default async function PaymentsScreen({
                               required
                               minWidth={170}
                             />
+                            <Checkbox name="confirm" required nowrap label="Подтверждаю выплату" />
                             <Button tone="quiet">Отметить выплату</Button>
                           </Form>
                         )}
