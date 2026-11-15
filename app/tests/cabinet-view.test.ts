@@ -83,11 +83,20 @@ describe('кода работы на экранах нет', () => {
    * цепляет его первым, а смысла в нём нет (замечание заказчика, решение
    * Р-189). Код остаётся ключом маршрута и живёт в адресе страницы —
    * поэтому проверяется текст, а не разметка целиком.
+   *
+   * Одно исключение (ответ владельца 15.11.2026, решение Р-916): код
+   * стоит последним в строке фактов плашки перечня работ у сотрудника —
+   * в элементе с пометкой `data-work-code`. Клиенту кода нет нигде; вне
+   * перечня работ пометка не встречается.
    */
   for (const folder of ['client', 'expert', 'manager', 'head']) {
     for (const file of screens(folder)) {
       it(path.relative(PROTOTYPE, file), () => {
+        const marked = /<span data-work-code="">[^<]*<\/span>/gu;
+        const allowed = folder !== 'client' && /\/(?:projects|projects-state-[a-z]+)\/index\.html$/u.test(file.split(path.sep).join('/'));
+        if (!allowed) assert.doesNotMatch(body(file), marked, 'код работы с пометкой стоит вне перечня работ сотрудника');
         const text = body(file)
+          .replace(marked, '')
           // Адреса ссылок не в счёт: код в них — часть маршрута.
           .replace(/href="[^"]*"/gu, '')
           .replace(/value="[^"]*"/gu, '')

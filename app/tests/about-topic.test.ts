@@ -30,6 +30,11 @@ describe('«Тема» без значения не выводится (Р-652)'
   });
 
   it('то же правило, что у плашки «Моих работ»', () => {
-    assert.match(read('projects', 'page.tsx'), /project\.topic === null \|\| project\.topic === project\.title \? null :/u);
+    // У плашки клиента тема может стоять заголовком и тогда строкой не
+    // повторяется (решение Р-916); правило «нет темы — нет строки» прежнее.
+    assert.match(
+      read('projects', 'page.tsx'),
+      /project\.topic === null \|\| project\.topic === project\.title \|\| clientHead\?\.topicAsHeading === true \? null :/u,
+    );
   });
 });

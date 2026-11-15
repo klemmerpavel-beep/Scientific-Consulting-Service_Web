@@ -57,6 +57,7 @@ import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
 import { currentActor, requireActor } from '../../../lib/cabinet/session';
 import { menuLabel, soleWorkTarget } from '../../../lib/cabinet/nav';
 import { ownRequestLine } from '../../../lib/cabinet/own-requests';
+import { clientPlateHead, plateCode } from '../../../lib/cabinet/work-plate';
 import { welcomeState } from '../../../lib/cabinet/channels';
 import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -835,6 +836,16 @@ export default async function ProjectsScreen({
               // руководителю — менеджер и куратор ссылками ниже (РК-03).
               forClient || forExpert || forHead ? null : staffExpertLine(project.expert, project.expertNameRaw),
             ].filter((fact) => fact !== null);
+            // Код работы — сотруднику, последним в строке фактов и тем же
+            // приглушённым шрифтом: по нему работу находят из письма
+            // (Р-362). Клиенту кода нет; на остальных экранах — тоже
+            // (Р-189, решение Р-916).
+            const code = plateCode(project.code, forClient);
+            // Клиенту заголовком плашки — то, что отличает работу: её
+            // название, а когда оно равно типу — тема (Н-7, решение Р-916).
+            const clientHead = forClient
+              ? clientPlateHead({ title: project.title, topic: project.topic, type: project.serviceType.name })
+              : null;
 
             const waiting = onPage.get(project.code) ?? null;
             // Куратору — строка его дела и рамка у плашки с делом; строка
@@ -885,27 +896,58 @@ export default async function ProjectsScreen({
                     блок «Требует внимания» появляется не всегда, и при его
                     отсутствии третий уровень оказывался сразу после
                     первого — пропуск, который ловит правило облика. */}
-                <div data-work-type="" style={{ textAlign: 'center', padding: '0 0 10px', margin: '0 0 10px', borderBottom: '1px solid var(--pd-divider)' }}>
-                  {project.title === project.serviceType.name ? (
-                    <Heading level={2} size={3}>
+                {clientHead === null ? (
+                  <>
+                    <div data-work-type="" style={{ textAlign: 'center', padding: '0 0 10px', margin: '0 0 10px', borderBottom: '1px solid var(--pd-divider)' }}>
+                      {project.title === project.serviceType.name ? (
+                        <Heading level={2} size={3}>
+                          <a href={`/cabinet/projects/${project.code}`} className="cab-stretch" style={{ color: 'var(--pd-ink)' }}>
+                            {project.title}
+                          </a>
+                        </Heading>
+                      ) : (
+                        <p style={WORK_TYPE_HEAD}>{project.serviceType.name}</p>
+                      )}
+                    </div>
+                    {project.title === project.serviceType.name ? null : (
+                      <Heading level={2} size={3} style={{ marginBottom: 4 }}>
+                        <a
+                          href={`/cabinet/projects/${project.code}`}
+                          className="cab-stretch"
+                          style={{ color: 'var(--pd-ink)' }}
+                        >
+                          {project.title}
+                        </a>
+                      </Heading>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Клиенту: заголовок — название или тема, тип — строкой
+                        ниже. Тема доходит до трёхсот пятидесяти знаков и
+                        режется тремя строками; целиком она на экране работы
+                        (решение Р-916; Р-169). */}
+                    <Heading
+                      level={2}
+                      size={3}
+                      style={{
+                        marginBottom: 4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
                       <a href={`/cabinet/projects/${project.code}`} className="cab-stretch" style={{ color: 'var(--pd-ink)' }}>
-                        {project.title}
+                        {clientHead.heading}
                       </a>
                     </Heading>
-                  ) : (
-                    <p style={WORK_TYPE_HEAD}>{project.serviceType.name}</p>
-                  )}
-                </div>
-                {project.title === project.serviceType.name ? null : (
-                  <Heading level={2} size={3} style={{ marginBottom: 4 }}>
-                    <a
-                      href={`/cabinet/projects/${project.code}`}
-                      className="cab-stretch"
-                      style={{ color: 'var(--pd-ink)' }}
-                    >
-                      {project.title}
-                    </a>
-                  </Heading>
+                    {clientHead.typeLine === null ? null : (
+                      <Text muted size={13} style={{ margin: '0 0 10px' }}>
+                        {clientHead.typeLine}
+                      </Text>
+                    )}
+                  </>
                 )}
 
                 {/* Короткое описание заказа: у перенесённых работ заголовок —
@@ -914,7 +956,7 @@ export default async function ProjectsScreen({
                     до трёхсот пятидесяти знаков, и одна такая работа
                     растягивала весь ряд плашек (решение Р-169). Целиком
                     тема стоит на экране заказа. */}
-                {project.topic === null || project.topic === project.title ? null : (
+                {project.topic === null || project.topic === project.title || clientHead?.topicAsHeading === true ? null : (
                   <Text
                     muted
                     size={13}
@@ -1047,7 +1089,7 @@ export default async function ProjectsScreen({
                     последний в плашке: раскрытие «Этапы» стоит над ним, и
                     у плашек ряда подвал встаёт на одни линии, есть план
                     или нет (Р-272). */}
-                {facts.length === 0 && project.dueOn === null && !forHead && !stageMissed ? (
+                {facts.length === 0 && code === null && project.dueOn === null && !forHead && !stageMissed ? (
                   <span aria-hidden="true" style={{ marginTop: 'auto' }} />
                 ) : (
                   <div style={{ marginTop: 'auto', paddingTop: 10, display: 'grid', gap: 2 }}>
@@ -1067,9 +1109,15 @@ export default async function ProjectsScreen({
                         )}
                       </Text>
                     )}
-                    {facts.length === 0 ? null : (
+                    {facts.length === 0 && code === null ? null : (
                       <Text muted size={13} style={{ margin: 0 }}>
                         {facts.join(' · ')}
+                        {code === null ? null : (
+                          <>
+                            {facts.length === 0 ? '' : ' · '}
+                            <span data-work-code="">{code}</span>
+                          </>
+                        )}
                       </Text>
                     )}
                     {/* Руководителю — менеджер и куратор ссылками на
