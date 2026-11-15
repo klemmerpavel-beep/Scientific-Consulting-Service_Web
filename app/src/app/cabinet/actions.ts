@@ -170,8 +170,19 @@ async function actorOrRedirect() {
  * фиксированная фраза, а подробности идут в журнал сервера.
  */
 
+/**
+ * Чужой объект в ответе действия неотличим от несуществующего, как на
+ * экранах, где оба дают «не найдено» (решение Р-912). Прежде отказ в
+ * праве и отсутствие записи отвечали разными словами, и перебором
+ * идентификаторов читалось, какие транши, версии и этапы существуют.
+ */
+const HIDDEN_OR_MISSING = 'Запись не найдена или недоступна для вашей роли';
+
+/** «Транш не найден», «Учётная запись не найдена» — отсутствие самой записи. */
+const MISSING = /^[А-ЯЁ][а-яё]+(?: [а-яё]+)? не найден[аоы]?$/u;
+
 function reasonOf(error: unknown, fallback: string): string {
-  if (error instanceof AccessDenied) return 'Это действие недоступно для вашей роли';
+  if (error instanceof AccessDenied) return HIDDEN_OR_MISSING;
   // Системная ошибка (диск, сеть) — тоже `Error`, но с кодом `ENOTDIR`,
   // `ENOSPC` и т. п. и путём на сервере в тексте: человеку она ничего не
   // скажет, а путь показывать незачем. Для неё — общая фраза (Р-255).
@@ -182,7 +193,9 @@ function reasonOf(error: unknown, fallback: string): string {
   // (решение Р-469).
   if (code === 'P2002') return 'Это уже изменили в другой вкладке или другой сотрудник: обновите страницу и повторите';
   const system = typeof code === 'string';
-  if (error instanceof Error && error.constructor === Error && !system) return error.message;
+  if (error instanceof Error && error.constructor === Error && !system) {
+    return MISSING.test(error.message) ? HIDDEN_OR_MISSING : error.message;
+  }
   console.error('[cabinet] сбой действия', error);
   return fallback;
 }
