@@ -140,7 +140,7 @@ export default async function NewOrderScreen({
             </Select>
           )}
           <FormRow>
-            <Select label="Вид работы" name="serviceTypeId" required defaultValue={draft.serviceTypeId}>
+            <Select label="Тип сопровождения" name="serviceTypeId" required defaultValue={draft.serviceTypeId}>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}

@@ -1694,7 +1694,7 @@ export async function changeTrancheStatus(form: FormData): Promise<void> {
       String(form.get('reason') ?? ''),
     );
   } catch (error) {
-    failure = reasonOf(error, 'Не удалось сменить статус транша');
+    failure = reasonOf(error, 'Не удалось сменить состояние транша');
   }
   if (failure !== null) redirect(await withError(back, failure));
   redirect(back);

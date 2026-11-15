@@ -74,7 +74,7 @@ const dayKey = (value: Date | null) => value?.toISOString().slice(0, 10) ?? null
  */
 export async function editOrder(actor: Actor, input: OrderEditInput): Promise<{ changed: OrderField[] }> {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
 
   const title = input.title.replace(/\s+/gu, ' ').trim();
@@ -122,7 +122,7 @@ export async function editOrder(actor: Actor, input: OrderEditInput): Promise<{ 
     input.serviceTypeId === before.serviceTypeId
       ? { id: before.serviceTypeId, name: before.serviceType.name }
       : await prisma.serviceType.findFirst({ where: { id: input.serviceTypeId, isActive: true }, select: { id: true, name: true } });
-  if (type === null) throw new Error('Выберите вид работы из справочника');
+  if (type === null) throw new Error('Выберите тип сопровождения из справочника');
 
   // Срок, который уже был, у действующей работы из кабинета меняется с
   // причиной для клиента (УМ-12, Р-391). Закрытая работа и работа из книги
@@ -231,7 +231,7 @@ const ALIVE = { mergedIntoId: null, erasedAt: null } as const;
  */
 export async function transferBlockers(actor: Actor, projectId: string): Promise<string[]> {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
   const [card, materials, messages, clientEvents, rating] = await Promise.all([
     prisma.clientProfile.findUniqueOrThrow({ where: { id: ref.clientId }, select: { erasedAt: true } }),
@@ -264,7 +264,7 @@ export interface ClientCandidate {
  */
 export async function clientCandidates(actor: Actor, projectId: string, query: string): Promise<ClientCandidate[]> {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
   const q = query.replace(/\s+/gu, ' ').trim();
   if (q.length < 2) return [];
@@ -310,7 +310,7 @@ export async function moveOrderToClient(
   input: { readonly projectId: string; readonly clientId: string; readonly confirm: boolean },
 ): Promise<void> {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
   if (input.clientId === '') throw new Error('Выберите карточку нового клиента');
   if (input.clientId === ref.clientId) throw new Error('Работа уже у этого клиента');

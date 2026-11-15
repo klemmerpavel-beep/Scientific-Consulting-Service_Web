@@ -135,7 +135,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
 
   const lead = await prisma.lead.findUnique({ where: { id: input.leadId } });
   if (lead === null) throw new Error('Заявка не найдена');
-  if (lead.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  if (lead.projectId !== null) throw new Error('По заявке уже открыта работа');
   // Отклонённому ушло письмо «взяться не можем» (решение Р-217); работа по
   // той же заявке противоречила бы ему. Передумали — нужна новая заявка.
   if (lead.status === 'DECLINED') {
@@ -144,7 +144,7 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
   // Отзыв и обращение без контакта в работу не разворачиваются: учётная
   // запись с пустой почтой собрала бы на себя все такие работы (Р-245).
   if (lead.form === 'review' || lead.contact.trim() === '') {
-    throw new Error('Это отзыв или обращение без контакта: работа по нему не заводится');
+    throw new Error('Это отзыв или заявка без контакта: работа по нему не заводится');
   }
 
   // Тип и название проверяются до захвата заявки и словами. Прежде пустое
@@ -523,7 +523,7 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
   if (found === null) throw new Error('Заявка не найдена');
   // Отказ по заявке, уже ставшей работой, отправил бы человеку «нет» после
   // приглашения в кабинет.
-  if (found.projectId !== null) throw new Error('Заявка уже развёрнута в проект');
+  if (found.projectId !== null) throw new Error('По заявке уже открыта работа');
   // Повторный отказ переписывал причину, а письмо — по ключу — оставалось
   // прежним: экран показывал новую причину рядом с «письмо ушло», хотя
   // человек получил старую (решение Р-227).
@@ -591,7 +591,7 @@ export async function assignExpert(
   role?: ExpertRoleKey | null,
 ) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_ASSIGN_EXPERT', ref);
   const current = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
@@ -847,7 +847,7 @@ export async function transferAllWorks(
  */
 export async function assignManager(actor: Actor, projectId: string, managerId: string, reasonRaw = '') {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_SET_MANAGER', ref);
 
   // Менеджером может быть только действующий сотрудник практики: иначе
@@ -989,7 +989,7 @@ export interface AddStageInput {
 /** Завести этап. Название — свободный текст менеджера, состояние — из перечня. */
 export async function addStage(actor: Actor, input: AddStageInput) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
 
@@ -1032,7 +1032,7 @@ async function planStage(actor: Actor, stageId: string, action: 'STAGE_EDIT' | '
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, action, ref);
   await ensureProjectActive(ref.id);
   return stage;
@@ -1134,7 +1134,7 @@ export async function removeStage(actor: Actor, stageId: string) {
  */
 export async function applyStageTemplate(actor: Actor, projectId: string) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { serviceTypeId: true } });
@@ -1312,7 +1312,7 @@ export async function editStage(
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
 
@@ -1506,7 +1506,7 @@ export async function rescheduleStage(
   });
   if (stage === null) throw new Error('Этап не найден');
   const ref = await projectRef(stage.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'STAGE_EDIT', ref);
   await ensureProjectActive(ref.id);
   if (input.dueOn === null) throw new Error('Укажите новый срок этапа');
@@ -1557,7 +1557,7 @@ export async function editProject(
   },
 ) {
   const ref = await projectRef(input.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
 
   const title = input.title.trim();
@@ -1679,7 +1679,7 @@ export async function setProjectStatus(
   reason?: string | null,
 ) {
   const ref = await projectRef(projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
   if (!Object.hasOwn(PROJECT_STATUS_LABEL, to)) throw new Error('Неизвестное состояние работы');
 
@@ -1840,7 +1840,7 @@ async function ensureProjectActive(projectId: string): Promise<void> {
     where: { id: projectId },
     select: { status: true },
   });
-  if (project === null) throw new Error('Проект не найден');
+  if (project === null) throw new Error('Работа не найдена');
   if (project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
 }
 

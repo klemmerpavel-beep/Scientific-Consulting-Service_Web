@@ -142,10 +142,10 @@ export default async function ImportBatchScreen({
       <ActionError id={flags.error} />
 
       {flags.applied === undefined ? null : (
-        <Outcome>Загрузка зафиксирована. Проекты заведены и доступны в реестре.</Outcome>
+        <Outcome>Загрузка зафиксирована. Работы заведены и доступны в реестре.</Outcome>
       )}
       {flags.merged === undefined ? null : (
-        <Outcome>Карточки сведены: проекты переведены на основную.</Outcome>
+        <Outcome>Карточки сведены: работы переведены на основную.</Outcome>
       )}
 
       {/* Плитка живёт общей частью: своя копия разошлась бы с прочими
@@ -355,7 +355,7 @@ export default async function ImportBatchScreen({
       {applied ? (
         <Text muted>
           Загрузка зафиксирована. Повторная фиксация невозможна: строки закрыты естественным
-          ключом, и та же книга даёт пропуск, а не новые проекты.
+          ключом, и та же книга даёт пропуск, а не новые работы.
           {report.rows.some(notCarried)
             ? ' Строки «не перенесена» исправьте в самой книге: при заборе с диска их перенесёт ближайший прогон, при ручном переносе — новая загрузка исправленной книги.'
             : ''}
@@ -371,7 +371,7 @@ export default async function ImportBatchScreen({
           </Text>
           <Form action={applyOrderBook} style={{ maxWidth: 520 }}>
             <input type="hidden" name="batchId" value={report.batchId} />
-            <Select label="Ведущий менеджер перенесённых проектов" name="managerId" required>
+            <Select label="Ведущий менеджер перенесённых работ" name="managerId" required>
               {managers.map((manager) => (
                 <option key={manager.id} value={manager.id}>
                   {manager.fullName}

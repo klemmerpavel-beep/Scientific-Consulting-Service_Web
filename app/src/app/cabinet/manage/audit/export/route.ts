@@ -72,7 +72,7 @@ export async function GET(request: Request): Promise<Response> {
       truncated = found.length > EXPORT_MAX_ROWS;
       const events = found.slice(0, EXPORT_MAX_ROWS);
       rows = [
-        ['Когда', 'Кто', 'Роль', 'Адрес', 'Действие', 'Тип объекта', 'Объект', 'Проект', 'Подробности'],
+        ['Когда', 'Кто', 'Роль', 'Адрес', 'Действие', 'Тип объекта', 'Объект', 'Работа', 'Подробности'],
         ...events.map((event) => [
           formatMoment(event.occurredAt),
           event.actor?.fullName ?? 'система',

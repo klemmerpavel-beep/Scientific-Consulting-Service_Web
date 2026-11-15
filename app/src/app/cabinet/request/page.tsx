@@ -90,9 +90,9 @@ export default async function NewRequestScreen({
   return (
     <Shell actor={actor} current="/cabinet/request">
       <Narrow width={680}>
-        <ScreenHead title="Обращение по новой работе" />
+        <ScreenHead title="Новая заявка" />
         <Text style={{ marginBottom: 24 }}>
-          Заявка попадёт в ту же очередь, что и обращения с сайта. Мы рассмотрим её и либо
+          Заявка попадёт в ту же очередь, что и заявки с сайта. Мы рассмотрим её и либо
           откроем новую работу, либо ответим с причиной. Что известно из вашей карточки, уже
           подставлено.
         </Text>

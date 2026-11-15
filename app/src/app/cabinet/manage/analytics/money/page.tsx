@@ -61,7 +61,7 @@ export default async function AnalyticsMoney() {
       actor={actor}
       current="/cabinet/manage/analytics/money"
       title="Деньги"
-      lead="Поступившим считается сумма траншей со статусом «оплачен». Отдельного поля «получено» у проекта нет: оно разошлось бы с траншами при первой же правке."
+      lead="Поступившим считается сумма траншей в состоянии «оплачен». Отдельного поля «получено» у работы нет: оно разошлось бы с траншами при первой же правке."
     >
       {rows.length === 0 ? (
         <Empty title="Считать нечего">Данных о договорах в системе нет.</Empty>
@@ -197,7 +197,7 @@ export default async function AnalyticsMoney() {
               }
               columns={
                 <tr>
-                  <th style={head} scope="col">Проект</th>
+                  <th style={head} scope="col">Работа</th>
                   <th style={head} scope="col">Клиент</th>
                   <th style={head} scope="col">Договор</th>
                   <th style={head} scope="col">Получено</th>

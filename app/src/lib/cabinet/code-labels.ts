@@ -82,7 +82,7 @@ export const ORDER_FIELD_LABEL = {
   title: 'Название',
   topic: 'Тема',
   summary: 'Описание',
-  serviceType: 'Вид работы',
+  serviceType: 'Тип сопровождения',
   dueOn: 'Срок работы',
   approvalDays: 'Срок согласования этапа',
   contract: 'Сумма договора',

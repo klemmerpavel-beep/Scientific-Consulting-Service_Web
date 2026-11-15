@@ -141,7 +141,7 @@ export function fileRefusal(name: string, body: Buffer): string | null {
   if (!blocked) return null;
   const shown = name.replace(BIDI, '').slice(0, 120);
   return (
-    `Файл «${shown}» не принят: исполняемые файлы и установщики загружать нельзя. ` +
+    `Файл «${shown}» не принят: исполняемые файлы и установщики прикладывать нельзя. ` +
     'Если файл нужен для работы, напишите менеджеру'
   );
 }

@@ -177,7 +177,7 @@ export default async function AuditScreen({
                   <th style={TABLE_HEAD} scope="col">Когда</th>
                   <th style={TABLE_HEAD} scope="col">Кто</th>
                   <th style={TABLE_HEAD} scope="col">Действие</th>
-                  <th style={TABLE_HEAD} scope="col">Проект</th>
+                  <th style={TABLE_HEAD} scope="col">Работа</th>
                   <th style={TABLE_HEAD} scope="col">Файл</th>
                   <th style={TABLE_HEAD} scope="col">Адрес</th>
                 </tr>

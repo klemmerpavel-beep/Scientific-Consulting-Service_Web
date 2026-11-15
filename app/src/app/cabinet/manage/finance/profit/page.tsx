@@ -112,7 +112,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
           </caption>
           <thead>
             <tr>
-              <th style={TABLE_HEAD} scope="col">Вид работ</th>
+              <th style={TABLE_HEAD} scope="col">Тип сопровождения</th>
               <th style={TABLE_NUM_HEAD} scope="col">Поступления</th>
               <th style={TABLE_NUM_HEAD} scope="col">Выплаты кураторам</th>
               <th style={TABLE_NUM_HEAD} scope="col">Расходы</th>
@@ -155,7 +155,7 @@ export default async function ProfitScreen({ searchParams }: { searchParams: Pro
               ))}
             </Select>
             <Field label="Сумма, ₽" name="amount" inputMode="decimal" required defaultValue={draft.amount ?? ''} placeholder="25 000" />
-            <Select label="Вид работ, если расход на него" name="serviceTypeId" defaultValue={draft.serviceTypeId ?? ''}>
+            <Select label="Тип сопровождения, если расход на него" name="serviceTypeId" defaultValue={draft.serviceTypeId ?? ''}>
               <option value="">Общий расход</option>
               {types.map((type) => (
                 <option key={type.id} value={type.id}>

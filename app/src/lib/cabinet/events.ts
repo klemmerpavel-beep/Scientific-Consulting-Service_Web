@@ -92,7 +92,7 @@ export function telegramPermanent(status: number): boolean {
  */
 export const EVENT_LABEL: Record<EventKind, string> = {
   STAGE_AWAITING_CLIENT: 'этап ждёт клиента',
-  VERSION_UPLOADED: 'загружена версия',
+  VERSION_UPLOADED: 'приложена версия',
   EXPERT_COMMENT_PUBLISHED: 'опубликовано замечание',
   STAGE_IN_APPROVAL: 'этап на согласовании',
   DEADLINE_IN_3_DAYS: 'приближается срок',

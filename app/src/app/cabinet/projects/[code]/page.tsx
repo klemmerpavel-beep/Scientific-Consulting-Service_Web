@@ -527,7 +527,7 @@ export default async function ProjectScreen({
           {second.clientUploadedAt !== null
             ? `материалы к этапу «${second.title}» приложены ${formatDay(second.clientUploadedAt)}`
             : second.state === 'AWAITING_CLIENT'
-              ? `загрузить материалы к этапу «${second.title}»`
+              ? `приложить материалы к этапу «${second.title}»`
               : `согласовать этап «${second.title}»`}
         </a>
         {second.clientUploadedAt !== null
@@ -976,7 +976,7 @@ export default async function ProjectScreen({
                 запрещает этапы, а не учёт (Р-871). */}
             {mayMoney ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/payments#money`}>
-                Деньги по заказу
+                Оплаты и документы
               </ButtonLink>
             ) : null}
             {/* Исходные данные на утверждение — документом (Р-561). */}

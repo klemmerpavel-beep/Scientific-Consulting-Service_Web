@@ -201,7 +201,7 @@ export default async function ProjectsScreen({
   const waitingLine = (stage: { state: string; title: string }) =>
     forClient
       ? stage.state === 'AWAITING_CLIENT'
-        ? `Загрузить материалы: ${stage.title}`
+        ? `Приложить материалы: ${stage.title}`
         : `Согласовать этап: ${stage.title}`
       : stage.state === 'AWAITING_CLIENT'
         ? `Ждём материалов клиента: ${stage.title}`

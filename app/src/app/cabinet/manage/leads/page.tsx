@@ -126,7 +126,7 @@ export default async function AllLeadsScreen({
         backHref={inMenu ? undefined : SUMMARY_HREF}
         backLabel={inMenu ? undefined : (menuLabel(actor, SUMMARY_HREF) ?? 'Сводка')}
         title="Все заявки"
-        note={`Обращения с сайта целиком, включая разобранные. Очередь на «${
+        note={`Заявки с сайта целиком, включая разобранные. Очередь на «${
           actor.role === 'MANAGER' ? 'Сегодня' : 'Сводке'
         }» показывает только те, что ждут решения. Отзывы сюда не попадают — у них свой порядок.`}
       />
@@ -204,10 +204,10 @@ export default async function AllLeadsScreen({
           ]}
           resetHref="/cabinet/manage/leads"
         >
-          Обращения никуда не делись — они не подошли под это условие.
+          Заявки никуда не делись — они не подошли под это условие.
         </Empty>
       ) : (
-        <TableCard label="Обращения">
+        <TableCard label="Заявки">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, minWidth: set === 'full' ? 1900 : undefined }}>
             <thead>
               <tr>

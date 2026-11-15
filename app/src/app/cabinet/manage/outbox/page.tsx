@@ -30,7 +30,7 @@ import { homeFor } from '../../../../lib/cabinet/nav';
 import { retryNotification } from '../../actions';
 import ActionError from '../../../../components/cabinet/ActionError';
 
-export const metadata: Metadata = { title: 'Очередь отправки' };
+export const metadata: Metadata = { title: 'Очередь уведомлений' };
 
 export const dynamic = 'force-dynamic';
 
@@ -55,8 +55,8 @@ export default async function OutboxScreen({
       <ScreenHead
         backHref="/cabinet/manage/tools"
         backLabel="Управление"
-        title="Очередь отправки"
-        note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Обращения с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
+        title="Очередь уведомлений"
+        note="Два разных пути. Уведомления кабинета копятся в очереди и уходят рассылкой раз в минуту. Заявки с сайта не ждут очереди: их отправляет сам приём заявки, а исход записывает в журнал доставки — он ниже."
       />
 
       <ActionError id={(await searchParams).error} />
@@ -166,7 +166,7 @@ export default async function OutboxScreen({
         Заявки с сайта
       </Heading>
       <Text muted style={{ marginBottom: 20 }}>
-        Каждое обращение уходит сразу в оба канала — Telegram и почту. Повторов здесь нет:
+        Каждая заявка уходит сразу в оба канала — Telegram и почту. Повторов здесь нет:
         отказавшая доставка не повторяется, потому что сама заявка уже в базе и видна в разделе
         «Все заявки». Этот перечень отвечает на другой вопрос — работает ли канал.
       </Text>
@@ -204,13 +204,13 @@ export default async function OutboxScreen({
         <Card style={{ marginTop: 20 }}>
           <Text style={{ margin: 0 }}>
             {leads.channelOff > 0
-              ? 'Отказов по существу нет. Часть обращений не доставлялась: канал ещё не задан — ' +
+              ? 'Отказов по существу нет. Часть заявок не доставлялась: канал ещё не задан — ' +
                 'ни бот, ни почтовый ящик не настроены.'
               : 'Отказов за месяц нет.'}
           </Text>
         </Card>
       ) : (
-        <TableCard label="Отказы по обращениям" style={{ marginTop: 20 }}>
+        <TableCard label="Отказы по заявкам" style={{ marginTop: 20 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 780 }}>
             <thead>
               <tr>

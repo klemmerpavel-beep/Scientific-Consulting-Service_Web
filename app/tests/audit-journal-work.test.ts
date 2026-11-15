@@ -99,7 +99,7 @@ describe('экран журнала: работа события и объект
   });
 
   it('выгрузка CSV — прежняя: коды, роль кодом, идентификаторы и содержимое как есть (Р-136)', () => {
-    assert.match(exportRoute, /\['Когда', 'Кто', 'Роль', 'Адрес', 'Действие', 'Тип объекта', 'Объект', 'Проект', 'Подробности'\]/u);
+    assert.match(exportRoute, /\['Когда', 'Кто', 'Роль', 'Адрес', 'Действие', 'Тип объекта', 'Объект', 'Работа', 'Подробности'\]/u);
     assert.match(exportRoute, /event\.actorRole \?\? '',/u);
     assert.match(exportRoute, /event\.objectId \?\? '',\s*event\.projectId \?\? '',/u);
     assert.match(exportRoute, /JSON\.stringify\(event\.payload\)/u);

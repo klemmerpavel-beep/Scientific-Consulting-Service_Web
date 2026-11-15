@@ -70,7 +70,7 @@ export async function addExpense(actor: Actor, input: ExpenseInput): Promise<{ i
   if (category === null) throw new Error('Выберите статью расхода из справочника');
   const typeId = (input.serviceTypeId ?? '').trim() || null;
   if (typeId !== null && (await prisma.serviceType.count({ where: { id: typeId } })) === 0) {
-    throw new Error('Вид работ не найден в справочнике');
+    throw new Error('Тип сопровождения не найден в справочнике');
   }
   const note = (input.note ?? '').trim() || null;
   if (note !== null && note.length > EXPENSE_NOTE_MAX) throw new Error(`Заметка — не длиннее ${EXPENSE_NOTE_MAX} знаков`);

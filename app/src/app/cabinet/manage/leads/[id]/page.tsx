@@ -146,7 +146,7 @@ export default async function LeadScreen({
             </Text>
           )}
           {lead.message === null ? (
-            <Text muted>Обращение без текста: человек оставил только контакт.</Text>
+            <Text muted>Заявка без текста: человек оставил только контакт.</Text>
           ) : (
             <Text style={{ whiteSpace: 'pre-wrap' }}>{lead.message}</Text>
           )}
@@ -325,7 +325,7 @@ export default async function LeadScreen({
             </FormRow>
             <Field label="Тема" name="topic" defaultValue={lead.topic ?? ''} />
             <Field label="Что нужно" name="need" defaultValue={lead.need ?? ''} />
-            <Field label="Текст обращения" name="message" multiline defaultValue={lead.message ?? ''} />
+            <Field label="Текст заявки" name="message" multiline defaultValue={lead.message ?? ''} />
             <Text muted size={13} style={{ marginBottom: 12 }}>
               Отметки согласия не правятся: это журнал согласия заявителя. В журнал действий
               попадают названия исправленных полей, а не их значения.

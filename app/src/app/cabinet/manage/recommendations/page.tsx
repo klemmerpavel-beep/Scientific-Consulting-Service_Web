@@ -142,7 +142,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
             {priceLane.map((row) => (
               <RecommendationCard
                 key={row.key}
-                kind="Чек вида работ"
+                kind="Чек типа сопровождения"
                 title={priceSpread(row)}
                 details={`${priceGuide(row)} · средний чек ${formatAmount(row.averageCheck)}${row.before === null ? '' : ` · окно продвижения вида — с ${formatDate(row.before)}`}`}
                 marked={marks.has(row.key)}
@@ -196,7 +196,7 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
                   back="recommendations"
                   action={markRecommendationAction}
                   assignHref={assignHref(
-                    `Связаться с клиентом «${row.clientName}»${row.next === null ? '' : ` и предложить «${row.next.toName}»`}${row.consent ? '' : ' — согласия на рассылку нет: только ответ на его обращение'}`,
+                    `Связаться с клиентом «${row.clientName}»${row.next === null ? '' : ` и предложить «${row.next.toName}»`}${row.consent ? '' : ' — согласия на рассылку нет: только ответ на его заявку'}`,
                   )}
                 />
               </RecommendationCard>

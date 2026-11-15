@@ -312,7 +312,7 @@ export const RULE_EVENTS: readonly {
   { kind: 'CURATOR_NDA_SIGNED', title: 'Куратору ваших работ открыт доступ к материалам', group: 'Переписка и работы', roles: ['MANAGER'] },
   // Обращения с сайта идут своим путём, сразу в оба канала практики, и
   // правилами не разводятся (Р-161).
-  { kind: 'REQUEST_CREATED', title: 'Новое обращение из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  { kind: 'REQUEST_CREATED', title: 'Новая заявка из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Внутренняя переписка по работе и ветка с руководителем (РК-07, Р-336).
   { kind: 'INTERNAL_MESSAGE', title: 'Сообщение во внутренней переписке по работе', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   { kind: 'HEAD_REPLY', title: 'Руководитель ответил в переписке', group: 'Переписка и работы', roles: ['MANAGER'] },

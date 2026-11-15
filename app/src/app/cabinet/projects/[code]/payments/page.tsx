@@ -696,7 +696,7 @@ export default async function PaymentsScreen({
                       </Text>
                       <Text muted size={13}>
                         {document.versions[0] === undefined
-                          ? 'файл не загружен'
+                          ? 'файл не приложен'
                           : `${formatSize(document.versions[0].sizeBytes)} · ${formatDay(document.versions[0].uploadedAt)}`}
                       </Text>
                     </li>

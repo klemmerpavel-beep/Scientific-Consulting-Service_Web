@@ -103,7 +103,7 @@ export default async function OrderEditScreen({
             ? 'Работа перенесена из книги заказов. Правка карточки, суммы и состояния писем клиенту и куратору не шлёт.'
             : 'Правка полей карточки и суммы писем клиенту не шлёт. Письмо уходит только о переносе срока действующей работы и о смене состояния.'
         }
-        action={mayMoney ? <ButtonLink href={`${base}/payments#money`}>Деньги по заказу</ButtonLink> : undefined}
+        action={mayMoney ? <ButtonLink href={`${base}/payments#money`}>Оплаты и документы</ButtonLink> : undefined}
       />
       <ActionError id={sp.error} />
 
@@ -120,7 +120,7 @@ export default async function OrderEditScreen({
           <ActionError id={sp.error} slot="order" />
           <FormRow>
             <Field label="Название" name="title" scope="order" required maxLength={300} defaultValue={draft.title ?? project.title} />
-            <Select label="Вид работы" name="serviceTypeId" scope="order" required defaultValue={draft.serviceTypeId ?? project.serviceTypeId}>
+            <Select label="Тип сопровождения" name="serviceTypeId" scope="order" required defaultValue={draft.serviceTypeId ?? project.serviceTypeId}>
               {typeChoices.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}

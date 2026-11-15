@@ -251,7 +251,7 @@ describe('версия эксперта — после публикации', { 
     const before = await waiting();
     await assert.rejects(
       materials.addComment(expert(), rejected.id, 'Пояснение'),
-      /загрузите исправленную версию/u,
+      /приложите исправленную версию/u,
     );
     assert.equal(await prisma.versionComment.count({ where: { versionId: rejected.id } }), 0);
     assert.equal(await waiting(), before, 'замечание к отклонённой версии ждёт публикации');

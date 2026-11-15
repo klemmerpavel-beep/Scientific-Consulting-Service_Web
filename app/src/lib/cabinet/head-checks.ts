@@ -92,7 +92,7 @@ export async function closeCheck(actor: Actor, checkId: string, note: string): P
   const check = await prisma.headCheck.findUnique({ where: { id: checkId }, select: { kind: true, projectId: true, closedAt: true } });
   if (check === null) throw new Error('Дело не найдено');
   const ref = await projectRef(check.projectId);
-  if (ref === null) throw new Error('Проект не найден');
+  if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'HEAD_CHECK_CLOSE', ref);
   if (!NOTE[check.kind].includes(note)) throw new Error('Неизвестная отметка дела');
   const closed = await prisma.headCheck.updateMany({

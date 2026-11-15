@@ -51,7 +51,7 @@ describe('черновик нового заказа из документа (Р
   it('исходные данные ВКР: вид по шифру — с пометкой, вуз одной строкой', () => {
     const { values, notes } = fromDocx(SAMPLES.variant);
     assert.equal(values.serviceTypeId, 't-dip');
-    assert.ok(notes.some((note) => note.startsWith('Вид работы определён по тексту')));
+    assert.ok(notes.some((note) => note.startsWith('Тип сопровождения определён по тексту')));
     assert.equal(values.speciality, '15.04.02 Технологические машины и оборудование');
     assert.equal(values.university, 'Горный университет');
     assert.match(values.summary ?? '', /^Цель: Обосновать замену/u);
@@ -62,7 +62,7 @@ describe('черновик нового заказа из документа (Р
     const { values, notes } = fromDocx(['Тема: Нечто', 'Срок: когда-нибудь']);
     assert.equal(values.serviceTypeId, '');
     assert.equal(values.dueOn, '');
-    assert.ok(notes.includes('Вид работы не распознан — выберите вручную.'));
+    assert.ok(notes.includes('Тип сопровождения не распознан — выберите вручную.'));
     assert.ok(notes.some((note) => note.startsWith('«Срок»: дата «когда-нибудь»')));
   });
 

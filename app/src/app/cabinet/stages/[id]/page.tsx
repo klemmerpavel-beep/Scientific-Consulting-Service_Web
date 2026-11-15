@@ -532,7 +532,7 @@ export default async function StageScreen({
           {handover === 'handed' ? null : mayHandOver ? (
             ownVersions === 0 ? (
               <Text muted size={13}>
-                Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — загрузите её
+                Сдать этап менеджеру можно, когда к нему приложена ваша версия материала — приложите её
                 ниже.
               </Text>
             ) : (
@@ -1008,7 +1008,7 @@ export default async function StageScreen({
                   label="Причина остановки"
                   name="reason"
                   required
-                  placeholder="Ждём протокол испытаний; после загрузки — два рабочих дня на расчёт"
+                  placeholder="Ждём протокол испытаний; после получения — два рабочих дня на расчёт"
                   hint="Причину читает клиент: от неё зависит, что и когда он пришлёт."
                 />
                 <FormActions>
@@ -1253,7 +1253,7 @@ export default async function StageScreen({
 
                 {mayUpload ? (
                   <Disclosure
-                    title="Загрузить следующую версию"
+                    title="Приложить следующую версию"
                     id={`upload-${material.id}`}
                     open={draft.upload === material.id}
                     style={{ marginTop: 20 }}
@@ -1270,7 +1270,7 @@ export default async function StageScreen({
                         required
                       />
                       <FormActions>
-                        <Button tone="quiet">Загрузить</Button>
+                        <Button tone="quiet">Приложить</Button>
                       </FormActions>
                     </Form>
                   </Disclosure>
@@ -1325,7 +1325,7 @@ export default async function StageScreen({
                 name="file"
                 scope="new-material"
                 required
-                hint="Каждая загрузка сохраняется отдельной версией: прежние остаются доступными."
+                hint="Каждый приложенный файл сохраняется отдельной версией: прежние остаются доступными."
               />
               {/* Пояснение куратора — как в форме «Ваша работа» на карточке:
                   замечанием к той же версии одной операцией (Р-326); отказ

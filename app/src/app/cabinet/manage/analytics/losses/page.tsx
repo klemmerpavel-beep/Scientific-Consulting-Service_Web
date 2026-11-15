@@ -28,7 +28,7 @@ export default async function AnalyticsLosses() {
       lead="Потерей считается недополученное по приостановленным и отменённым работам. Работа, остановленная без задолженности, потерь не даёт. Остаток отменённых работ считается только здесь: к получению его больше не ждут. Приостановленные при этом остаются и в «к получению» — они могут возобновиться."
     >
       {rows.length === 0 ? (
-        <Empty title="Считать нечего">Проектов в системе нет.</Empty>
+        <Empty title="Считать нечего">Работ в системе нет.</Empty>
       ) : (
         <>
           <Tiles>
@@ -54,7 +54,7 @@ export default async function AnalyticsLosses() {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
                 <thead>
                   <tr>
-                    <th style={head} scope="col">Проект</th>
+                    <th style={head} scope="col">Работа</th>
                     <th style={head} scope="col">Клиент</th>
                     <th style={head} scope="col">Договор</th>
                     <th style={head} scope="col">Получено</th>

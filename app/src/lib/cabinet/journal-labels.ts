@@ -122,7 +122,7 @@ const ACTIONS: Record<string, string> = {
   USER_CREATED: 'Заведена учётная запись',
   USER_ROLE_CHANGED: 'Изменена роль',
   USER_STATUS_CHANGED: 'Изменено состояние доступа',
-  VERSION_UPLOADED: 'Загружена версия материала',
+  VERSION_UPLOADED: 'Приложена версия материала',
   VERSION_PUBLISHED: 'Версия куратора опубликована клиенту',
   VERSION_REJECTED: 'Версия куратора не опубликована',
   COMMENT_CREATED: 'Оставлен комментарий',
@@ -323,7 +323,7 @@ const FIELDS: Record<string, string> = {
   assigneeId: 'кому поручено',
   stageId: 'этап',
   commentId: 'комментарий',
-  serviceTypeId: 'вид работ',
+  serviceTypeId: 'тип сопровождения',
   actorId: 'действующее лицо',
   into: 'сведена в карточку',
   dueOn: 'срок',
@@ -431,7 +431,7 @@ function monthLabel(raw: string): string {
   return match === null || name === undefined ? raw : `${name} ${match[1]}`;
 }
 
-/** Объём требования — словами экрана «Удаление по требованию субъекта». */
+/** Объём требования — словами экрана «Удаление данных субъекта». */
 const ERASURE_SCOPE_LABEL: Readonly<Record<string, string>> = {
   PERSONAL_DATA_AND_FILES: 'данные и файлы',
   PERSONAL_DATA: 'только данные',
@@ -482,7 +482,7 @@ const LEAD_FIELD_LABEL = {
   topic: 'Тема',
   need: 'Что нужно',
   deadline: 'Желаемый срок',
-  message: 'Текст обращения',
+  message: 'Текст заявки',
 } satisfies Record<LeadEditField, string>;
 
 /** Чек-лист вида работы по ключу (решения Р-554, Р-555). */
@@ -676,8 +676,8 @@ const ACTION_FIELDS: Readonly<Record<string, Readonly<Record<string, FieldRule>>
     expertRoleTo: { name: 'роль куратора стала', value: expertRoleLabel },
     // «Редактировать заказ» (решение Р-872): что изменено — подписями формы.
     fields: { name: 'изменено', value: byMap(ORDER_FIELD_LABEL) },
-    serviceTypeFrom: { name: 'вид работы был' },
-    serviceTypeTo: { name: 'вид работы стал' },
+    serviceTypeFrom: { name: 'тип сопровождения был' },
+    serviceTypeTo: { name: 'тип сопровождения стал' },
   },
   PROJECT_STATUS_CHANGED: change(byMap(PROJECT_STATUS_LABEL)),
   PLAN_CHANGED: {

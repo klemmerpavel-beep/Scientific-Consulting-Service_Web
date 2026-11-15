@@ -69,7 +69,7 @@ export default async function WorkChecklistScreen({
       {flags.saved === undefined ? null : <Outcome>Отметки сохранены.</Outcome>}
 
       {list === null ? (
-        <Empty title="Для этого вида работы чек-листа нет">
+        <Empty title="Для этого типа сопровождения чек-листа нет">
           Чек-листы заведены для шести видов сопровождения справочника.
         </Empty>
       ) : (

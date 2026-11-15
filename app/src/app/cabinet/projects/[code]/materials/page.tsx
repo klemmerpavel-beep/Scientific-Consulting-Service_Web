@@ -287,7 +287,7 @@ export default async function ProjectMaterialsScreen({
                       required
                     />
                     <FormActions>
-                      <Button tone="quiet">Загрузить следующую версию</Button>
+                      <Button tone="quiet">Приложить следующую версию</Button>
                     </FormActions>
                   </Form>
                 ) : null}

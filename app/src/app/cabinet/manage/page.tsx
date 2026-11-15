@@ -1627,7 +1627,7 @@ export default async function ManageQueue({
           <ScrollCard
             title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
             href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
-            hrefLabel="все обращения"
+            hrefLabel="все заявки"
           >
             {leadsList}
           </ScrollCard>
@@ -1853,7 +1853,7 @@ export default async function ManageQueue({
           <BoardColumn
             title={queue.total === 0 ? 'Заявки' : `Заявки · ${queue.total}`}
             href={queue.total > 0 ? '/cabinet/manage/leads' : undefined}
-            hrefLabel="все обращения"
+            hrefLabel="все заявки"
           >
             {leadsList}
           </BoardColumn>
