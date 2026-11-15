@@ -563,7 +563,7 @@ export default async function StageScreen({
                   multiline
                   required
                   defaultValue={draft.note ?? stage.handoverNote ?? ''}
-                  hint="Менеджер получит записку вместе с этапом; из неё он соберёт «Итог этапа» для клиента."
+                  hint="Менеджер получит записку вместе с этапом и по ней напишет «Итог этапа» для клиента. Клиенту записка не показывается."
                 />
                 <FormActions>
                   <Button>Сдать этап менеджеру</Button>
@@ -636,7 +636,8 @@ export default async function StageScreen({
             </Text>
           )}
           <Text muted size={13} style={{ marginBottom: 12 }}>
-            Записка подставлена черновиком «Итога этапа» в форму перевода на согласование. Для клиента
+            Записку видит только практика: клиенту она не показывается и в «Итог этапа» не
+            подставляется. Итог для клиента напишите в форме перевода на согласование. Для клиента
             этап остаётся «В работе».
           </Text>
           <Disclosure title="Вернуть куратору">
@@ -1008,7 +1009,10 @@ export default async function StageScreen({
             ))}
           {/* На согласование — с итогом: его клиент читает над кнопками и
               в письме (требование Т-14, решение Р-289). Подставляется
-              прежний итог: после возврата его достаточно поправить. */}
+              прежний итог: после возврата его достаточно поправить.
+              Записка куратора в поле не подставляется: она написана
+              практике, а неправленое поле уходило клиенту на экран и
+              письмом (аудит 15.11.2026, решение Р-900). */}
           {stageStateButtons(state)
             .filter((next) => next === 'IN_APPROVAL' && stage.materials.length > 0)
             .map((next) => (
@@ -1021,7 +1025,7 @@ export default async function StageScreen({
                   scope="submit"
                   multiline
                   required
-                  defaultValue={draft.outcome ?? stage.outcome ?? stage.handoverNote ?? ''}
+                  defaultValue={draft.outcome ?? stage.outcome ?? ''}
                   hint="Итог клиент читает над кнопками согласования и в письме."
                 />
                 <FormActions>
