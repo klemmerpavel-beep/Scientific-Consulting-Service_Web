@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -39,6 +40,8 @@ import { formatAmount } from '../../../../lib/cabinet/money';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { now as clockNow } from '../../../../lib/cabinet/clock';
+
+export const metadata: Metadata = { title: 'Деньги' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
@@ -18,6 +19,8 @@ import { receiptsPlan, type ReceiptLine } from '../../../../../lib/cabinet/finan
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Поступления' };
 
 export const dynamic = 'force-dynamic';
 

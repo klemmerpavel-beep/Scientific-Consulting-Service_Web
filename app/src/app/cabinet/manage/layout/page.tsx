@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -23,6 +24,8 @@ import { requireActor } from '../../../../lib/cabinet/session';
 import { SUMMARY_BANDS, SUMMARY_PLATES, isShown } from '../../../../lib/cabinet/summary-layout';
 import { summaryLayoutOf } from '../../../../lib/cabinet/summary-settings';
 import { resetSummaryLayout, saveSummaryLayoutForm } from '../../actions';
+
+export const metadata: Metadata = { title: 'Настройка сводки' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   Legend,
   RankChart,
@@ -26,6 +27,8 @@ import {
   share,
 } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
+
+export const metadata: Metadata = { title: 'Аналитика: клиенты' };
 
 export const dynamic = 'force-dynamic';
 

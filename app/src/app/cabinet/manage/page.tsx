@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Fragment, type ReactNode } from 'react';
 
@@ -45,8 +46,8 @@ import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
 import { daysPast, moscowToday, now as clockNow } from '../../../lib/cabinet/clock';
-import { requireActor } from '../../../lib/cabinet/session';
-import { homeFor } from '../../../lib/cabinet/nav';
+import { currentActor, requireActor } from '../../../lib/cabinet/session';
+import { homeFor, menuLabel } from '../../../lib/cabinet/nav';
 import { byMonth, periodBounds, products, receivedBetween } from '../../../lib/cabinet/analytics/metrics';
 import { loadRows } from '../../../lib/cabinet/analytics/data';
 import { leadRows } from '../../../lib/cabinet/analytics/leads';
@@ -59,6 +60,17 @@ import { DEFAULT_LAYOUT, isShown, visiblePlates, type PlateKey } from '../../../
 import { summaryLayoutOf } from '../../../lib/cabinet/summary-settings';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Заголовок документа — название пункта меню роли (решение Р-894): экран
+ * один, а называется он у ролей по-разному. Без сеанса — общее название:
+ * экран всё равно уведёт на вход.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const actor = await currentActor();
+  const label = actor === null ? null : menuLabel(actor, '/cabinet/manage');
+  return { title: label ?? 'Сводка' };
+}
 
 /**
  * Сколько дней прошло с назначенного срока; до срока — ничего. День

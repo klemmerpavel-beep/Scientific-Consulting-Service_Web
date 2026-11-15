@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -33,6 +34,8 @@ import { requireActor } from '../../../../../lib/cabinet/session';
 import { candidateLine } from '../../../../../lib/cabinet/client-match';
 import { clientCandidates, transferBlockers } from '../../../../../lib/cabinet/orders';
 import { moveOrderToClientAction, saveOrder } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Редактировать заказ' };
 
 export const dynamic = 'force-dynamic';
 

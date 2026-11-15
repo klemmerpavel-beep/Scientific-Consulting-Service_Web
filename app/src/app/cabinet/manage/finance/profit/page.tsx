@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -27,6 +28,8 @@ import { expenseCategories, monthlyProfit } from '../../../../../lib/cabinet/pro
 import { serviceTypes } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addExpenseAction, removeExpenseAction } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Прибыль по месяцам' };
 
 export const dynamic = 'force-dynamic';
 

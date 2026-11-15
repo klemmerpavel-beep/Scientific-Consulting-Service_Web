@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -49,6 +50,8 @@ import {
 import { TOOLS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { removeOwnerTemplateAction, uploadOwnerTemplate } from '../../actions';
+
+export const metadata: Metadata = { title: 'Чек-листы' };
 
 export const dynamic = 'force-dynamic';
 

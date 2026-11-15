@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   BarChart,
   Legend,
@@ -37,6 +38,8 @@ import {
 } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
 import { analyticsSince } from '../../../../../lib/cabinet/practice-settings';
+
+export const metadata: Metadata = { title: 'Аналитика: деньги' };
 
 export const dynamic = 'force-dynamic';
 

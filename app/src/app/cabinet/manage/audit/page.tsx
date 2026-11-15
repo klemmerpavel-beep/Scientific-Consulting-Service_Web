@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -38,6 +39,8 @@ import {
 } from '../../../../lib/cabinet/journals';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Журналы' };
 
 // Работа — ссылкой в строке текста ячейки: цель нажатия добирается
 // отступом, строка не раздвигается (Р-679; решение Р-758).

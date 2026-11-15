@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
@@ -57,6 +58,8 @@ import {
   leadFirstResponseHours,
   reactionDays,
 } from '../../../../lib/cabinet/practice-settings';
+
+export const metadata: Metadata = { title: 'Справочники' };
 
 export const dynamic = 'force-dynamic';
 

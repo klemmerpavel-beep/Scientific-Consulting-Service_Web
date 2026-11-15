@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -16,6 +17,8 @@ import { staffMaterials } from '../../../../lib/cabinet/materials-hub';
 import { ownerTemplates } from '../../../../lib/cabinet/owner-templates';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { hasToolsScreen, homeFor } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Управление' };
 
 export const dynamic = 'force-dynamic';
 

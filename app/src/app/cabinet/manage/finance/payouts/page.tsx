@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../../components/cabinet/Shell';
@@ -17,6 +18,8 @@ import { curatorPayoutLines, payoutsByCurator } from '../../../../../lib/cabinet
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Вознаграждение кураторов' };
 
 export const dynamic = 'force-dynamic';
 

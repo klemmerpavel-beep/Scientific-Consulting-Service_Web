@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { flashText, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
@@ -62,6 +63,8 @@ import {
   consentStatusForHead,
   type ConsentKind,
 } from '../../../../lib/cabinet/curator-consents';
+
+export const metadata: Metadata = { title: 'Учётные записи' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -30,6 +31,8 @@ import { curators, leadById, serviceTypes } from '../../../../../lib/cabinet/que
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { commentLead, moderateLead, resendDeclineLetter, saveLead, switchLeadStatus } from '../../../actions';
 import { LeadStatusChip, LeadStatusSwitch } from '../../../../../components/cabinet/LeadStatus';
+
+export const metadata: Metadata = { title: 'Заявка' };
 
 export const dynamic = 'force-dynamic';
 

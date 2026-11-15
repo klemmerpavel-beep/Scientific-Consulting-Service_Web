@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { RankChart, compactMoney } from '../../../../../components/cabinet/Charts';
 import {
   Chip,
@@ -11,6 +12,8 @@ import { products } from '../../../../../lib/cabinet/analytics/metrics';
 import { PRICE_GUIDE } from '../../../../../lib/cabinet/analytics/price-guide';
 import { formatAmount, formatRounded } from '../../../../../lib/cabinet/money';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, head, num, share } from '../shared';
+
+export const metadata: Metadata = { title: 'Аналитика: продукты' };
 
 export const dynamic = 'force-dynamic';
 

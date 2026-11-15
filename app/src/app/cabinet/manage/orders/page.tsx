@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -26,6 +27,8 @@ import {
 import { PROJECT_STATUS_LABEL } from '../../../../lib/cabinet/project-status';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { ORDER_COLUMNS, orderDescription, orderTotals } from '../../../../lib/cabinet/table-views';
+
+export const metadata: Metadata = { title: 'Заказы' };
 
 export const dynamic = 'force-dynamic';
 

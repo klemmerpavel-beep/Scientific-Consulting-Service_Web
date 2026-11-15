@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -19,6 +20,8 @@ import { ownPayouts } from '../../../lib/cabinet/finance';
 import { formatAmount } from '../../../lib/cabinet/money';
 import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Вознаграждение' };
 
 export const dynamic = 'force-dynamic';
 

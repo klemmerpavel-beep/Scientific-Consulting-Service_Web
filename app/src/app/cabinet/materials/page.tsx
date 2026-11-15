@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import MaterialsList from '../../../components/cabinet/MaterialsList';
@@ -7,6 +8,8 @@ import { clientMaterials } from '../../../lib/cabinet/materials-hub';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { ownerTemplates } from '../../../lib/cabinet/owner-templates';
 import { requireActor } from '../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Материалы' };
 
 export const dynamic = 'force-dynamic';
 

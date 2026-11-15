@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -33,6 +34,8 @@ import { flashText } from '../../../../lib/cabinet/flash';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { executeErasureRequest, openErasureRequest } from '../../actions';
+
+export const metadata: Metadata = { title: 'Удаление по требованию субъекта' };
 
 export const dynamic = 'force-dynamic';
 

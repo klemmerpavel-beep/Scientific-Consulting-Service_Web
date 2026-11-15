@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../components/cabinet/ActionError';
@@ -8,6 +9,8 @@ import { daysPast, now as clockNow } from '../../../lib/cabinet/clock';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { requireActor } from '../../../lib/cabinet/session';
 import { assignmentStatusAction } from '../actions';
+
+export const metadata: Metadata = { title: 'Поручения руководителя' };
 
 export const dynamic = 'force-dynamic';
 

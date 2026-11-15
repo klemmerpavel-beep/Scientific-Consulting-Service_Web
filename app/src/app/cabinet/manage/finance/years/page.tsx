@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -30,6 +31,8 @@ import { formatAmount } from '../../../../../lib/cabinet/money';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { removeFinanceYear, saveFinanceYear } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Итоги по годам' };
 
 export const dynamic = 'force-dynamic';
 

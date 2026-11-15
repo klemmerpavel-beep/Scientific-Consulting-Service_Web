@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../components/cabinet/Shell';
@@ -36,6 +37,8 @@ import { homeFor } from '../../../lib/cabinet/nav';
 import { parseRequestBrief, submitCabinetRequest } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
 import { formDraft } from '../../../lib/cabinet/flash';
+
+export const metadata: Metadata = { title: 'Новая заявка' };
 
 export const dynamic = 'force-dynamic';
 

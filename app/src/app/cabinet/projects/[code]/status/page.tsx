@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -25,6 +26,8 @@ import {
 import { pendingReview, projectByCode } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { changeProjectStatus } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Состояние работы' };
 
 export const dynamic = 'force-dynamic';
 

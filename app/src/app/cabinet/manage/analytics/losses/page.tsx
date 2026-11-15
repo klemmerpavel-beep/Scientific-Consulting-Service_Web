@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   Card,
   Empty,
@@ -9,6 +10,8 @@ import {
 import { losses, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { formatAmount } from '../../../../../lib/cabinet/money';
 import { Frame, Tile, Tiles, analyticsScreen, cell, head, num } from '../shared';
+
+export const metadata: Metadata = { title: 'Аналитика: потери' };
 
 export const dynamic = 'force-dynamic';
 

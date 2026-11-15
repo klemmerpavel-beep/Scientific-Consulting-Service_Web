@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { ADS_REGISTRY } from '../../../../../content/ads-registry.generated';
@@ -51,6 +52,8 @@ import { homeFor } from '../../../../lib/cabinet/nav';
 import { recommendationMarks } from '../../../../lib/cabinet/recommendations';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { markRecommendationAction } from '../../actions';
+
+export const metadata: Metadata = { title: 'Реклама' };
 
 export const dynamic = 'force-dynamic';
 

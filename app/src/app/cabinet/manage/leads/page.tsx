@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { LeadStatusChip } from '../../../../components/cabinet/LeadStatus';
@@ -38,6 +39,8 @@ import { LEAD_LIST_PAGE_SIZE, leadList, leadStatusCounts } from '../../../../lib
 import { COLUMN_SETS, columnSet, leadColumns } from '../../../../lib/cabinet/table-views';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { SUMMARY_HREF, homeFor, menuLabel } from '../../../../lib/cabinet/nav';
+
+export const metadata: Metadata = { title: 'Все заявки' };
 
 export const dynamic = 'force-dynamic';
 

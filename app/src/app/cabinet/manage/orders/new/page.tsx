@@ -28,7 +28,7 @@ import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor, menuLabel } from '../../../../../lib/cabinet/nav';
 import { createOrder, parseOrderBrief } from '../../../actions';
 
-export const metadata: Metadata = { title: 'Новый заказ — ProDisser' };
+export const metadata: Metadata = { title: 'Новый заказ' };
 export const dynamic = 'force-dynamic';
 
 /**

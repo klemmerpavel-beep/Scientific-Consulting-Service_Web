@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   BarChart,
   DonutChart,
@@ -16,6 +17,8 @@ import { leadConversion, leadResponse, leadRows, leadsByMonth, leadsBySource } f
 import { RESPONSE_NEXT, responseConclusion, workTime } from '../../../../lib/cabinet/analytics/response';
 import { leadSourceLabel } from '../../../../lib/cabinet/lead-labels';
 import { MONTHS_SHORT } from '../../../../lib/cabinet/analytics/metrics';
+
+export const metadata: Metadata = { title: 'Аналитика' };
 
 export const dynamic = 'force-dynamic';
 

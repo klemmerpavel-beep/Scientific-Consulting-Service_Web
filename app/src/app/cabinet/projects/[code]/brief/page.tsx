@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -19,6 +20,8 @@ import {
 import { previewWorkBrief } from '../../../../../lib/cabinet/brief/work-apply';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { applyWorkBriefAction, parseWorkBrief } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Обновить из документа' };
 
 export const dynamic = 'force-dynamic';
 

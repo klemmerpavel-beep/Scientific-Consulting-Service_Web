@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -27,6 +28,8 @@ import { formatAmount } from '../../../../lib/cabinet/money';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { uploadOrderBook } from '../../actions';
+
+export const metadata: Metadata = { title: 'Книга заказов' };
 
 export const dynamic = 'force-dynamic';
 

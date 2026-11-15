@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -33,6 +34,8 @@ import DropFlag from '../../../../../components/cabinet/DropFlag';
 import { projectMaterials } from '../../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { addMaterialVersion, decideOnComment, decideOnVersion } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Материалы работы' };
 
 export const dynamic = 'force-dynamic';
 

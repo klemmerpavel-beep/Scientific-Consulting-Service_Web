@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import {
   notFound,
@@ -93,6 +94,8 @@ import {
 
 import { nextStageUnpaid } from '../../../../lib/cabinet/head-checks';
 import { CHECKLISTS, stepText } from '../../../../lib/cabinet/checklists';
+
+export const metadata: Metadata = { title: 'Этап' };
 
 export const dynamic = 'force-dynamic';
 

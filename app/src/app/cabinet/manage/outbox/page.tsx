@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   redirect } from 'next/navigation';  import Shell from '../../../../components/cabinet/Shell'; import {   Button,
   Card,
@@ -28,6 +29,8 @@ import { requireActor } from '../../../../lib/cabinet/session';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { retryNotification } from '../../actions';
 import ActionError from '../../../../components/cabinet/ActionError';
+
+export const metadata: Metadata = { title: 'Очередь отправки' };
 
 export const dynamic = 'force-dynamic';
 

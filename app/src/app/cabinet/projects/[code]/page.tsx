@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { MONO } from '../../../../components/cabinet/tokens';
@@ -117,6 +118,8 @@ import {
   openAccessForClient,
   rateWorkAction,
 } from '../../actions';
+
+export const metadata: Metadata = { title: 'Работа' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -36,6 +37,8 @@ import { laneOrder } from '../../../../../lib/cabinet/recommendation-order';
 import { calendarFor } from '../../../../../lib/cabinet/recommendations';
 import { markRecommendationAction } from '../../../actions';
 import { requireActor } from '../../../../../lib/cabinet/session';
+
+export const metadata: Metadata = { title: 'Календарь продвижения' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -22,6 +23,8 @@ import { formatMoment } from '../../../../lib/cabinet/journals';
 import { homeFor } from '../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { EXPERT_STATUS_LABEL, type ExpertStatus } from '../../../../lib/expert-application';
+
+export const metadata: Metadata = { title: 'Анкеты кандидатов' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -19,6 +20,8 @@ import { laneOrder, limitedLane } from '../../../../lib/cabinet/recommendation-o
 import { calendarKey, recommendationsNow } from '../../../../lib/cabinet/recommendations';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { markRecommendationAction } from '../../actions';
+
+export const metadata: Metadata = { title: 'Рекомендации' };
 
 export const dynamic = 'force-dynamic';
 

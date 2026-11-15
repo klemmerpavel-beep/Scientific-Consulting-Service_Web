@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -60,6 +61,8 @@ import {
   saveProjectContract,
   uploadFinanceDocument,
 } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Оплаты и документы' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -31,6 +32,8 @@ import { TOOLS_HREF, homeFor } from '../../../../lib/cabinet/nav';
 import { curators, experts } from '../../../../lib/cabinet/queries';
 import { requireActor } from '../../../../lib/cabinet/session';
 import { assignmentStatusAction, createAssignmentAction } from '../../actions';
+
+export const metadata: Metadata = { title: 'Поручения' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
@@ -43,6 +44,8 @@ import {
   type FeedbackStatus,
 } from '../../../../lib/feedback';
 import { saveFeedbackReview } from '../../actions';
+
+export const metadata: Metadata = { title: 'Замечания' };
 
 export const dynamic = 'force-dynamic';
 

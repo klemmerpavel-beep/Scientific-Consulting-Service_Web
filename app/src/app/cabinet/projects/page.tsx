@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Fragment, type ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
@@ -52,8 +53,8 @@ import { daysPast, now } from '../../../lib/cabinet/clock';
 import { missedStages, workDuePassed } from '../../../lib/cabinet/missed';
 import { can, staffExpertLine } from '../../../lib/cabinet/access';
 import { checklistCounts } from '../../../lib/cabinet/checklist-marks';
-import { requireActor } from '../../../lib/cabinet/session';
-import { soleWorkTarget } from '../../../lib/cabinet/nav';
+import { currentActor, requireActor } from '../../../lib/cabinet/session';
+import { menuLabel, soleWorkTarget } from '../../../lib/cabinet/nav';
 import { welcomeState } from '../../../lib/cabinet/channels';
 import { dismissWelcome, requestNdaAction, startTelegramBind, transferWorks } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
@@ -64,6 +65,17 @@ import { myAssignments } from '../../../lib/cabinet/assignments';
 import { MONTH_NAMES } from '../../../lib/cabinet/analytics/calendar';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Заголовок документа — название пункта меню роли (решение Р-894): экран
+ * один, а называется он у ролей по-разному. Без сеанса — общее название:
+ * экран всё равно уведёт на вход.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const actor = await currentActor();
+  const label = actor === null ? null : menuLabel(actor, '/cabinet/projects');
+  return { title: label ?? 'Работы' };
+}
 
 const FILTERS: readonly ProjectFilter[] = ['active', 'waiting', 'done', 'all'];
 

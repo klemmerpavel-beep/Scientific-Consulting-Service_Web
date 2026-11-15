@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -20,6 +21,8 @@ import { workChecklist } from '../../../../../lib/cabinet/checklist-marks';
 import { SERVICE_PHASES } from '../../../../../lib/cabinet/service-checklists';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { saveWorkChecklist } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Чек-лист работы' };
 
 export const dynamic = 'force-dynamic';
 

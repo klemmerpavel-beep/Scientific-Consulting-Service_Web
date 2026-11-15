@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   RankChart,
   compactNumber } from '../../../../../components/cabinet/Charts'; import { Card,
@@ -10,6 +11,8 @@ import {
 import { cycles, overview } from '../../../../../lib/cabinet/analytics/metrics';
 import { ChartCard, Frame, Tile, Tiles, analyticsScreen, cell, cycleLabel, head, num, share } from '../shared';
 import { now as clockNow } from '../../../../../lib/cabinet/clock';
+
+export const metadata: Metadata = { title: 'Аналитика: сроки' };
 
 export const dynamic = 'force-dynamic';
 

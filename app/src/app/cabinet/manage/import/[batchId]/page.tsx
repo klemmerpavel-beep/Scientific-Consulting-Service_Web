@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -36,6 +37,8 @@ import { deadlineFixed, issueExplanation } from '../../../../../lib/cabinet/impo
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { applyOrderBook, mergeClientCards } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Загрузка книги заказов' };
 
 export const dynamic = 'force-dynamic';
 

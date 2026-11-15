@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
@@ -26,6 +27,8 @@ import { debtsByClient, formatAmount } from '../../../../../lib/cabinet/money';
 import { homeFor } from '../../../../../lib/cabinet/nav';
 import { requireActor } from '../../../../../lib/cabinet/session';
 import { moveTrancheDate, writeOffDebt } from '../../../actions';
+
+export const metadata: Metadata = { title: 'Должники' };
 
 export const dynamic = 'force-dynamic';
 
