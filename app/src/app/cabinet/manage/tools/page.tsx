@@ -294,9 +294,6 @@ export default async function ToolsScreen() {
           title={group.title}
           note={group.note}
           count={`${group.tools.length} ${plural(group.tools.length, 'раздел', 'раздела', 'разделов')}`}
-          // Ежедневная группа раскрыта сразу: «Все заявки», «Команда» и
-          // «Поручения» не прячутся за лишним нажатием (Н-5, Р-924).
-          open={group.key === 'work'}
         >
           <ul
             style={{
