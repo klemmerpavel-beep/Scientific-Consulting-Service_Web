@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  DEFAULT_HIDDEN,
   DEFAULT_LAYOUT,
   SUMMARY_BANDS,
   formNumber,
@@ -22,12 +23,23 @@ import {
 const KEYS = SUMMARY_PLATES.map((plate) => plate.key);
 
 describe('раскладка «Сводки»', () => {
-  it('по умолчанию — восемь плашек в порядке Р-576, всё видно', () => {
+  it('порядок плашек — по Р-576; по умолчанию видно пять блоков из десяти (Р-931)', () => {
     assert.deepEqual(KEYS, ['team', 'load', 'months', 'demand', 'deadlines', 'money', 'works', 'leads']);
     assert.deepEqual(SUMMARY_BANDS.map((band) => band.key), ['review', 'pulse']);
-    assert.deepEqual(visiblePlates(DEFAULT_LAYOUT), KEYS);
-    assert.equal(isShown(DEFAULT_LAYOUT, 'pulse'), true);
+    // Видны «Ближайшие сроки», «Деньги», «Заявки» и полоса «Разбор практики»;
+    // пятый блок — «Требует внимания», он не настраивается.
+    assert.deepEqual(visiblePlates(DEFAULT_LAYOUT), ['deadlines', 'money', 'leads']);
+    assert.equal(isShown(DEFAULT_LAYOUT, 'review'), true);
+    assert.equal(isShown(DEFAULT_LAYOUT, 'pulse'), false);
+    assert.deepEqual([...DEFAULT_HIDDEN].sort(), ['demand', 'load', 'months', 'pulse', 'team', 'works']);
     assert.equal(isDefaultLayout(DEFAULT_LAYOUT), true);
+  });
+
+  it('сохранённая раскладка «всё видно» остаётся как была: она хранит свой перечень скрытого (Р-931)', () => {
+    const saved = parseLayout({ order: KEYS, hidden: [] });
+    assert.deepEqual(visiblePlates(saved), KEYS);
+    assert.equal(isShown(saved, 'pulse'), true);
+    assert.equal(isDefaultLayout(saved), false);
   });
 
   it('пустое или чужое значение — раскладка по умолчанию', () => {
@@ -69,7 +81,7 @@ describe('раскладка «Сводки»', () => {
       { key: 'pulse', place: Number.NaN, shown: false },
       { key: 'review', place: Number.NaN, shown: true },
       { key: 'bogus', place: 1, shown: false },
-    ]);
+    ], { order: KEYS, hidden: [] });
     assert.deepEqual(layout.hidden, ['team', 'pulse']);
     assert.equal(isShown(layout, 'review'), true);
     // Место без числа — место по умолчанию.
@@ -95,7 +107,14 @@ describe('раскладка «Сводки»', () => {
   });
 
   it('раскладка по умолчанию не хранится; любое отличие — хранится', () => {
-    assert.equal(isDefaultLayout(layoutFromChoices(KEYS.map((key, index) => ({ key, place: index + 1, shown: true })))), true);
+    const byDefault = [...KEYS, 'review' as const, 'pulse' as const].map((key, index) => ({
+      key,
+      place: index + 1,
+      shown: !DEFAULT_HIDDEN.includes(key),
+    }));
+    assert.equal(isDefaultLayout(layoutFromChoices(byDefault)), true);
+    // «Показать всё» — уже не раскладка по умолчанию и хранится (Р-931).
+    assert.equal(isDefaultLayout(layoutFromChoices(KEYS.map((key, index) => ({ key, place: index + 1, shown: true })))), false);
     assert.equal(isDefaultLayout({ order: KEYS, hidden: ['pulse'] }), false);
     assert.equal(isDefaultLayout({ order: [...KEYS].reverse(), hidden: [] }), false);
   });

@@ -50,7 +50,18 @@ const LAYOUT_KEYS: readonly LayoutKey[] = [...PLATE_KEYS, ...SUMMARY_BANDS.map((
 const isPlate = (value: unknown): value is PlateKey => typeof value === 'string' && (PLATE_KEYS as readonly string[]).includes(value);
 const isKey = (value: unknown): value is LayoutKey => typeof value === 'string' && (LAYOUT_KEYS as readonly string[]).includes(value);
 
-export const DEFAULT_LAYOUT: SummaryLayout = { order: PLATE_KEYS, hidden: [] };
+/**
+ * Что скрыто, пока руководитель сам не настроил «Сводку» (аудит
+ * 15.11.2026, находка В-3; ответ владельца 15.11.2026; решение Р-931).
+ * Десять плашек давали экран в 4110 px на компьютере и 10 242 px на
+ * телефоне. По умолчанию остаются «Разбор практики», «Требует внимания»
+ * (она не настраивается), «Ближайшие сроки», «Деньги» и «Заявки»;
+ * остальное включается кнопкой «Настроить». Сохранённые раскладки хранят
+ * свой перечень скрытого и от этого не меняются.
+ */
+export const DEFAULT_HIDDEN: readonly LayoutKey[] = ['team', 'load', 'months', 'demand', 'works', 'pulse'];
+
+export const DEFAULT_LAYOUT: SummaryLayout = { order: PLATE_KEYS, hidden: DEFAULT_HIDDEN };
 
 /** Раскладка из сохранённого значения; всё непонятное — по умолчанию. */
 export function parseLayout(value: unknown): SummaryLayout {
@@ -59,13 +70,18 @@ export function parseLayout(value: unknown): SummaryLayout {
   const listed = Array.isArray(raw.order) ? raw.order.filter(isPlate) : [];
   const order = [...new Set(listed)];
   for (const key of PLATE_KEYS) if (!order.includes(key)) order.push(key);
-  const hidden = Array.isArray(raw.hidden) ? [...new Set(raw.hidden.filter(isKey))] : [];
+  // Перечня скрытого в значении нет — скрыто то же, что по умолчанию (Р-931).
+  const hidden = Array.isArray(raw.hidden) ? [...new Set(raw.hidden.filter(isKey))] : [...DEFAULT_HIDDEN];
   return { order, hidden };
 }
 
 /** Раскладка по умолчанию — её не хранят: в базе остаётся пусто. */
 export function isDefaultLayout(layout: SummaryLayout): boolean {
-  return layout.hidden.length === 0 && layout.order.every((key, index) => key === PLATE_KEYS[index]);
+  return (
+    layout.hidden.length === DEFAULT_HIDDEN.length &&
+    DEFAULT_HIDDEN.every((key) => layout.hidden.includes(key)) &&
+    layout.order.every((key, index) => key === PLATE_KEYS[index])
+  );
 }
 
 export interface LayoutChoice {
