@@ -269,6 +269,12 @@ export async function clientCandidates(actor: Actor, projectId: string, query: s
   const q = query.replace(/\s+/gu, ' ').trim();
   if (q.length < 2) return [];
   const digits = q.replace(/\D/gu, '');
+  // Карточка без единой работы — ничья: менеджеру она доступна для
+  // переноса (Р-873), но контакты в ней не его. Ответ кандидата скрывает
+  // почту и телефон маской, однако поиск по их части подтверждал каждую
+  // угаданную букву — перебором контакт восстанавливался целиком (аудит
+  // 15.11.2026, П-5; решение Р-922).
+  const ownOnly = actor.role === 'MANAGER' ? { projects: { some: { managerId: actor.id } } } : {};
   const rows = await prisma.clientProfile.findMany({
     where: {
       ...ALIVE,
@@ -276,9 +282,26 @@ export async function clientCandidates(actor: Actor, projectId: string, query: s
       id: { not: ref.clientId },
       OR: [
         { normalizedName: { contains: normalizeName(q) } },
-        { email: { contains: q, mode: 'insensitive' } },
-        { user: { email: { contains: q, mode: 'insensitive' } } },
-        ...(digits.length >= 5 ? [{ phone: { contains: digits.slice(-7) } }] : []),
+        // Почта целиком находит любую доступную карточку: её знают, а не
+        // подбирают. Телефон в карточке записан как набран, и «целиком»
+        // для него в запросе не выразить: карточку без работ находят по
+        // ФИО или почте.
+        { email: { equals: q, mode: 'insensitive' } },
+        { user: { email: { equals: q, mode: 'insensitive' } } },
+        // По части почты или телефона менеджер находит только клиентов
+        // своих работ (решение Р-922).
+        {
+          AND: [
+            ownOnly,
+            {
+              OR: [
+                { email: { contains: q, mode: 'insensitive' as const } },
+                { user: { email: { contains: q, mode: 'insensitive' as const } } },
+                ...(digits.length >= 5 ? [{ phone: { contains: digits.slice(-7) } }] : []),
+              ],
+            },
+          ],
+        },
       ],
     },
     orderBy: [{ fullName: 'asc' }, { createdAt: 'asc' }],
