@@ -1292,10 +1292,17 @@ export function Select({
 export function Notice({
   children,
   tone = 'ok',
-  role = 'status',
+  role,
 }: {
   children: ReactNode;
   tone?: 'ok' | 'error' | 'quiet';
+  /**
+   * Живая область — только у исхода действия (`Outcome`): постоянная
+   * плашка на экране событием не является, и объявлять её читалке при
+   * каждой перерисовке незачем. Прежде `status` стоял по умолчанию и
+   * достался примерно двадцати пяти постоянным плашкам (аудит 15.11.2026,
+   * Д-4; решение Р-920).
+   */
   role?: 'status' | 'alert';
 }) {
   const paint =
@@ -1314,7 +1321,9 @@ export function Notice({
           };
   return (
     <div
-      role={role}
+      // Зелёная и красная плашка — исход действия и живая область, как
+      // прежде; спокойная — только когда роль задана явно (Р-920).
+      role={role ?? (tone === 'quiet' ? undefined : 'status')}
       className={tone === 'quiet' ? undefined : 'cab-outcome'}
       style={{
         padding: '14px 16px',
@@ -2859,9 +2868,11 @@ export function Disclosure({
       </summary>
       <div
         className={tall ? 'cab-fold-body cab-fold-tall' : 'cab-fold-body'}
-        role="region"
-        aria-label={title}
-        tabIndex={0}
+        // Областью с остановкой Tab свёртка служит, только когда её тело
+        // прокручивается, — это «История работы» на панели (Р-197, Р-918).
+        // Прежде остановку несло тело каждой свёртки: 2–4 лишних нажатия
+        // Tab на экран (аудит 15.11.2026, Д-4; решение Р-920).
+        {...(tall ? { role: 'region', 'aria-label': title, tabIndex: 0 } : {})}
         style={{ padding: '4px 18px 18px' }}
       >
         {children}

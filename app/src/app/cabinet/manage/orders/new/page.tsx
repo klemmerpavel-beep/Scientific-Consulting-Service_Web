@@ -94,7 +94,7 @@ export default async function NewOrderScreen({
       ) : null}
       <Card>
         {fromBrief === null ? null : (
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             Поля заполнены из документа: проверьте их и нажмите «Завести заказ». Стоимость документ не несёт.
             {[...loaded!.brief.issues, ...fromBrief.notes].length === 0 ? null : (
               <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>

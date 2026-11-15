@@ -75,7 +75,7 @@ export default async function WorkChecklistScreen({
       ) : (
         <Card>
           {closed ? (
-            <Notice tone="quiet" role="status">
+            <Notice tone="quiet">
               Работа закрыта: отметки показаны как есть и не меняются.
             </Notice>
           ) : null}

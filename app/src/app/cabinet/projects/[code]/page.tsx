@@ -1316,7 +1316,7 @@ export default async function ProjectScreen({
                 <Mono>{myTasks.length > 0 ? 'Что от вас ждут' : 'Описание текущего этапа'}</Mono>
                 {returnNote === null ? null : (
                   <div style={{ marginTop: 8 }}>
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {returnNote.head}
                       {returnNote.body === null ? null : (
                         <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnNote.body}</span>
@@ -1583,7 +1583,7 @@ export default async function ProjectScreen({
                   {/* Назначен без договора поручения: работа молча вставала —
                       эксперт не видел материалов (требование М-16, Р-298). */}
                   {project.expert !== null && project.expert.expertProfile?.ndaSignedAt == null ? (
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {`${project.expert.fullName} назначен без договора поручения: материалов клиента он не увидит, пока руководитель не отметит договор. ${
                         actor.role === 'MANAGER'
                           ? 'Руководителю отправлен вопрос.'
@@ -1595,7 +1595,7 @@ export default async function ProjectScreen({
                       гаснет (Э-05, Р-325) — предупреждение до сохранения
                       (улучшение УЭ-07, решение Р-384). */}
                   {project.expertId === null || !project.stages.some((stage) => stage.handedOverAt !== null) ? null : (
-                    <Notice tone="quiet" role="status">
+                    <Notice tone="quiet">
                       {`Сдано куратором и ждёт вашей проверки: ${project.stages
                         .filter((stage) => stage.handedOverAt !== null)
                         .map((stage) => `«${stage.title}»`)

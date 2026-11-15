@@ -237,7 +237,7 @@ export default async function OrderEditScreen({
           <ActionError id={sp.error} slot="client" />
         </div>
         {blockers.length > 0 ? (
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {`К другому клиенту эта работа не переносится: перенос открыл бы новому клиенту то, что относится к прежнему — ${blockers.join('; ')}. Если это один человек с двумя карточками, руководитель сводит карточки в «Переносе книги заказов»; если работа заведена не на того клиента, заведите заказ заново на нужного.`}
           </Notice>
         ) : (

@@ -437,7 +437,7 @@ export default async function StageScreen({
               {curatorWork === null ? null : (
                 <Text style={{ marginBottom: 12, fontWeight: 600 }}>{curatorLine.text}</Text>
               )}
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {curatorWork === null ? curatorLine.text : handedLine}
                 {(stage.handoverNote ?? '').trim() === '' ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
@@ -484,7 +484,7 @@ export default async function StageScreen({
           </Text>
           {lastReturn === undefined ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Клиент вернул этап с замечаниями ${formatDay(lastReturn.createdAt)}`}
                 {returnText === null ? null : (
                   <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
@@ -494,7 +494,7 @@ export default async function StageScreen({
           )}
           {handover !== 'handed-back' || stage.handbackAt === null ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Менеджер вернул этап ${formatDay(stage.handbackAt)}`}
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>
                   {stage.handbackReason}
@@ -506,7 +506,7 @@ export default async function StageScreen({
               нейтральная пометка, как в истории работы (Р-414, Р-522). */}
           {blockedForCurator === null ? null : (
             <div style={{ marginBottom: 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {blockedForCurator}
               </Notice>
             </div>
@@ -592,13 +592,13 @@ export default async function StageScreen({
           )}
           {uploadedByClient === null ? null : (
             <div style={{ marginBottom: stage.blockedReason === null && lastReturn === undefined ? 0 : 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`${uploadedLine(stage.title, formatDay(uploadedByClient))}. ${UPLOADED_NEXT}`}
               </Notice>
             </div>
           )}
           {lastReturn === undefined ? null : (
-            <Notice tone="quiet" role="status">
+            <Notice tone="quiet">
               {`Возвращён с замечаниями ${formatDay(lastReturn.createdAt)}`}
               {returnText === null ? null : (
                 <span style={{ display: 'block', marginTop: 6, whiteSpace: 'pre-wrap' }}>{returnText}</span>
@@ -615,7 +615,7 @@ export default async function StageScreen({
           ) : null}
           {stage.blockedReason === null ? null : (
             <div style={{ marginTop: lastReturn === undefined ? 0 : 12 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {stage.blockedReason}
               </Notice>
             </div>
@@ -663,7 +663,7 @@ export default async function StageScreen({
 
       {nextUnpaid ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             Следующий этап не оплачен: его транш ещё не поступил. Перевести этап можно — подсказка только напоминает
             об оплате.
           </Notice>
@@ -672,7 +672,7 @@ export default async function StageScreen({
 
       {!live && can(actor, 'STAGE_SET_STATE', ref) ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {`Работа ${PROJECT_STATUS_LABEL[
               stage.project.status as ProjectStatusKey
             ].toLowerCase()}: этапы не меняются. Вернуть работу в действие можно на её экране, в разделе «Управление работой».`}
@@ -690,7 +690,7 @@ export default async function StageScreen({
           если срок был (решение Р-654). */}
       {!live && actor.role === 'CLIENT' && stage.project.status === 'PAUSED' ? (
         <Block as="div" style={{ marginBottom: 24 }}>
-          <Notice tone="quiet" role="status">
+          <Notice tone="quiet">
             {state !== 'IN_APPROVAL'
               ? 'Работа приостановлена — сейчас от вас ничего не требуется.'
               : stage.approvalDaysLeft === null
@@ -823,7 +823,7 @@ export default async function StageScreen({
               <Form action={reopenStageAction}>
                 <input type="hidden" name="stageId" value={stage.id} />
                 {paperwork.acts + paperwork.paid > 0 ? (
-                  <Notice tone="quiet" role="status">
+                  <Notice tone="quiet">
                     {`По работе актов — ${paperwork.acts}, оплачено траншей — ${paperwork.paid}: проверьте, не закрывают ли они этот этап.`}
                   </Notice>
                 ) : null}

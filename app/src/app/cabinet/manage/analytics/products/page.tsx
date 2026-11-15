@@ -50,7 +50,7 @@ export default async function AnalyticsProducts() {
 
           {scattered.length === 0 ? null : (
             <div style={{ marginBottom: 28 }}>
-              <Notice tone="quiet" role="status">
+              <Notice tone="quiet">
                 {`Разброс чека выше 40 % у позиций: ${scattered.map((product) => product.typeName).join(', ')}. Проверьте, объясняется ли он темой и сложностью работ. Медиана и диапазон в таблице — ${PRICE_GUIDE}.`}
               </Notice>
             </div>
