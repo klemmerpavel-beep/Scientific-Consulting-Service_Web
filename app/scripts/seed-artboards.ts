@@ -119,10 +119,17 @@ async function main() {
   }
 
   // ── Люди ────────────────────────────────────────────────────────────────
+  // Руководитель снимков включил на «Сводке» все десять блоков: по
+  // умолчанию их пять (решение Р-931), а снимки и обходы должны по-прежнему
+  // видеть каждый блок — графики, счётчики колонок, переполнения.
+  const fullSummary = {
+    order: ['team', 'load', 'months', 'demand', 'deadlines', 'money', 'works', 'leads'],
+    hidden: [],
+  };
   const head = await prisma.user.upsert({
     where: { email: `head@${DOMAIN}` },
-    create: { email: `head@${DOMAIN}`, fullName: 'Соколов Павел Андреевич', role: 'HEAD' },
-    update: {},
+    create: { email: `head@${DOMAIN}`, fullName: 'Соколов Павел Андреевич', role: 'HEAD', summaryLayout: fullSummary },
+    update: { summaryLayout: fullSummary },
   });
   const manager = await prisma.user.upsert({
     where: { email: `manager@${DOMAIN}` },
