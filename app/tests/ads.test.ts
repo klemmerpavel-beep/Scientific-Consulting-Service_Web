@@ -287,19 +287,29 @@ describe('воронка заявок с посадочных', () => {
   });
 });
 
-describe('«Реклама» в меню руководителя', () => {
+describe('«Реклама» — раздел «Управления» руководителя (Р-913)', () => {
   const head: Actor = { id: 'head-ads', role: 'HEAD', status: 'ACTIVE', clientProfileId: null, expertNdaSignedAt: null };
   const manager: Actor = { ...head, id: 'manager-ads', role: 'MANAGER' };
 
-  it('пункт стоит за «Аналитикой» и перед «Управлением»', () => {
-    const labels = navFor(head).map((item) => item.label);
-    assert.ok(labels.indexOf('Реклама') === labels.indexOf('Аналитика') + 1, labels.join(', '));
-    assert.ok(labels.indexOf('Реклама') < labels.indexOf('Управление'));
+  // Прежде «Реклама» стояла пунктом меню за «Аналитикой» (Р-550). Меню
+  // руководителя сокращено до семи пунктов; раздел — плиткой «Управления».
+  it('отдельного пункта в меню нет', () => {
+    assert.equal(navFor(head).some((item) => item.href === ADS_HREF), false);
   });
 
-  it('документ раздела подсвечивает «Рекламу», а не «Управление»', () => {
-    assert.equal(activeItem(navFor(head), `${ADS_HREF}/doc/plan`), ADS_HREF);
-    assert.equal(activeItem(navFor(head), ADS_HREF), ADS_HREF);
+  it('раздел и его документы подсвечивают «Управление»', () => {
+    assert.equal(activeItem(navFor(head), `${ADS_HREF}/doc/plan`), '/cabinet/manage/tools');
+    assert.equal(activeItem(navFor(head), ADS_HREF), '/cabinet/manage/tools');
+  });
+
+  it('плитка «Реклама» стоит на «Управлении» и открыта по праву аналитики', () => {
+    const tools = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage', 'tools', 'page.tsx'), 'utf8');
+    assert.match(tools, /href: '\/cabinet\/manage\/ads',\s*title: 'Реклама',[\s\S]*?action: 'ANALYTICS_VIEW',/u);
+  });
+
+  it('с экрана раздела есть возврат в «Управление»', () => {
+    const screen = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'manage', 'ads', 'page.tsx'), 'utf8');
+    assert.match(screen, /backHref="\/cabinet\/manage\/tools"\s*backLabel="Управление"\s*title="Реклама"/u);
   });
 
   it('менеджеру раздела нет', () => {

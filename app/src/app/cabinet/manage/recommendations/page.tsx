@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../components/cabinet/ActionError';
+import AnalyticsTabs from '../../../../components/cabinet/AnalyticsTabs';
 import CardSlider from '../../../../components/cabinet/CardSlider';
 import RecommendationMarks, {
   CalendarRecommendationCard,
@@ -85,6 +86,9 @@ export default async function RecommendationsScreen({ searchParams }: { searchPa
         title="Рекомендации"
         note={`Описательные правила по истории практики, не прогноз. Ждут решения: ${unmarked}. Принятое, отклонённое, отложенное и сделанное в это число не входит.`}
       />
+      {/* Раздел — вкладка «Аналитики»: полоса та же, что на её экранах
+          (решение Р-913). */}
+      <AnalyticsTabs current={RECOMMENDATIONS_HREF} />
       <ActionError id={flags.error} />
 
       {/* Три блока — три отдельные плашки; рекомендации блока — карточками

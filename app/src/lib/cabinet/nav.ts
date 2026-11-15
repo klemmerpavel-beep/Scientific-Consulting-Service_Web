@@ -17,6 +17,9 @@ export interface NavItem {
 /** Начальный экран штатных ролей — «Сводка» руководителя, «Сегодня» менеджера. */
 export const SUMMARY_HREF = '/cabinet/manage';
 
+/** «Аналитика» руководителя; «Рекомендации» — её вкладка (решение Р-913). */
+export const ANALYTICS_HREF = '/cabinet/manage/analytics';
+
 /** Раздел «Рекомендации» руководителя (требование РК-17, решение Р-350). */
 export const RECOMMENDATIONS_HREF = '/cabinet/manage/recommendations';
 
@@ -94,13 +97,13 @@ export function navFor(actor: Actor): NavItem[] {
     { href: ORDERS_HREF, label: 'Заказы' },
   ];
   staff.push({ href: '/cabinet/manage/finance', label: 'Деньги' });
-  // «Рекомендации» — между «Деньгами» и «Аналитикой», с числом
-  // неотмеченных (требование РК-17, решение Р-350).
-  staff.push({ href: RECOMMENDATIONS_HREF, label: 'Рекомендации' });
-  staff.push({ href: '/cabinet/manage/analytics', label: 'Аналитика' });
-  // «Реклама» — за «Аналитикой»: стратегия продвижения, предложения,
-  // подключения по MCP и показатели кампаний (решение Р-550).
-  staff.push({ href: ADS_HREF, label: 'Реклама' });
+  // Семь пунктов, а не девять (аудит 15.11.2026, Н-2; решение Р-913):
+  // девять не помещались в строку — на 1440 px роль и «Выйти» уходили на
+  // вторую строку, на 390 px меню занимало три. «Рекомендации» (Р-350) —
+  // вкладка «Аналитики»: это её выводы, по которым принимают решение.
+  // «Реклама» (Р-550) — плитка «Управления»: раздел открывают раз в
+  // неделю. Экраны и адреса прежние.
+  staff.push({ href: ANALYTICS_HREF, label: 'Аналитика' });
   // Служебный контур — реестры, учётные записи, справочники, перенос книги,
   // журналы, очередь уведомлений, удаление данных — собран за одним пунктом
   // (решение Р-158). В первый ряд эти разделы не выносятся по Р-140: они
@@ -157,6 +160,8 @@ export function activeItem(items: readonly NavItem[], current: string): string |
     const hit =
       current === item.href ||
       current.startsWith(`${item.href}/`) ||
+      // «Рекомендации» — вкладка «Аналитики» (Р-913): адрес у них свой.
+      (item.href === ANALYTICS_HREF && current.startsWith(RECOMMENDATIONS_HREF)) ||
       // Служебный контур собран за одним пунктом: все его экраны лежат
       // внутри `/cabinet/manage/`, но пунктами меню не являются.
       (item.href === tools &&
@@ -164,8 +169,7 @@ export function activeItem(items: readonly NavItem[], current: string): string |
         !current.startsWith('/cabinet/manage/finance') &&
         !current.startsWith(ORDERS_HREF) &&
         !current.startsWith(RECOMMENDATIONS_HREF) &&
-        !current.startsWith('/cabinet/manage/analytics') &&
-        !current.startsWith(ADS_HREF));
+        !current.startsWith(ANALYTICS_HREF));
     if (hit && (best === null || item.href.length > best.length)) best = item.href;
   }
   return best;

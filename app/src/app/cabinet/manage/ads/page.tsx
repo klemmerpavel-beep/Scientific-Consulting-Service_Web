@@ -122,6 +122,8 @@ export default async function AdsScreen({ searchParams }: { searchParams: Promis
   );
   const head = (
     <ScreenHead
+      backHref="/cabinet/manage/tools"
+      backLabel="Управление"
       title="Реклама"
       note={
         registry.test.from !== null && registry.test.to !== null
