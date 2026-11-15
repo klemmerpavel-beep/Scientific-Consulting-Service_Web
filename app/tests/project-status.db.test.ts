@@ -152,6 +152,24 @@ describe('состояние работы', { skip: !enabled }, async () => {
     }
   });
 
+  it('Ф-11: работа обезличенного клиента в действие не возвращается (Р-932)', async () => {
+    const { REOPEN_ERASED } = await import('../src/lib/cabinet/projects.ts');
+    const before = await prisma.project.findUniqueOrThrow({ where: { id: ids.project }, select: { status: true } });
+    if (before.status === 'ACTIVE') await setProjectStatus(curator(), ids.project!, 'COMPLETED');
+    await prisma.clientProfile.update({ where: { id: ids.client }, data: { erasedAt: new Date() } });
+    try {
+      await assert.rejects(() => setProjectStatus(curator(), ids.project!, 'ACTIVE'), new RegExp(REOPEN_ERASED, 'u'));
+      const still = await prisma.project.findUniqueOrThrow({ where: { id: ids.project }, select: { status: true } });
+      assert.equal(still.status, 'COMPLETED');
+    } finally {
+      await prisma.clientProfile.update({ where: { id: ids.client }, data: { erasedAt: null } });
+    }
+    // Менеджер этой работы приостановлен (см. `before`), клиент цел — возврат проходит, как прежде.
+    await setProjectStatus(curator(), ids.project!, 'ACTIVE');
+    const back = await prisma.project.findUniqueOrThrow({ where: { id: ids.project }, select: { status: true } });
+    assert.equal(back.status, 'ACTIVE');
+  });
+
   it('неизвестное состояние не принимается', async () => {
     await assert.rejects(
       () => setProjectStatus(curator(), ids.project!, 'ARCHIVED' as never),
