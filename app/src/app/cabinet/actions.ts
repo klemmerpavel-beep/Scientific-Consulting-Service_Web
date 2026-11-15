@@ -790,6 +790,8 @@ export async function saveOrder(form: FormData): Promise<void> {
   try {
     const days = String(form.get('approvalDays') ?? '').trim();
     const total = String(form.get('contractTotal') ?? '').trim();
+    // Сумма, показанная формой при открытии: пусто — договора не было (Р-906).
+    const seen = form.get('contractTotalSeen');
     await editOrder(actor, {
       projectId: String(form.get('projectId') ?? ''),
       updatedAt: String(form.get('updatedAt') ?? '') || null,
@@ -802,6 +804,7 @@ export async function saveOrder(form: FormData): Promise<void> {
       ...(days === '' ? {} : { approvalDays: Number(days) }),
       // Пустое поле суммы не снимает договор: сумма просто не меняется.
       contractTotal: total === '' ? null : parseAmount(total),
+      ...(typeof seen === 'string' ? { contractTotalSeen: seen.trim() === '' ? null : parseAmount(seen) } : {}),
     });
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить заказ: попробуйте ещё раз. Введённое сохранено в форме.');
@@ -810,7 +813,7 @@ export async function saveOrder(form: FormData): Promise<void> {
     redirect(
       await withError(back, failure, {
         slot: 'order',
-        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal']),
+        draft: fieldsOf(form, ['title', 'topic', 'summary', 'serviceTypeId', 'dueOn', 'dueReason', 'approvalDays', 'contractTotal', 'contractTotalSeen']),
         anchor: 'card',
       }),
     );

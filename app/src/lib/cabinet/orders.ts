@@ -44,7 +44,17 @@ export interface OrderEditInput {
   readonly approvalDays?: number;
   /** Сумма договора в копейках; `null` — поле пустое, сумма не меняется. */
   readonly contractTotal?: bigint | null;
+  /**
+   * Сумма договора, которую показала форма при открытии; `null` — договора
+   * не было. Передана — сумма меняется, только если поле правили и в базе
+   * стоит показанная сумма (решение Р-906). Не передана — прежнее правило.
+   */
+  readonly contractTotalSeen?: bigint | null;
 }
+
+/** Отказ правки суммы по устаревшей форме (Р-906). */
+export const TOTAL_CHANGED_ELSEWHERE =
+  'Сумму договора уже изменили на «Оплатах и документах» или в другой вкладке: обновите страницу и повторите';
 
 export { ORDER_FIELD_LABEL };
 
@@ -152,7 +162,19 @@ export async function editOrder(actor: Actor, input: OrderEditInput): Promise<{ 
     }
     if (shifted && !quiet) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, input.dueOn, why);
     if (input.contractTotal !== undefined && input.contractTotal !== null) {
-      if (await setOrderTotal(tx, actor, ref, before.code, input.contractTotal)) changed.push('contract');
+      // Сверка карточки идёт по `Project.updatedAt`, а договор живёт своей
+      // строкой: сохранённый рядом на «Оплатах» он карточку не трогал, и
+      // форма заказа молча возвращала прежнюю сумму (аудит 15.11.2026,
+      // находка Ф-2, решение Р-906). Сумма меняется, только если поле
+      // правили, и только поверх той суммы, что видел человек.
+      const seen = input.contractTotalSeen;
+      if (seen === undefined) {
+        if (await setOrderTotal(tx, actor, ref, before.code, input.contractTotal)) changed.push('contract');
+      } else if (input.contractTotal !== seen) {
+        const current = await tx.contract.findUnique({ where: { projectId: input.projectId }, select: { totalAmount: true } });
+        if ((current?.totalAmount ?? null) !== seen) throw new Error(TOTAL_CHANGED_ELSEWHERE);
+        if (await setOrderTotal(tx, actor, ref, before.code, input.contractTotal)) changed.push('contract');
+      }
     }
     const cardChanged = changed.filter((field) => field !== 'contract');
     if (cardChanged.length > 0) {

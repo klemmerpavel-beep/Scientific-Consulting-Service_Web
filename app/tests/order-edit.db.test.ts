@@ -154,6 +154,34 @@ describe('правка заказа', { skip: !enabled }, async () => {
     assert.equal(await prisma.headCheck.count({ where: { projectId: work.id, kind: 'CONTRACT_BY_MANAGER', closedAt: null } }), 1);
   });
 
+  it('сумма договора, изменённая рядом, формой заказа не затирается (Р-906)', async () => {
+    const work = await newWork('TS');
+    await editOrder(head(), { ...(await base(work.id)), contractTotal: 10_000_000n, contractTotalSeen: null });
+    const total = async () => (await prisma.contract.findUniqueOrThrow({ where: { projectId: work.id } })).totalAmount;
+    assert.equal(await total(), 10_000_000n);
+
+    // Первый открыл форму при 100 000; второй на «Оплатах» поднял договор до 120 000.
+    const opened = await base(work.id);
+    await prisma.contract.update({ where: { projectId: work.id }, data: { totalAmount: 12_000_000n } });
+
+    // Первый правит только название: поле суммы не тронуто — сумма остаётся 120 000.
+    await editOrder(manager(), { ...opened, title: 'Название поправлено', contractTotal: 10_000_000n, contractTotalSeen: 10_000_000n });
+    assert.equal(await total(), 12_000_000n, 'форма заказа вернула прежнюю сумму');
+    assert.equal((await prisma.project.findUniqueOrThrow({ where: { id: work.id } })).title, 'Название поправлено');
+
+    // Первый правит и сумму по устаревшей форме — отказ, ничего не сохранено.
+    await assert.rejects(
+      editOrder(manager(), { ...(await base(work.id)), title: 'Не должно сохраниться', contractTotal: 11_000_000n, contractTotalSeen: 10_000_000n }),
+      /Сумму договора уже изменили/u,
+    );
+    assert.equal(await total(), 12_000_000n);
+    assert.equal((await prisma.project.findUniqueOrThrow({ where: { id: work.id } })).title, 'Название поправлено');
+
+    // Со свежей формы сумма меняется.
+    await editOrder(manager(), { ...(await base(work.id)), contractTotal: 13_000_000n, contractTotalSeen: 12_000_000n });
+    assert.equal(await total(), 13_000_000n);
+  });
+
   it('работа из книги: срок меняется без причины и без письма', async () => {
     const work = await newWork('B', { source: 'IMPORT', dueOn: at('2026-12-01') });
     await editOrder(manager(), { ...(await base(work.id)), dueOn: at('2027-01-20') });

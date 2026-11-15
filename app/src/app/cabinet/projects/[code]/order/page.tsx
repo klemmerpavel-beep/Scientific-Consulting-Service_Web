@@ -169,6 +169,14 @@ export default async function OrderEditScreen({
           </div>
           {mayMoney ? (
             <div id="money" style={{ scrollMarginTop: 24 }}>
+              {/* Сумма, показанная при открытии: служба меняет договор только
+                  поверх неё (решение Р-906). После отказа остаётся прежней —
+                  из черновика: повтор без обновления страницы не пройдёт. */}
+              <input
+                type="hidden"
+                name="contractTotalSeen"
+                value={draft.contractTotalSeen ?? (contract === null ? '' : formatAmount(contract.totalAmount))}
+              />
               <Field
                 label="Сумма договора, ₽"
                 name="contractTotal"
