@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import FormKey from '../../../../../components/cabinet/FormKey';
 import Shell from '../../../../../components/cabinet/Shell';
 import {
   Button,
@@ -106,6 +107,7 @@ export default async function NewOrderScreen({
           </Notice>
         )}
         <Form action={createOrder}>
+          <FormKey />
           {/* Документ уходит в материалы созданной работы (Р-560). */}
           {loaded === null ? null : <input type="hidden" name="brief" value={briefRef} />}
           <FormRow>

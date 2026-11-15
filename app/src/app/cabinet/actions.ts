@@ -19,6 +19,8 @@ import { withError } from '../../lib/cabinet/flash';
 import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
 import { OUTCOME_ANCHOR, trancheDoneCode, type DoneCode } from '../../lib/cabinet/outcome-lines';
+import { FORM_KEY_FIELD } from '../../lib/cabinet/form-key';
+import { once } from '../../lib/cabinet/form-once';
 import { createManualOrder, OrderInputError } from '../../lib/cabinet/manual-order';
 import { editOrder, moveOrderToClient } from '../../lib/cabinet/orders';
 import { ClientChoiceNeeded, orderRetryDraft } from '../../lib/cabinet/client-match';
@@ -1187,7 +1189,8 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
       if (attachment === null) briefLost = 1;
       else files.unshift(attachment);
     }
-    ({ filesLost, number } = await createCabinetRequest(
+    ({ filesLost, number } = await once(actor.id, form.get(FORM_KEY_FIELD), async () =>
+      createCabinetRequest(
       actor,
       {
         topic: String(form.get('topic') ?? '').trim(),
@@ -1205,6 +1208,7 @@ export async function submitCabinetRequest(form: FormData): Promise<void> {
         terms: form.get('terms') === 'on',
       },
       CONSENT_VERSION,
+    ),
     ));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить заявку');
@@ -1577,7 +1581,8 @@ export async function createOrder(form: FormData): Promise<void> {
   try {
     const amountOf = (name: string): bigint | null => (text(name).length === 0 ? null : parseAmount(text(name)));
     const status = text('status');
-    const created = await createManualOrder(actor, {
+    const created = await once(actor.id, form.get(FORM_KEY_FIELD), () =>
+      createManualOrder(actor, {
       customer: text('customer'),
       email: text('email') || null,
       phone: text('phone') || null,
@@ -1594,7 +1599,8 @@ export async function createOrder(form: FormData): Promise<void> {
       status: status === 'PAUSED' || status === 'COMPLETED' ? status : 'ACTIVE',
       managerId: text('managerId') || null,
       clientChoice: text('clientChoice') || null,
-    });
+    }),
+    );
     code = created.code;
     projectId = created.projectId;
   } catch (error) {
@@ -1717,12 +1723,14 @@ export async function recordReceiptAction(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
-    await recordReceipt(actor, {
+    await once(actor.id, form.get(FORM_KEY_FIELD), () =>
+      recordReceipt(actor, {
       projectId: String(form.get('projectId') ?? ''),
       amount: parseAmount(String(form.get('amount') ?? '')),
       paidOn: dateOrNull(form.get('paidOn')),
       note: String(form.get('note') ?? ''),
-    });
+    }),
+    );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось записать поступление. Введённое сохранено в форме.');
   }
@@ -1848,12 +1856,14 @@ export async function accruePayout(form: FormData): Promise<void> {
   const back = `/cabinet/projects/${code}/payments`;
   let failure: string | null = null;
   try {
-    await addPayout(actor, {
+    await once(actor.id, form.get(FORM_KEY_FIELD), () =>
+      addPayout(actor, {
       projectId: String(form.get('projectId') ?? ''),
       stageId: String(form.get('stageId') ?? '') || null,
       amount: parseAmount(String(form.get('amount') ?? '')),
       comment: String(form.get('comment') ?? '') || null,
-    });
+    }),
+    );
   } catch (error) {
     failure = reasonOf(error, 'Не удалось начислить');
   }
