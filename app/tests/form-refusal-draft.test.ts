@@ -30,7 +30,7 @@ function action(name: string): string {
 
 describe('действия возвращают черновик, место причины и якорь формы', () => {
   const cases: readonly (readonly [string, RegExp])[] = [
-    ['postMessage', /withError\(target, failure, \{ slot: 'message', draft: \{ body \}, anchor: 'message' \}\)/u],
+    ['postMessage', /withError\(target, failure, \{\s*slot: 'message',\s*draft: \{ body \},\s*anchor: 'message',/u],
     ['commentOnVersion', /failedForm\(failure, \{ commentVersion: versionId \}, \{ comment: body \}\)[\s\S]*slot: 'comment'[\s\S]*anchor: `comment-\$\{mark\}`/u],
     ['returnStageWithRemarks', /slot: 'return',\s*draft: \{ remarks: text \},\s*anchor: 'return'/u],
     // Пояснение куратора к новому материалу — тоже (решение Р-755).

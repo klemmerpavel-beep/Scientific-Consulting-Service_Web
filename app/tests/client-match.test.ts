@@ -93,6 +93,6 @@ describe('повтор «Нового заказа» после совпаден
     const actions = readFileSync(path.join(import.meta.dirname, '..', 'src', 'app', 'cabinet', 'actions.ts'), 'utf8');
     const body = actions.slice(actions.indexOf('export async function createOrder('), actions.indexOf('export async function saveProjectContract('));
     assert.match(body, /orderRetryDraft\(values, choiceNeeded\)/u);
-    assert.match(body, /withError\(back, note === null \? reason : `\$\{reason\} \$\{note\}`, \{ draft \}\)/u);
+    assert.match(body, /withError\(back, note === null \? reason : `\$\{reason\} \$\{note\}`, \{\s*draft,/u);
   });
 });

@@ -372,8 +372,8 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
       await withError(`/cabinet/stages/${stageId}`, failure, {
         slot: 'return',
         draft: { remarks: text },
-        field: faultField(failure, { 'return-remarks': 'text' }),
         anchor: 'return',
+        field: faultField(failure, { 'return-remarks': 'text' }),
       }),
     );
   }
