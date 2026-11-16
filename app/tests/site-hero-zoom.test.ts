@@ -42,3 +42,30 @@ describe('портреты первого экрана увеличиваютс�
     assert.ok(Number.isNaN(zoomScale('.pd-zoom:hover{transform:scale(1.28)}')));
   });
 });
+
+/**
+ * Р-951: то же увеличение на «Аспирантам», «Студентам» и «Компаниям» —
+ * замечание владельца говорит «на всех страницах, где есть такие картинки с
+ * ролями людей». Тень у портретов этих страниц своя, встроенная; правило
+ * меняет только масштаб.
+ */
+describe('портреты первого экрана профильных страниц увеличиваются при наведении (Р-951)', () => {
+  const PAGES = [['MainPage', 'PostgradPage', ['mp-photo-1', 'mp-photo-2']], ['StudentsPage', 'StudentsPage', ['sp-stud-1', 'sp-stud-2']], ['BusinessPage', 'BusinessPage', ['bp-photo-1', 'bp-photo-2']]] as const;
+
+  for (const [page, component, slots] of PAGES) {
+    it(`${page}: оба портрета несут класс pd-zoom, масштаб 25—30 %`, () => {
+      const design = read('design', `${page}.dc.html`);
+      for (const slot of slots) {
+        const at = design.indexOf(`<image-slot id="${slot}"`);
+        assert.ok(at > 0, `нет слота ${slot}`);
+        const wrapper = design.slice(design.lastIndexOf('<span', at), at);
+        assert.match(wrapper, /^<span class="(?:[\w-]+ )?pd-zoom" style="[^"]*border-radius:50%/u, `портрет ${slot} без увеличения`);
+      }
+      const scale = zoomScale(design);
+      assert.ok(scale >= 1.25 && scale <= 1.3, `масштаб ${scale} вне 1,25—1,30`);
+      assert.match(design, /\.pd-zoom\{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier\(\.2,0,\.2,1\)\}/u);
+      assert.match(design, /@media \(prefers-reduced-motion:reduce\)\{\.pd-zoom:hover\{transform:none!important\}\}/u);
+      assert.ok(read('app', 'src', 'components', 'pages', `${component}.tsx`).includes('.pd-zoom:hover{transform:scale(1.28)'), 'правило не перенесено в компонент');
+    });
+  }
+});

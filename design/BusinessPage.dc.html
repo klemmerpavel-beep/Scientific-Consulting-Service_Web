@@ -235,6 +235,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
 /* Форма первого экрана до 480 px — в один столбец (Р-942): «ФИО» и почта в двух колонках по 154—180 px не вмещали адрес. Состав и порядок полей прежние. */
 @media (max-width:480px){.bp-topform{grid-template-columns:minmax(0,1fr)!important}.bp-topform>*{grid-column:auto!important}}
+/* Р-951: портреты ролей первого экрана под курсором крупнее на 28 %, как на посадочной (Р-947; замечание владельца 08.11.2026). Рост — от нижней точки круга, подпись роли остаётся открытой; на сенсорных экранах и при уменьшенном движении портрет стоит на месте. */
+.pd-zoom{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+@media (hover:hover){.pd-zoom:hover{transform:scale(1.28);z-index:2}}
+@media (prefers-reduced-motion:reduce){.pd-zoom:hover{transform:none!important}}
 </style>
 </helmet>
 <div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -393,13 +397,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0;display:flex;flex-direction:column;gap:24px">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-top:8px">
 <div style="display:flex;flex-direction:column;gap:2px;max-width:178px;margin-top:-10px;align-items:center;text-align:center">
-<span style="width:178px;height:178px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
+<span class="pd-zoom" style="width:178px;height:178px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
 <image-slot id="bp-photo-1" shape="circle" data-alt="Куратор — отраслевой эксперт со степенью" placeholder="Фото: куратор" style="width:178px;height:178px"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор — отраслевой эксперт со&nbsp;степенью</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:2px;max-width:122px;padding-top:96px;align-items:center;text-align:center">
-<span style="width:122px;height:122px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
+<span class="pd-zoom" style="width:122px;height:122px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
 <image-slot id="bp-photo-2" shape="circle" data-alt="Менеджер проекта ведёт приёмку этапов" placeholder="Фото: менеджер" style="width:122px;height:122px"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Менеджер проекта</span>

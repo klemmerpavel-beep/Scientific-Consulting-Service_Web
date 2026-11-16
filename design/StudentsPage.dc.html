@@ -193,6 +193,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
+/* Р-951: портреты ролей первого экрана под курсором крупнее на 28 %, как на посадочной (Р-947; замечание владельца 08.11.2026). Рост — от нижней точки круга, подпись роли остаётся открытой; на сенсорных экранах и при уменьшенном движении портрет стоит на месте. */
+.pd-zoom{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+@media (hover:hover){.pd-zoom:hover{transform:scale(1.28);z-index:2}}
+@media (prefers-reduced-motion:reduce){.pd-zoom:hover{transform:none!important}}
 </style>
 </helmet>
 <div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -328,13 +332,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Кто сопровождает работу</span>
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
 <div class="sp-facea" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(152px,16.4vw,224px);align-items:center;text-align:center">
-<span class="sp-facea-c" style="width:clamp(152px,16.4vw,224px);height:clamp(152px,16.4vw,224px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="sp-facea-c pd-zoom" style="width:clamp(152px,16.4vw,224px);height:clamp(152px,16.4vw,224px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="sp-stud-1" shape="circle" data-alt="Куратор проекта — кандидат наук" placeholder="Фото: куратор" style="width:100%;height:100%"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Куратор со степенью<br><span style="color:var(--pd-ink-muted)">по вашей специальности</span></span>
 </div>
 <div class="sp-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(112px,11.9vw,162px);padding-top:clamp(52px,10.8vw,152px);align-items:center;text-align:center">
-<span class="sp-faceb-c" style="width:clamp(112px,11.9vw,162px);height:clamp(112px,11.9vw,162px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="sp-faceb-c pd-zoom" style="width:clamp(112px,11.9vw,162px);height:clamp(112px,11.9vw,162px);border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="sp-stud-2" shape="circle" data-alt="Менеджер проекта" placeholder="Фото: менеджер" style="width:100%;height:100%"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Менеджер<br><span style="color:var(--pd-ink-muted)">сроки, документы, оплаты</span></span>
