@@ -452,6 +452,7 @@ const DISK_SCOPE_LABEL: Readonly<Record<string, string>> = {
 const THREAD_LABEL: Readonly<Record<string, string>> = {
   WORK_INTERNAL: eventLabel('INTERNAL_MESSAGE'),
   HEAD_STAFF: 'переписка с руководителем практики',
+  WORK_CURATOR: eventLabel('CURATOR_MESSAGE'),
 };
 
 /** Поля регалий и профиля куратора — подписями формы «Учётные записи». */

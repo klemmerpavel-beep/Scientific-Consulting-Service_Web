@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import ActionError from '../../../../../components/cabinet/ActionError';
+import FormKey from '../../../../../components/cabinet/FormKey';
 import DropFlag from '../../../../../components/cabinet/DropFlag';
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine } from '../../../../../lib/cabinet/outcome-lines';
 import Shell from '../../../../../components/cabinet/Shell';
@@ -823,6 +824,7 @@ export default async function PaymentsScreen({
                   <Form
                     action={accruePayout}
                   >
+                    <FormKey />
                     <input type="hidden" name="projectId" value={project.id} />
                     <input type="hidden" name="code" value={project.code} />
                     <FormRow>

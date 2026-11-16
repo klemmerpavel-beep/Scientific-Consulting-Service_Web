@@ -147,37 +147,47 @@ export async function saveContract(actor: Actor, input: ContractInput) {
   });
   if (taken !== null) throw new Error(`Договор с номером «${number}» уже заведён по другой работе`);
 
-  const contract = await prisma.contract.upsert({
-    where: { projectId: input.projectId },
-    create: {
-      projectId: input.projectId,
-      number,
-      signedOn: input.signedOn ?? null,
-      totalAmount: input.totalAmount,
-    },
-    update: { number, signedOn: input.signedOn ?? null, totalAmount: input.totalAmount },
-  });
-  // Плановый остаток — за новой суммой договора (Р-871); договор,
-  // заведённый или изменённый менеджером, руководитель проверяет (Р-872).
-  if (before !== null && before.totalAmount !== input.totalAmount) await settleRest(prisma, contract.id);
-  if (before === null || before.totalAmount !== input.totalAmount) await noteManagerContract(prisma, actor, input.projectId);
+  // Договор, пересчёт остатка, отметка руководителю и строка журнала —
+  // одной транзакцией: сбой между ними прежде оставлял новую сумму без
+  // записи, кто и с какой её изменил (аудит 15.11.2026, Ф-15; Р-937).
+  const contract = await prisma.$transaction(async (tx) => {
+    const saved = await tx.contract.upsert({
+      where: { projectId: input.projectId },
+      create: {
+        projectId: input.projectId,
+        number,
+        signedOn: input.signedOn ?? null,
+        totalAmount: input.totalAmount,
+      },
+      update: { number, signedOn: input.signedOn ?? null, totalAmount: input.totalAmount },
+    });
+    // Плановый остаток — за новой суммой договора (Р-871); договор,
+    // заведённый или изменённый менеджером, руководитель проверяет (Р-872).
+    if (before !== null && before.totalAmount !== input.totalAmount) await settleRest(tx, saved.id);
+    if (before === null || before.totalAmount !== input.totalAmount) await noteManagerContract(tx, actor, input.projectId);
 
-  // Правка договора — прежние номер и сумма рядом с новыми: иначе по
-  // журналу не восстановить, с чего начиналось (решение Р-244).
-  await record(actor, {
-    action: 'CONTRACT_SAVED',
-    objectType: 'Contract',
-    objectId: contract.id,
-    projectId: input.projectId,
-    payload:
-      before === null
-        ? { number, total: money(input.totalAmount) }
-        : {
-            number,
-            total: money(input.totalAmount),
-            numberFrom: before.number,
-            totalFrom: money(before.totalAmount),
-          },
+    // Правка договора — прежние номер и сумма рядом с новыми: иначе по
+    // журналу не восстановить, с чего начиналось (решение Р-244).
+    await record(
+      actor,
+      {
+        action: 'CONTRACT_SAVED',
+        objectType: 'Contract',
+        objectId: saved.id,
+        projectId: input.projectId,
+        payload:
+          before === null
+            ? { number, total: money(input.totalAmount) }
+            : {
+                number,
+                total: money(input.totalAmount),
+                numberFrom: before.number,
+                totalFrom: money(before.totalAmount),
+              },
+      },
+      tx,
+    );
+    return saved;
   });
   return contract;
 }
@@ -425,21 +435,25 @@ export async function setTrancheStatus(
         path: project === null ? null : `/cabinet/projects/${project.code}/payments`,
       });
     }
+    // Строка журнала — в той же транзакции, что и перевод (Р-937).
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_STATUS_CHANGED',
+        objectType: 'Tranche',
+        objectId: trancheId,
+        projectId: tranche.contract.projectId,
+        payload: {
+          from: tranche.status,
+          to: status,
+          amount: money(tranche.amount),
+          paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
+          ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: erased ? ERASED_TEXT : note } : {}),
+        },
+      },
+      tx,
+    );
     return row;
-  });
-
-  await record(actor, {
-    action: 'TRANCHE_STATUS_CHANGED',
-    objectType: 'Tranche',
-    objectId: trancheId,
-    projectId: tranche.contract.projectId,
-    payload: {
-      from: tranche.status,
-      to: status,
-      amount: money(tranche.amount),
-      paidOn: status === 'PAID' ? paidOn!.toISOString().slice(0, 10) : null,
-      ...(status === 'REVERSED' || status === 'WRITTEN_OFF' ? { reason: erased ? ERASED_TEXT : note } : {}),
-    },
   });
   return updated;
 }
@@ -733,21 +747,28 @@ export async function markPayoutPaid(actor: Actor, payoutId: string, paidOn: Dat
   // Отметка захватывает начисление в состоянии «начислено». Прежде повторная
   // отметка переписывала дату выплаты, и расход переезжал в другой год
   // итогов задним числом (решение Р-244).
-  const claimed = await prisma.expertPayout.updateMany({
-    where: { id: payoutId, status: 'ACCRUED' },
-    data: { status: 'PAID', paidOn },
+  // Отметка, строка журнала и письмо куратору — одной транзакцией (Р-937).
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.expertPayout.updateMany({
+      where: { id: payoutId, status: 'ACCRUED' },
+      data: { status: 'PAID', paidOn },
+    });
+    if (claimed.count === 0) throw new Error('Начисление уже отмечено выплаченным');
+    const updated = await tx.expertPayout.findUniqueOrThrow({ where: { id: payoutId } });
+    await record(
+      actor,
+      {
+        action: 'PAYOUT_PAID',
+        objectType: 'ExpertPayout',
+        objectId: payoutId,
+        projectId: payout.projectId,
+        payload: { amount: money(payout.amount), paidOn: paidOn.toISOString().slice(0, 10) },
+      },
+      tx,
+    );
+    await notifyPayout(payoutId, true, tx);
+    return updated;
   });
-  if (claimed.count === 0) throw new Error('Начисление уже отмечено выплаченным');
-  const updated = await prisma.expertPayout.findUniqueOrThrow({ where: { id: payoutId } });
-  await record(actor, {
-    action: 'PAYOUT_PAID',
-    objectType: 'ExpertPayout',
-    objectId: payoutId,
-    projectId: payout.projectId,
-    payload: { amount: money(payout.amount), paidOn: paidOn.toISOString().slice(0, 10) },
-  });
-  await notifyPayout(payoutId, true);
-  return updated;
 }
 
 /**
@@ -1412,22 +1433,29 @@ export async function rescheduleTranche(actor: Actor, trancheId: string, date: D
     throw new Error(`Причина переноса — не длиннее ${RESCHEDULE_REASON_MAX} знаков`);
   }
   const { erased } = await ensureMoneyWritable(tranche.contract.projectId, false);
-  const moved = await prisma.tranche.updateMany({
-    where: { id: trancheId, status: tranche.status },
-    data: { plannedDate: date },
-  });
-  if (moved.count === 0) throw new Error('Состояние транша уже изменено другим действием: обновите страницу');
-  await record(actor, {
-    action: 'TRANCHE_RESCHEDULED',
-    objectType: 'Tranche',
-    objectId: trancheId,
-    projectId: tranche.contract.projectId,
-    payload: {
-      title: tranche.title,
-      from: tranche.plannedDate?.toISOString().slice(0, 10) ?? null,
-      to: date.toISOString().slice(0, 10),
-      reason: erased ? ERASED_TEXT : reason,
-    },
+  // Перенос и строка журнала — одной транзакцией (Р-937).
+  await prisma.$transaction(async (tx) => {
+    const moved = await tx.tranche.updateMany({
+      where: { id: trancheId, status: tranche.status },
+      data: { plannedDate: date },
+    });
+    if (moved.count === 0) throw new Error('Состояние транша уже изменено другим действием: обновите страницу');
+    await record(
+      actor,
+      {
+        action: 'TRANCHE_RESCHEDULED',
+        objectType: 'Tranche',
+        objectId: trancheId,
+        projectId: tranche.contract.projectId,
+        payload: {
+          title: tranche.title,
+          from: tranche.plannedDate?.toISOString().slice(0, 10) ?? null,
+          to: date.toISOString().slice(0, 10),
+          reason: erased ? ERASED_TEXT : reason,
+        },
+      },
+      tx,
+    );
   });
 }
 

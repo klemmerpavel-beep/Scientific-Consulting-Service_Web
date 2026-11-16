@@ -59,18 +59,21 @@ describe('где ссылка стоит (Р-749)', () => {
     );
   });
 
-  it('«Ваша работа» и экран этапа — «написать менеджеру» с темой этапа', () => {
+  // Вопрос менеджеру с этапа без описания ведёт в ветку «куратор —
+  // менеджер» в кабинете (решение Р-935); письмо из почтовой программы
+  // остаётся только ссылкой на адрес в «О работе».
+  it('«Ваша работа» и экран этапа — «написать менеджеру» ведёт в ветку кабинета', () => {
     const page = source('src/app/cabinet/projects/[code]/page.tsx');
-    assert.match(page, /href=\{managerMailHref\(project\.manager\.email, current\.title\)\}>\s*написать менеджеру/u);
+    assert.match(page, /<a href=\{`\/cabinet\/projects\/\$\{project\.code\}\/messages#body`\}>написать менеджеру<\/a>/u);
     const stage = source('src/app/cabinet/stages/[id]/page.tsx');
-    assert.match(stage, /href=\{managerMailHref\(stage\.project\.manager\.email, stage\.title\)\}>\s*написать менеджеру/u);
+    assert.match(stage, /<a href=\{`\/cabinet\/projects\/\$\{stage\.project\.code\}\/messages#body`\}>написать менеджеру<\/a>/u);
     for (const text of [page, stage]) assert.doesNotMatch(text, /почта — в «О работе»/u);
   });
 
   it('на экране этапа ссылка — в блоке куратора', () => {
     const stage = source('src/app/cabinet/stages/[id]/page.tsx');
     const block = stage.indexOf('{curatorView ? (');
-    const link = stage.indexOf('managerMailHref(stage.project.manager.email');
+    const link = stage.indexOf('/messages#body`}>написать менеджеру');
     // Конец блока куратора — ветка клиента и практики, как в проверке Р-522.
     const end = stage.indexOf(") : (stage.summary ?? '').trim() === ''", block);
     assert.ok(block > 0 && link > block, 'ссылка вне блока куратора');
@@ -80,7 +83,7 @@ describe('где ссылка стоит (Р-749)', () => {
   it('ссылка внутри фразы — строчная, без cab-mark (DESIGN-SYSTEM §11)', () => {
     const page = source('src/app/cabinet/projects/[code]/page.tsx');
     const stage = source('src/app/cabinet/stages/[id]/page.tsx');
-    assert.match(page, /<a href=\{managerMailHref\(project\.manager\.email, current\.title\)\}>/u);
-    assert.match(stage, /<a href=\{managerMailHref\(stage\.project\.manager\.email, stage\.title\)\}>/u);
+    assert.doesNotMatch(page, /<a className="cab-mark"[^>]*>написать менеджеру/u);
+    assert.doesNotMatch(stage, /<a className="cab-mark"[^>]*>написать менеджеру/u);
   });
 });

@@ -132,6 +132,7 @@ export const ACTIONS = [
   'MESSAGE_READ',
   'MESSAGE_WRITE',
   'INTERNAL_MESSAGE',
+  'CURATOR_MESSAGE',
   'CONTACTS_VIEW',
   'CURATOR_CONTACTS_VIEW',
   'CLIENT_ACCESS_OPEN',
@@ -278,6 +279,13 @@ export function can(actor: Actor, action: Action, project: ProjectRef | null = n
     // ответ ОЭ-1, С-2). Без работы ветки нет.
     case 'INTERNAL_MESSAGE':
       return project !== null && practice;
+
+    // Ветка «куратор — менеджер» по работе: назначенный куратор с
+    // договором поручения, менеджер работы и руководитель; клиенту — нет
+    // (аудит 15.11.2026, Н-6; решение Р-935). Во внутреннюю ветку и в
+    // переписку с клиентом куратор по-прежнему не входит (Р-336, Р-150).
+    case 'CURATOR_MESSAGE':
+      return project !== null && (assigned || practice);
 
     // ── Персональные данные ───────────────────────────────────────────────
     case 'CONTACTS_VIEW':

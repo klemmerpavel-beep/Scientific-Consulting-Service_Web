@@ -54,6 +54,9 @@ const GROUPS = [
 
 type GroupKey = (typeof GROUPS)[number]['key'];
 
+/** Группа, раскрытая сразу: то, чем пользуются каждый день (решение Р-930). */
+const OPEN_GROUP: GroupKey = 'work';
+
 /** Частота задаёт порядок в группе: ежедневное выше редкого. */
 const OFTEN_ORDER: Record<string, number> = {
   'Каждый день': 0,
@@ -294,6 +297,12 @@ export default async function ToolsScreen() {
           title={group.title}
           note={group.note}
           count={`${group.tools.length} ${plural(group.tools.length, 'раздел', 'раздела', 'разделов')}`}
+          // Ежедневная группа раскрыта сразу: «Все заявки», «Команда» и
+          // «Поручения» видны без нажатия. Единственное исключение из
+          // правила Р-169 «ни одна свёртка не раскрыта по умолчанию» —
+          // по ответу владельца 15.11.2026 (Н-5, решение Р-930; Р-925
+          // отменял это до его слова).
+          open={group.key === OPEN_GROUP}
         >
           <ul
             style={{

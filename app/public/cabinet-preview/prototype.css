@@ -52,6 +52,10 @@ a:hover{color:var(--pd-accent-press)}
 /* Акцентная панель ответа: тёмный синий, как на страницах сайта. Кольцо
    фокуса акцентного цвета на нём не видно — берётся белое (решение Р-207). */
 .cab-answer *:focus-visible{outline-color:var(--pd-ink-inverse)}
+/* Пояснение в ответе экрана: три строки на широком экране (Р-210), целиком
+   на телефоне (Р-928). */
+.cab-lead-detail{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-width:480px){.cab-lead-detail{display:block;overflow:visible}}
 .cab-nav a{color:var(--pd-ink-secondary)}
 .cab-nav a:hover,.cab-nav a:focus-visible{color:var(--pd-accent)}
 .cab-nav a[aria-current="page"]{color:var(--pd-accent);box-shadow:inset 0 -2px 0 var(--pd-accent)}
@@ -89,6 +93,11 @@ a:hover{color:var(--pd-accent-press)}
 .cab-wordmark:active{background:rgba(216,228,243,.84)}
 input,textarea,select{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px}
 input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(20,65,122,.16);border-color:var(--pd-accent)!important}
+/* Поле, к которому относится отказ действия (Р-936): рамка цвета отказа,
+   вдвое толще — признак держится не только цветом; в фокусе кольцо
+   фокуса ложится поверх, рамка отказа остаётся. */
+:is(input,textarea,select)[aria-invalid="true"]{border-color:var(--pd-err-ink)!important;box-shadow:inset 0 0 0 1px var(--pd-err-ink)}
+:is(input,textarea,select)[aria-invalid="true"]:focus{box-shadow:inset 0 0 0 1px var(--pd-err-ink),0 0 0 3px rgba(20,65,122,.16)}
 input[type="checkbox"],input[type="radio"]{accent-color:var(--pd-accent)}
 input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 input[type="file"]{font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:16px;color:var(--pd-ink-secondary)}

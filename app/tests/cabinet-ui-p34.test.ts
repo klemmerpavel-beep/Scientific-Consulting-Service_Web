@@ -303,7 +303,8 @@ describe('14. блок исхода действия помечен и в счё
   it('ActionError собран на Outcome', () => {
     const body = code(read(COMPONENTS, 'ActionError.tsx'));
     // С отметкой отказа: повторный отказ снова получает фокус (Р-919).
-    assert.match(body, /<Outcome tone="error" mark=\{id\}>/u);
+    // Идентификатор блока — цель ссылки с поля отказа (Р-936).
+    assert.match(body, /<Outcome tone="error" id=\{FAULT_ID\} mark=\{id\}>/u);
     assert.equal(/<div\b/u.test(body), false);
   });
 

@@ -575,6 +575,16 @@ export async function moderateVersion(
       },
     });
     if (count === 0) throw new Error('Версия уже разобрана');
+    // Строка журнала — в транзакции решения, на обоих её выходах (Ф-15,
+    // решение Р-938).
+    const journal = (payload: Record<string, unknown>) =>
+      record(actor, {
+        action: decision === 'PUBLISHED' ? 'VERSION_PUBLISHED' : 'VERSION_REJECTED',
+        objectType: 'MaterialVersion',
+        objectId: version.id,
+        projectId: project.id,
+        payload,
+      }, tx);
     // Решение уходит куратору, пока он на работе и с договором поручения
     // (решение Р-455).
     const toUploader = await curatorOnWork(tx, project.id, version.uploadedById);
@@ -598,6 +608,7 @@ export async function moderateVersion(
         where: { versionId, authorId: version.uploadedById, moderationStatus: 'PENDING' },
         data: { moderationStatus: 'REJECTED', moderatedById: actor.id, moderatedAt: now, moderationNote: reason },
       });
+      await journal({ withNote: reason !== null });
       return 0;
     }
 
@@ -645,15 +656,8 @@ export async function moderateVersion(
         path: materialPath(project.code, version.material.stageId),
       });
     }
+    await journal({ comments: clean.length });
     return clean.length;
-  });
-
-  await record(actor, {
-    action: decision === 'PUBLISHED' ? 'VERSION_PUBLISHED' : 'VERSION_REJECTED',
-    objectType: 'MaterialVersion',
-    objectId: version.id,
-    projectId: project.id,
-    payload: decision === 'PUBLISHED' ? { comments: published } : { withNote: reason !== null },
   });
 }
 
