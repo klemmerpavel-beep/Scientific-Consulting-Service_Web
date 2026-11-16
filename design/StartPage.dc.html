@@ -97,6 +97,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (prefers-reduced-motion:reduce){.pd-zoom:hover{transform:none!important;box-shadow:none!important}}
 /* Р-948: полоса посадочной — только до 768 px; от 769 px её нет и якоря встают с прежним отступом 24 px. */
 @media (min-width:769px){.pd-stick{display:none!important}html.pd-has-stick main [id]{scroll-margin-top:24px!important}}
+/* Р-949: планшет 481—1100 px. Три карточки направлений — в один ряд от 701 px (было 2 + 1 с пустой ячейкой), до 700 px — столбиком с кадром 240 px; плашки с цифрами на 769—1100 px — строками (в трёх колонках по 145 px текст шёл по слову в строке), на 481—768 px третья плашка — во всю ширину; портреты до 768 px — рядом по центру, а не по краям; согласия формы заявки до 768 px — отдельной строкой. Состав и порядок полей прежние. */
+@media (min-width:701px) and (max-width:1024px){.pd-routes{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media (min-width:481px) and (max-width:700px){.pd-routes{grid-template-columns:minmax(0,1fr)!important}.pd-routebg,.pd-routebg *{height:240px!important}}
+@media (min-width:769px) and (max-width:1100px){.pd-metrics{grid-template-columns:minmax(0,1fr)!important}.pd-metrics>a{min-height:0!important}}
+@media (min-width:481px) and (max-width:768px){.pd-metrics>a:last-child{grid-column:1/-1}}
+@media (max-width:768px){.pd-roles{justify-content:center!important;gap:40px!important}.pd-bform>div:not([role]){flex:1 1 100%}}
 </style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
@@ -196,7 +202,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <sc-if value="{{ showPortraits }}" hint-placeholder-val="{{ true }}">
 
 </sc-if>
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-top:auto">
+<div class="pd-roles" style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-top:auto">
 <div class="pd-sfa" style="display:flex;flex-direction:column;gap:2px;max-width:190px;align-items:center;text-align:center">
 <span class="pd-zoom" style="width:190px;height:190px;border-radius:50%;background:var(--pd-accent-mark);overflow:hidden;display:block">
 <image-slot id="sp-avatar-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего научного направления" placeholder="Фото куратора" style="width:190px;height:190px"></image-slot>
@@ -453,7 +459,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Оставьте заявку</h2>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Консультация не оплачивается: назовём объём работ, сроки и порядок сметы до согласования Задания. Отвечает менеджер проекта, <span style="white-space:nowrap">Пн—Пт 10:00—19:00</span>.</p>
 
-<form style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" onSubmit="{{ submitBottom }}">
+<form class="pd-bform" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" onSubmit="{{ submitBottom }}">
 <input type="text" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
 <div role="group" aria-label="Способ связи для заявки" style="display:inline-flex;gap:4px;padding:4px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;align-self:flex-start;flex:0 0 auto">
 <sc-for list="{{ contactTabsBottom }}" as="c" hint-placeholder-count="2">
