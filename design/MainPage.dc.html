@@ -559,8 +559,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </article>
 </sc-for>
-</div>
-<div class="pd-services" style="gap:16px;margin-top:16px">
+<!-- Шесть карточек услуг — одна сетка (Р-929): на 481—768 px две колонки дают три ровных ряда, а не 2 + 1 в каждой из двух сеток. -->
 <sc-for list="{{ offerMid }}" as="o" hint-placeholder-count="3">
 <article class="pd-lift" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
