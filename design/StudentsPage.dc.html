@@ -190,7 +190,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1024px){.sp-in-card{grid-template-columns:minmax(0,1fr)}.sp-in-text{border-right:0;border-bottom:1px solid var(--pd-border)}}
 @media (max-width:480px){.sp-in-text{padding:20px}.sp-in-shot{padding:12px}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
-/* Отзывы на узком экране (Р-928): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
+/* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
 </style>
@@ -1322,7 +1322,7 @@ class Component extends DCLogic {
     // Сгенерированные и чужие лица не ставятся.
     const REVIEWS = [
       // Сначала отзывы об оценке и замечаниях преподавателей — они про учебную работу (Р-605).
-      // Отбор Р-933: остаются отзывы, где названы пояснения, связь, договорённости и сроки; тексты дословные (Р-113).
+      // Отбор Р-945: остаются отзывы, где названы пояснения, связь, договорённости и сроки; тексты дословные (Р-113).
       { role: 'Никита', field: 'Авито · 25 октября 2024',
         text: 'Огромное спасибо за быстро и качественно выполненную работа. Всегда на связи. Спрашивают и переживают были ли замечания от преподавателей в работе.' },
       { role: 'Анастасия', field: 'Авито · 14 ноября 2024',

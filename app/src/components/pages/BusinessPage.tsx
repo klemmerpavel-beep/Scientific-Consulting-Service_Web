@@ -225,10 +225,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
-/* Отзывы на узком экране (Р-928): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
+/* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
-/* Форма первого экрана до 480 px — в один столбец (Р-930): «ФИО» и почта в двух колонках по 154—180 px не вмещали адрес. Состав и порядок полей прежние. */
+/* Форма первого экрана до 480 px — в один столбец (Р-942): «ФИО» и почта в двух колонках по 154—180 px не вмещали адрес. Состав и порядок полей прежние. */
 @media (max-width:480px){.bp-topform{grid-template-columns:minmax(0,1fr)!important}.bp-topform>*{grid-column:auto!important}}
 
 .x1:hover{background:rgba(216,228,243,.62) !important}
@@ -622,7 +622,7 @@ class BusinessPageView extends React.Component<any, any> {
     // Сгенерированные и чужие лица не ставятся.
     const REVIEWS = [
       // Отзывы, где речь об оценке и преподавателях, — студенческие: на «Компаниям» их нет (Р-605).
-      // Отбор Р-933: остаются отзывы, где названы пояснения, связь, договорённости и сроки; тексты дословные (Р-113).
+      // Отбор Р-945: остаются отзывы, где названы пояснения, связь, договорённости и сроки; тексты дословные (Р-113).
       { role: 'Ирина', field: 'Авито · 12 июля 2024',
         text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
       { role: 'Роман', field: 'Авито · 30 сентября 2024',
