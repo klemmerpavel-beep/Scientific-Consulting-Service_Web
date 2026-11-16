@@ -18,10 +18,13 @@ import {
 import { can } from '../../../../../lib/cabinet/access';
 import {
   MESSAGE_MAX,
+  curatorUnread,
   internalUnread,
+  listCurator,
   listInternal,
   listMessages,
   markRead,
+  readCurator,
   readInternal,
 } from '../../../../../lib/cabinet/messages';
 import { formDraft } from '../../../../../lib/cabinet/flash';
@@ -32,7 +35,7 @@ import { messageFormTexts } from '../../../../../lib/cabinet/staff-texts';
 import { trancheForReminder } from '../../../../../lib/cabinet/finance';
 import { THREAD_WINDOW, sliceWindow, threadWindow } from '../../../../../lib/cabinet/thread-window';
 import { moscowToday, now as clockNow } from '../../../../../lib/cabinet/clock';
-import { insertMessageTemplate, postInternalMessage, postMessage } from '../../../actions';
+import { insertMessageTemplate, postCuratorMessage, postInternalMessage, postMessage } from '../../../actions';
 
 export const metadata: Metadata = { title: 'Переписка' };
 
@@ -63,14 +66,90 @@ export default async function MessagesScreen({
     managerId: project.managerId,
     expertId: project.expertId,
   };
-  // Эксперту канал недоступен: чужой раздел не отличается от несуществующего.
-  if (!can(actor, 'MESSAGE_READ', ref)) notFound();
+  // Ветка «куратор — менеджер» (Н-6, решение Р-935): куратору экран
+  // переписки открыт ради неё одной — в переписку с клиентом и во
+  // внутреннюю ветку он не входит (Р-150, Р-336), и без назначения работа
+  // для него не отличается от несуществующей. Практике ветка видна, пока
+  // у работы есть куратор.
+  const mayClientThread = can(actor, 'MESSAGE_READ', ref);
+  const mayCurator = can(actor, 'CURATOR_MESSAGE', ref) && project.expertId !== null;
+  if (!mayClientThread && !mayCurator) notFound();
 
   // Внутренняя переписка по работе — вкладка менеджера работы и
   // руководителя; клиенту и куратору её нет (требование РК-07, решение
   // Р-336).
   const mayInternal = can(actor, 'INTERNAL_MESSAGE', ref);
-  const internalTab = mayInternal && (await searchParams).tab === 'internal';
+  const askedTab = (await searchParams).tab;
+  const curatorTab = mayCurator && (!mayClientThread || askedTab === 'curator');
+  const internalTab = !curatorTab && mayInternal && askedTab === 'internal';
+  const base = `/cabinet/projects/${project.code}/messages`;
+
+  if (curatorTab) {
+    const shownHere = threadWindow((await searchParams).show);
+    const window = sliceWindow(await listCurator(actor, project.id, { last: shownHere + 1 }), shownHere);
+    await readCurator(actor, project.id);
+    const back = (await formDraft((await searchParams).error)) ?? {};
+    const forCurator = actor.role === 'EXPERT';
+    const internalCount = mayInternal ? await internalUnread(actor, project.id) : 0;
+    return (
+      <Shell actor={actor} current="/cabinet/projects">
+        <Narrow width={780}>
+          <ScreenHead
+            backHref={`/cabinet/projects/${project.code}`}
+            backLabel={project.title}
+            title="Переписка"
+            note={forCurator ? 'с менеджером работы; клиент её не видит' : 'с куратором работы; клиент её не видит'}
+          />
+          <ActionError id={(await searchParams).error} />
+          {mayClientThread ? (
+            <Tabs
+              label="Ветки переписки"
+              items={[
+                { href: base, label: 'С клиентом', active: false },
+                ...(mayInternal
+                  ? [{ href: `${base}?tab=internal`, label: internalCount === 0 ? 'Внутренняя' : `Внутренняя · ${internalCount}`, active: false }]
+                  : []),
+                { href: `${base}?tab=curator`, label: 'С куратором', active: true },
+              ]}
+            />
+          ) : null}
+          <Card>
+            <Thread
+              messages={window.messages}
+              viewer={actor}
+              earlierHref={window.earlier ? `${base}?tab=curator&show=${shownHere + THREAD_WINDOW}` : undefined}
+              empty={
+                forCurator
+                  ? 'Переписки пока нет — задайте вопрос менеджеру, он ответит в рабочее время.'
+                  : 'Переписки с куратором пока нет.'
+              }
+            />
+            <Form
+              action={postCuratorMessage}
+              style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--pd-divider)' }}
+            >
+              <input type="hidden" name="projectId" value={project.id} />
+              <input type="hidden" name="code" value={project.code} />
+              <Field
+                label={forCurator ? 'Сообщение менеджеру' : 'Сообщение куратору'}
+                name="body"
+                multiline
+                required
+                maxLength={MESSAGE_MAX}
+                placeholder={forCurator ? 'Вопрос по заданию, сроку или материалам' : 'Ответ или уточнение по заданию'}
+                hint={`Клиент этой переписки не видит. До ${LIMIT} знаков; файлы — в материалах работы.`}
+                defaultValue={back.body}
+              />
+              <FormActions>
+                <Button>{forCurator ? 'Отправить менеджеру' : 'Отправить куратору'}</Button>
+              </FormActions>
+            </Form>
+          </Card>
+        </Narrow>
+      </Shell>
+    );
+  }
+
   // Лента открывается на последних ста сообщениях; ранние — ссылкой над
   // ней, каждое нажатие добавляет ещё сто (решение Р-636).
   const shown = threadWindow((await searchParams).show);
@@ -88,6 +167,7 @@ export default async function MessagesScreen({
   if (internalTab) await readInternal(actor, project.id);
   else await markRead(actor, project.id);
   const internalNew = mayInternal && !internalTab ? await internalUnread(actor, project.id) : 0;
+  const curatorNew = mayCurator ? await curatorUnread(actor, project.id) : 0;
   // Набранное возвращается в поле своей ветки: после отказа и после выбора
   // заготовки (Р-336 и решение Р-722).
   const formBack = (await formDraft((await searchParams).error)) ?? {};
@@ -138,16 +218,23 @@ export default async function MessagesScreen({
 
         <ActionError id={sp.error} />
 
-        {mayInternal ? (
+        {mayInternal || mayCurator ? (
           <Tabs
             label="Ветки переписки"
             items={[
-              { href: `/cabinet/projects/${project.code}/messages`, label: 'С клиентом', active: !internalTab },
-              {
-                href: `/cabinet/projects/${project.code}/messages?tab=internal`,
-                label: internalNew === 0 ? 'Внутренняя' : `Внутренняя · ${internalNew}`,
-                active: internalTab,
-              },
+              { href: base, label: 'С клиентом', active: !internalTab },
+              ...(mayInternal
+                ? [
+                    {
+                      href: `${base}?tab=internal`,
+                      label: internalNew === 0 ? 'Внутренняя' : `Внутренняя · ${internalNew}`,
+                      active: internalTab,
+                    },
+                  ]
+                : []),
+              ...(mayCurator
+                ? [{ href: `${base}?tab=curator`, label: curatorNew === 0 ? 'С куратором' : `С куратором · ${curatorNew}`, active: false }]
+                : []),
             ]}
           />
         ) : null}

@@ -48,7 +48,7 @@ const OPTIONS = {
  */
 export async function flash(
   text: string,
-  options: { slot?: string; draft?: Readonly<Record<string, string>> } = {},
+  options: { slot?: string; draft?: Readonly<Record<string, string>>; field?: string } = {},
 ): Promise<string> {
   const id = randomBytes(6).toString('hex');
   const jar = await cookies();
@@ -58,7 +58,7 @@ export async function flash(
     if (packed === null) reason = `${text}. Введённый текст слишком длинный и не сохранён — наберите его заново.`;
     else jar.set(DRAFT, packed, OPTIONS);
   }
-  jar.set(NAME, packFlash(id, reason, options.slot), OPTIONS);
+  jar.set(NAME, packFlash(id, reason, options.slot, options.field), OPTIONS);
   return id;
 }
 
@@ -89,7 +89,13 @@ export async function formDraft(
 export async function withError(
   path: string,
   reason: string,
-  options: { slot?: string; draft?: Readonly<Record<string, string>>; anchor?: string } = {},
+  options: {
+    slot?: string;
+    draft?: Readonly<Record<string, string>>;
+    anchor?: string;
+    /** Поле, к которому относится отказ: экран пометит его (решение Р-936). */
+    field?: string;
+  } = {},
 ): Promise<string> {
   const id = await flash(reason, options);
   // Адрес с отбором («?tab=calendar», «?status=…») сохраняет его: отказ

@@ -81,7 +81,7 @@ import { templateLength } from '../../../../lib/cabinet/projects';
 import { daysPast } from '../../../../lib/cabinet/clock';
 import { UPLOADED_NEXT, uploadedLine } from '../../../../lib/cabinet/works-answer';
 import { workDuePassed } from '../../../../lib/cabinet/missed';
-import { MESSAGE_MAX, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
+import { MESSAGE_MAX, curatorUnread, internalUnread, listMessages, unreadCount } from '../../../../lib/cabinet/messages';
 import { OUTCOME_ANCHOR, OUTCOME_FLAGS, doneLine, inOutcomeWindow, workCreatedLine } from '../../../../lib/cabinet/outcome-lines';
 import { noticeFate } from '../../../../lib/cabinet/outbox';
 import DropFlag from '../../../../components/cabinet/DropFlag';
@@ -319,6 +319,8 @@ const OUTCOME_LINK = { color: 'inherit', textDecoration: 'underline', textUnderl
 
 /** Якорь формы «Управления работой»: прокрутка не прячет её под шапкой (Р-487). */
 const MANAGE_ANCHOR = { display: 'block', height: 0, scrollMarginTop: 96 } as const;
+/** Ссылка-переход в «О работе»: цель нажатия 44 px добирается отступом (Р-929). */
+const ABOUT_LINK = { display: 'inline-flex', alignItems: 'center', minHeight: 44, fontFamily: SANS, fontSize: 14 } as const;
 
 export default async function ProjectScreen({
   params,
@@ -395,6 +397,10 @@ export default async function ProjectScreen({
   // работы и руководителю: клиенту и куратору число не считается и в данные
   // экрана не попадает (решение Р-739; Р-336).
   const internalNew = can(actor, 'INTERNAL_MESSAGE', ref) ? await internalUnread(actor, project.id) : 0;
+  // Ветка «куратор — менеджер» (Н-6, решение Р-935): есть, пока у работы
+  // есть куратор; куратору она — единственный путь вопроса в кабинете.
+  const mayCuratorThread = can(actor, 'CURATOR_MESSAGE', ref) && project.expertId !== null;
+  const curatorNew = mayCuratorThread ? await curatorUnread(actor, project.id) : 0;
   // Короткий разговор виден прямо на экране заказа: уходить за ним на
   // отдельный экран, чтобы прочитать три строки, незачем. Прочитанным он
   // здесь не помечается — отметку ставит открытие самой переписки.
@@ -450,6 +456,25 @@ export default async function ProjectScreen({
   // приостановленной, с планом и без; практике — числом дней в шапке и
   // под шкалой (решение Р-719). Клиенту и куратору — как прежде (Р-654).
   const practice = actor.role === 'MANAGER' || actor.role === 'HEAD';
+  // «Обновить из документа» — исходные данные на утверждение (Р-561).
+  const mayBrief = mayEdit && !closed && can(actor, 'PROJECT_EDIT', ref);
+  // Второстепенные переходы практики стоят ссылками в «О работе» (Р-929).
+  const aboutLinks: { href: string; label: string }[] = practice
+    ? [
+        ...(mayBrief ? [{ href: `/cabinet/projects/${encodeURIComponent(project.code)}/brief`, label: 'Обновить из документа' }] : []),
+        ...(checklist === undefined
+          ? []
+          : [{ href: `/cabinet/projects/${encodeURIComponent(project.code)}/checklist`, label: `Чек-лист · ${checklist.done} из ${checklist.total}` }]),
+        ...(prepareCount === null
+          ? []
+          : [
+              {
+                href: `/cabinet/projects/${encodeURIComponent(project.code)}/prepare`,
+                label: `Что подготовить · приложено ${prepareCount.done} из ${prepareCount.total}`,
+              },
+            ]),
+      ]
+    : [];
   const workLateDays = practice && workDuePassed(project) ? daysPast(project.dueOn) : null;
   const done = stages.filter((stage) => stage.state === 'DONE').length;
   // Текущий этап — первый незавершённый; он и отвечает на вопрос «где работа».
@@ -964,7 +989,7 @@ export default async function ProjectScreen({
         {/* Правка карточки, куратор и менеджер — на виду, а не только в
             свёрнутом «Управлении работой» в конце экрана: руководитель их
             не находил (замечание владельца 08.10.2026, решение Р-487). */}
-        {mayEdit || mayMoney || mayAssign || maySetManager || mayInstruct || checklist !== undefined || prepareCount !== null ? (
+        {mayEdit || mayMoney || mayAssign || maySetManager || mayInstruct || (!practice && (checklist !== undefined || prepareCount !== null)) ? (
           <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {/* Заказ правится одним экраном — карточка, вид, срок, сумма,
                 состояние и клиент — и у закрытой работы: закрытость
@@ -983,7 +1008,13 @@ export default async function ProjectScreen({
               </ButtonLink>
             ) : null}
             {/* Исходные данные на утверждение — документом (Р-561). */}
-            {mayEdit && !closed && can(actor, 'PROJECT_EDIT', ref) ? (
+            {/* У менеджера и руководителя второстепенные переходы —
+                «Обновить из документа», «Чек-лист», «Что подготовить» —
+                стоят ссылками в «О работе»: семь кнопок одного веса в два
+                ряда не выделяли главного (аудит 15.11.2026, В-5; ответ
+                владельца 15.11.2026; решение Р-929). Клиенту и куратору
+                кнопки остаются: у них это одно-два действия. */}
+            {!practice && mayBrief ? (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/brief`}>Обновить из документа</ButtonLink>
             ) : null}
             {mayAssign ? (
@@ -1001,12 +1032,12 @@ export default async function ProjectScreen({
                 Поручить
               </ButtonLink>
             ) : null}
-            {checklist === undefined ? null : (
+            {practice || checklist === undefined ? null : (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/checklist`}>
                 {`Чек-лист · ${checklist.done} из ${checklist.total}`}
               </ButtonLink>
             )}
-            {prepareCount === null ? null : (
+            {practice || prepareCount === null ? null : (
               <ButtonLink href={`/cabinet/projects/${encodeURIComponent(project.code)}/prepare`}>
                 {forClient
                   ? `Что подготовить · ${prepareCount.done} из ${prepareCount.total}`
@@ -1053,6 +1084,28 @@ export default async function ProjectScreen({
       {doneText === null ? null : <Outcome id={OUTCOME_ANCHOR}>{doneText}</Outcome>}
       {created === undefined && doneFlag === undefined ? null : <DropFlag names={OUTCOME_FLAGS} />}
       <Disclosure title="О работе">
+        {/* Второстепенные переходы практики — ссылками (решение Р-929). */}
+        {aboutLinks.length === 0 ? null : (
+          <ul
+            style={{
+              margin: '0 0 14px',
+              padding: 0,
+              listStyle: 'none',
+              display: 'flex',
+              flexWrap: 'wrap',
+              columnGap: 20,
+              rowGap: 0,
+            }}
+          >
+            {aboutLinks.map((link) => (
+              <li key={link.href}>
+                <a className="cab-mark" href={link.href} style={ABOUT_LINK}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
         <dl style={{ margin: 0, display: 'grid', gap: 10 }}>
           {/* Подпись и значение — строкой, пока значению хватает места, и
               одно под другим на телефоне, как на карточке заявки (Р-217):
@@ -1219,7 +1272,13 @@ export default async function ProjectScreen({
                     href: `/cabinet/projects/${project.code}/messages?tab=internal#body`,
                     label: `внутренняя · ${internalNew} ${plural(internalNew, 'новое', 'новых', 'новых')}`,
                   }
-                : undefined
+                : // Новое от куратора — так же, ссылкой на его вкладку (Р-935).
+                  curatorNew > 0
+                  ? {
+                      href: `/cabinet/projects/${project.code}/messages?tab=curator#body`,
+                      label: `куратор · ${curatorNew} ${plural(curatorNew, 'новое', 'новых', 'новых')}`,
+                    }
+                  : undefined
             }
             anchor="end"
             footer={
@@ -1271,6 +1330,19 @@ export default async function ProjectScreen({
             title="Ваша работа"
             href="/cabinet/payout"
             hrefLabel="вознаграждение"
+            // Вопрос менеджеру — в кабинете, а не письмом из почты (Н-6,
+            // решение Р-935).
+            extra={
+              mayCuratorThread
+                ? {
+                    href: `/cabinet/projects/${project.code}/messages#body`,
+                    label:
+                      curatorNew > 0
+                        ? `вопрос менеджеру · ${curatorNew} ${plural(curatorNew, 'новое', 'новых', 'новых')}`
+                        : 'вопрос менеджеру',
+                  }
+                : undefined
+            }
             footer={
               mayUpload && workRefusal === null ? (
                 <Form action={uploadMaterialWithNote} encType="multipart/form-data">
@@ -1337,13 +1409,12 @@ export default async function ProjectScreen({
                         : 'План работ ещё не заведён: этапы и задание назначит менеджер.'
                       : 'Все этапы закрыты — новых заданий по этой работе нет.'
                     : (current.summary ?? (
-                        // Письмо менеджеру с темой этапа — одним нажатием
-                        // (решение Р-749).
+                        // Вопрос менеджеру — в кабинете, в ветке «куратор —
+                        // менеджер» (решение Р-935); прежде — письмом из
+                        // почтовой программы (Р-749).
                         <>
-                          {'Менеджер не описал этап: спросите его письмом — '}
-                          <a href={managerMailHref(project.manager.email, current.title)}>
-                            написать менеджеру
-                          </a>
+                          {'Менеджер не описал этап: спросите его — '}
+                          <a href={`/cabinet/projects/${project.code}/messages#body`}>написать менеджеру</a>
                           .
                         </>
                       ))}

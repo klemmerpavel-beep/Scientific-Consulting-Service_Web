@@ -4,15 +4,22 @@
  * упаковка проверяется тестами без сервера.
  */
 
+import { FAULT_FIELD } from './fault-field.ts';
+
 const MAX_TEXT = 300;
 
 /** Метка в адресе — только двенадцать шестнадцатеричных знаков. */
 export const FLASH_ID = /^[0-9a-f]{12}$/u;
 
 /** Значение cookie: метка и текст, base64url — кириллица в cookie не кладётся как есть. */
-export function packFlash(id: string, text: string, slot?: string): string {
+export function packFlash(id: string, text: string, slot?: string, field?: string): string {
   return Buffer.from(
-    JSON.stringify({ id, text: text.slice(0, MAX_TEXT), ...(slot === undefined ? {} : { slot }) }),
+    JSON.stringify({
+      id,
+      text: text.slice(0, MAX_TEXT),
+      ...(slot === undefined ? {} : { slot }),
+      ...(field === undefined ? {} : { field }),
+    }),
     'utf8',
   ).toString('base64url');
 }
@@ -21,6 +28,8 @@ export function packFlash(id: string, text: string, slot?: string): string {
 export interface FlashEntry {
   readonly text: string;
   readonly slot?: string;
+  /** Идентификатор поля, к которому относится отказ (решение Р-936). */
+  readonly field?: string;
 }
 
 /** Причина и место её вывода, если метка совпала; иначе ничего. */
@@ -31,10 +40,15 @@ export function unpackFlashEntry(raw: string | undefined, id: string): FlashEntr
       id?: unknown;
       text?: unknown;
       slot?: unknown;
+      field?: unknown;
     };
     if (parsed.id !== id || typeof parsed.text !== 'string') return undefined;
     const text = parsed.text.slice(0, MAX_TEXT);
-    return typeof parsed.slot === 'string' && SLOT.test(parsed.slot) ? { text, slot: parsed.slot } : { text };
+    // Поле — только знаки идентификатора: значение попадает в разметку.
+    const field = typeof parsed.field === 'string' && FAULT_FIELD.test(parsed.field) ? { field: parsed.field } : {};
+    return typeof parsed.slot === 'string' && SLOT.test(parsed.slot)
+      ? { text, slot: parsed.slot, ...field }
+      : { text, ...field };
   } catch {
     return undefined;
   }

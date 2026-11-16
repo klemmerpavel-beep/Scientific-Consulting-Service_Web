@@ -436,9 +436,11 @@ describe('облик держится в границах дизайн-сист�
       // Свёртка, снятая раскрытой, сделала бы экран длиннее окна — а он
       // обещан помещающимся целиком (Р-169).
       it(`${name}: свёртка сомкнута и названа`, () => {
-        for (const m of body(file).matchAll(/<details\b([^>]*)>/gu)) {
-          assert.equal(/\bopen\b/u.test(m[1]), false, 'свёртка снята раскрытой');
-        }
+        // Одно исключение (ответ владельца 15.11.2026, решение Р-930):
+        // ежедневная группа «Управления» раскрыта сразу.
+        const allowed = /\/manage\/tools\/index\.html$/u.test(file.split(path.sep).join('/')) ? 1 : 0;
+        const open = [...body(file).matchAll(/<details\b([^>]*)>/gu)].filter((m) => /\bopen\b/u.test(m[1]));
+        assert.ok(open.length <= allowed, 'свёртка снята раскрытой');
         for (const m of body(file).matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/gu)) {
           assert.ok(
             m[1].replace(/<[^>]+>/gu, '').trim().length > 0,

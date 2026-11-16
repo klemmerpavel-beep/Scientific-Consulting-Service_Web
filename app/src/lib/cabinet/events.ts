@@ -53,6 +53,7 @@ export type EventKind =
   | 'NDA_WAITING'
   | 'OUTBOX_FAILED'
   | 'INTERNAL_MESSAGE'
+  | 'CURATOR_MESSAGE'
   | 'STAFF_QUESTION'
   | 'HEAD_REPLY'
   | 'STAGE_ACCEPTED'
@@ -135,6 +136,7 @@ export const EVENT_LABEL: Record<EventKind, string> = {
   NDA_WAITING: 'куратор ждёт договор поручения',
   OUTBOX_FAILED: 'уведомления не доставлены',
   INTERNAL_MESSAGE: 'внутренняя переписка по работе',
+  CURATOR_MESSAGE: 'переписка куратора и менеджера по работе',
   STAFF_QUESTION: 'вопрос сотрудника',
   HEAD_REPLY: 'ответ руководителя',
   STAGE_ACCEPTED: 'этап принят: акт и счёт',

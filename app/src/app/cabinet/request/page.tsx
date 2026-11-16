@@ -36,6 +36,7 @@ import { requireActor } from '../../../lib/cabinet/session';
 import { homeFor } from '../../../lib/cabinet/nav';
 import { parseRequestBrief, submitCabinetRequest } from '../actions';
 import ActionError from '../../../components/cabinet/ActionError';
+import FormKey from '../../../components/cabinet/FormKey';
 import { formDraft } from '../../../lib/cabinet/flash';
 
 export const metadata: Metadata = { title: 'Новая заявка' };
@@ -146,6 +147,7 @@ export default async function NewRequestScreen({
               </div>
             )}
             <Form action={submitCabinetRequest}>
+              <FormKey />
               {loaded === null ? null : <input type="hidden" name="brief" value={params.brief} />}
               {variant === null ? null : <input type="hidden" name="variant" value={variant} />}
               <Field

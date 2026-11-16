@@ -10,6 +10,7 @@ import { can, ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { revokeStaffIssuedSessions } from './auth.ts';
 import { moscowToday, now } from './clock.ts';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { normalizeEmail } from './token.ts';
 import { parseAmount } from './money.ts';
@@ -91,14 +92,18 @@ export async function issueAccessLink(
     throw new Error('Доступ приостановлен или запись обезличена: ссылка не выдаётся');
   }
 
-  const { link, expiresAt } = await manualToken(user.id, actor.id, ip);
-
-  await record(actor, {
-    action: 'ACCESS_LINK_ISSUED',
-    objectType: 'User',
-    objectId: user.id,
-    ip,
-    payload: { expiresAt: expiresAt.toISOString() },
+  // Ссылка и строка журнала — одной транзакцией: выдача доступа к чужой
+  // учётной записи без записи о ней не остаётся (Ф-15, решение Р-938).
+  const { link, expiresAt } = await prisma.$transaction(async (tx) => {
+    const issued = await manualToken(user.id, actor.id, ip, tx);
+    await record(actor, {
+      action: 'ACCESS_LINK_ISSUED',
+      objectType: 'User',
+      objectId: user.id,
+      ip,
+      payload: { expiresAt: issued.expiresAt.toISOString() },
+    }, tx);
+    return issued;
   });
 
   return { link, expiresAt, fullName: user.fullName };
@@ -114,16 +119,17 @@ async function manualToken(
   userId: string,
   issuedById: string,
   ip?: string | null,
+  db: Prisma.TransactionClient | typeof prisma = prisma,
 ): Promise<{ link: string; expiresAt: Date }> {
   const { createRawToken, digest, loginLink } = await import('./token.ts');
   const now = new Date();
-  await prisma.loginToken.updateMany({
+  await db.loginToken.updateMany({
     where: { userId, usedAt: null, expiresAt: { gt: now }, purpose: 'LOGIN' },
     data: { expiresAt: now },
   });
   const token = createRawToken();
   const expiresAt = new Date(now.getTime() + ACCESS_LINK_TTL_MS);
-  await prisma.loginToken.create({
+  await db.loginToken.create({
     data: {
       selector: token.selector,
       verifierHash: digest(token.verifier),
@@ -303,18 +309,22 @@ export async function openClientAccess(
     );
   }
 
-  const { link, expiresAt } = await manualToken(userId, actor.id, ip);
-
-  if (created) {
-    await record(actor, { action: 'USER_CREATED', objectType: 'User', objectId: userId, projectId: project.id, ip });
-  }
-  await record(actor, {
-    action: 'ACCESS_LINK_ISSUED',
-    objectType: 'User',
-    objectId: userId,
-    projectId: project.id,
-    ip,
-    payload: { expiresAt: expiresAt.toISOString(), via: 'project' },
+  // Ссылка и строки журнала — одной транзакцией: суточный предел выдачи
+  // считается по журналу, и выдача без строки его бы обходила (Р-938).
+  const { link, expiresAt } = await prisma.$transaction(async (tx) => {
+    const issued = await manualToken(userId, actor.id, ip, tx);
+    if (created) {
+      await record(actor, { action: 'USER_CREATED', objectType: 'User', objectId: userId, projectId: project.id, ip }, tx);
+    }
+    await record(actor, {
+      action: 'ACCESS_LINK_ISSUED',
+      objectType: 'User',
+      objectId: userId,
+      projectId: project.id,
+      ip,
+      payload: { expiresAt: issued.expiresAt.toISOString(), via: 'project' },
+    }, tx);
+    return issued;
   });
 
   // Выдача куратором — доступ к чужой учётной записи: руководитель о ней
@@ -982,6 +992,13 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
       where: { userId, usedAt: null },
       data: { usedAt: new Date() },
     });
+    // Строка журнала — в транзакции смены роли (Ф-15, решение Р-938).
+    await record(actor, {
+      action: 'USER_ROLE_CHANGED',
+      objectType: 'User',
+      objectId: userId,
+      payload: { from: before.role, to: role },
+    }, tx);
   });
   // Новый куратор узнаёт о кабинете письмом (требование Э-03).
   if (role === 'EXPERT') {
@@ -996,13 +1013,6 @@ export async function setUserRole(actor: Actor, userId: string, role: Role) {
     });
     await inviteCurator(userId, signed);
   }
-
-  await record(actor, {
-    action: 'USER_ROLE_CHANGED',
-    objectType: 'User',
-    objectId: userId,
-    payload: { from: before.role, to: role },
-  });
 }
 
 /** Приостановить или вернуть доступ. Обезличенная запись не воскрешается. */
@@ -1031,13 +1041,12 @@ export async function setUserStatus(actor: Actor, userId: string, status: 'ACTIV
         data: { usedAt: new Date() },
       });
     }
-  });
-
-  await record(actor, {
-    action: 'USER_STATUS_CHANGED',
-    objectType: 'User',
-    objectId: userId,
-    payload: { from: before.status, to: status },
+    await record(actor, {
+      action: 'USER_STATUS_CHANGED',
+      objectType: 'User',
+      objectId: userId,
+      payload: { from: before.status, to: status },
+    }, tx);
   });
 }
 

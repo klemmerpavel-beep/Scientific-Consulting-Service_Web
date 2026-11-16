@@ -466,13 +466,12 @@ export default async function StageScreen({
           </Text>
           <Text size={15} style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
             {(stage.summary ?? '').trim() === '' ? (
-              // Письмо менеджеру — одним нажатием, с темой этапа, а не
-              // отсылка к адресу в «О работе» (решение Р-749).
+              // Вопрос менеджеру — в кабинете, в ветке «куратор — менеджер»
+              // (решение Р-935); прежде — письмом из почтовой программы
+              // (Р-749).
               <>
-                {'Менеджер не описал этап: спросите его письмом — '}
-                <a href={managerMailHref(stage.project.manager.email, stage.title)}>
-                  написать менеджеру
-                </a>
+                {'Менеджер не описал этап: спросите его — '}
+                <a href={`/cabinet/projects/${stage.project.code}/messages#body`}>написать менеджеру</a>
                 .
               </>
             ) : (

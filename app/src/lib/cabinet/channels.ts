@@ -315,6 +315,9 @@ export const RULE_EVENTS: readonly {
   { kind: 'REQUEST_CREATED', title: 'Новая заявка из кабинета', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   // Внутренняя переписка по работе и ветка с руководителем (РК-07, Р-336).
   { kind: 'INTERNAL_MESSAGE', title: 'Сообщение во внутренней переписке по работе', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
+  // Ветка «куратор — менеджер» по работе (Н-6, решение Р-935). Куратору
+  // строка стоит в его единственной группе «Работа куратора» — ниже.
+  { kind: 'CURATOR_MESSAGE', title: 'Сообщение в переписке куратора и менеджера', group: 'Переписка и работы', roles: ['MANAGER', 'HEAD'] },
   { kind: 'HEAD_REPLY', title: 'Руководитель ответил в переписке', group: 'Переписка и работы', roles: ['MANAGER'] },
   // Поручения руководителя (РК-19, Р-352).
   { kind: 'ASSIGNMENT_CREATED', title: 'Руководитель поставил поручение', group: 'Переписка и работы', roles: ['MANAGER'] },
@@ -349,6 +352,8 @@ export const RULE_EVENTS: readonly {
   { kind: 'CURATOR_TURN', title: 'Ход за вами: этап запущен или возвращён', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'STAGE_RETURNED', title: 'Клиент вернул этап с замечаниями', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'VERSION_UPLOADED', title: 'Приложена новая версия материала', group: 'Работа куратора', roles: ['EXPERT'] },
+  // Одно событие — две строки по ролям: у куратора сетка из одной группы (Р-328).
+  { kind: 'CURATOR_MESSAGE', title: 'Менеджер написал в переписке по работе', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'EXPERT_DECISION', title: 'Менеджер опубликовал вашу версию или решил по замечанию', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'VERSION_REJECTED', title: 'Ваша версия не опубликована', group: 'Работа куратора', roles: ['EXPERT'] },
   { kind: 'DEADLINE_IN_3_DAYS', title: 'Срок этапа через три дня', group: 'Работа куратора', roles: ['EXPERT'] },

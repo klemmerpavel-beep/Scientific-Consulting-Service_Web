@@ -29,7 +29,7 @@ describe('фокус на исходе действия (Р-919)', () => {
   });
 
   it('отказ помечен своим идентификатором: повторный отказ снова получает фокус', () => {
-    assert.match(read('ActionError.tsx'), /<Outcome tone="error" mark=\{id\}>/u);
+    assert.match(read('ActionError.tsx'), /<Outcome tone="error" id=\{FAULT_ID\} mark=\{id\}>/u);
   });
 
   it('роль области прежняя: отказ — `alert`, подтверждение — `status`', () => {

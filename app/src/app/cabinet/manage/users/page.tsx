@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
-import { flashText, formDraft } from '../../../../lib/cabinet/flash';
+import { FAULT_ID } from '../../../../lib/cabinet/fault-field';
+import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
+import FieldFault from '../../../../components/cabinet/FieldFault';
 import { redirect } from 'next/navigation';
 
 import Shell from '../../../../components/cabinet/Shell';
@@ -98,7 +100,8 @@ export default async function UsersScreen({
 
   const flags = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
-  const failure = await flashText(flags.error);
+  const fault = await flashEntry(flags.error);
+  const failure = fault?.text;
   // Набранное в форме заведения — после отказа (решение Р-543).
   const draft = (await formDraft(flags.error)) ?? {};
   // Отказ заведения возвращает к свёртке по якорю #new, и верх свёртки
@@ -199,9 +202,15 @@ export default async function UsersScreen({
       <Disclosure title="Завести учётную запись" open={flags.new === '1'} id="new" style={{ marginBottom: 20 }}>
         <Form action={inviteUser}>
           {inviteFailed ? (
-            <Notice tone="error" role="alert">
-              {failure}
-            </Notice>
+            // Поле, к которому относится отказ, ссылается на этот блок (Р-936).
+            <div id={FAULT_ID}>
+              <Notice tone="error" role="alert">
+                {failure}
+              </Notice>
+              {fault?.field === undefined || flags.error === undefined ? null : (
+                <FieldFault field={fault.field} by={FAULT_ID} mark={flags.error} />
+              )}
+            </div>
           ) : null}
           <FormRow>
             <Field
