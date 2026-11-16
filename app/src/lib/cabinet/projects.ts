@@ -381,15 +381,14 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
       });
     }
 
+    await record(actor, {
+      action: 'LEAD_APPROVED',
+      objectType: 'Lead',
+      objectId: lead.id,
+      projectId: created.id,
+      payload: { code: created.code, managerId },
+    }, tx);
     return created;
-  });
-
-  await record(actor, {
-    action: 'LEAD_APPROVED',
-    objectType: 'Lead',
-    objectId: lead.id,
-    projectId: project.id,
-    payload: { code: project.code, managerId },
   });
 
   // Работу ведёт не тот, кто одобрил, — менеджеру письмо (РК-08, Р-344).
@@ -561,14 +560,13 @@ export async function declineLead(actor: Actor, leadId: string, reason: string) 
         // письма не отправит — человек уже получил ответ.
         dedupKey: `lead:${leadId}:declined`,
       }));
+    await record(actor, {
+      action: 'LEAD_DECLINED',
+      objectType: 'Lead',
+      objectId: leadId,
+      payload: { letter: queued },
+    }, tx);
     return { lead, queued };
-  });
-
-  await record(actor, {
-    action: 'LEAD_DECLINED',
-    objectType: 'Lead',
-    objectId: leadId,
-    payload: { letter: queued },
   });
   return { lead, queued };
 }
@@ -657,15 +655,14 @@ export async function assignExpert(
         payload: { expertId },
       },
     });
+    await record(actor, {
+      action: 'EXPERT_ASSIGNED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { from: ref.expertId, to: expertId },
+    }, tx);
     return updated;
-  });
-
-  await record(actor, {
-    action: 'EXPERT_ASSIGNED',
-    objectType: 'Project',
-    objectId: projectId,
-    projectId,
-    payload: { from: ref.expertId, to: expertId },
   });
 
   // Куратор узнаёт о назначении письмом: тип сопровождения, срок и
@@ -965,15 +962,14 @@ export async function assignManager(actor: Actor, projectId: string, managerId: 
         dedupKey: `project:${projectId}:curator:${managerId}:${stamp}`,
       });
     }
+    await record(actor, {
+      action: 'MANAGER_ASSIGNED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { from: ref.managerId, to: managerId, reason },
+    }, tx);
     return updated;
-  });
-
-  await record(actor, {
-    action: 'MANAGER_ASSIGNED',
-    objectType: 'Project',
-    objectId: projectId,
-    projectId,
-    payload: { from: ref.managerId, to: managerId, reason },
   });
   return project;
 }
@@ -1002,7 +998,7 @@ export async function addStage(actor: Actor, input: AddStageInput) {
       orderBy: { position: 'desc' },
       select: { position: true },
     });
-    return tx.stage.create({
+    const created = await tx.stage.create({
       data: {
         projectId: input.projectId,
         position: (last?.position ?? 0) + 1,
@@ -1011,15 +1007,16 @@ export async function addStage(actor: Actor, input: AddStageInput) {
         dueOn: input.dueOn ?? null,
       },
     });
-  });
-  // Название этапа в журнал не пишется: журнал хранит идентификаторы, а
-  // текст затирается по требованию субъекта (решения Р-234, Р-239).
-  await record(actor, {
-    action: 'STAGE_CREATED',
-    objectType: 'Stage',
-    objectId: stage.id,
-    projectId: input.projectId,
-    payload: { position: stage.position },
+    // Название этапа в журнал не пишется: журнал хранит идентификаторы, а
+    // текст затирается по требованию субъекта (решения Р-234, Р-239).
+    await record(actor, {
+      action: 'STAGE_CREATED',
+      objectType: 'Stage',
+      objectId: created.id,
+      projectId: input.projectId,
+      payload: { position: created.position },
+    }, tx);
+    return created;
   });
   return stage;
 }
@@ -1074,13 +1071,13 @@ export async function moveStage(actor: Actor, stageId: string, direction: 'up' |
         payload: { action: 'moved', stageId: stage.id, title: stage.title, from: stage.position, to: target },
       },
     });
-  });
-  await record(actor, {
-    action: 'PLAN_CHANGED',
-    objectType: 'Stage',
-    objectId: stage.id,
-    projectId: stage.projectId,
-    payload: { moved: { from: stage.position, to: target } },
+    await record(actor, {
+      action: 'PLAN_CHANGED',
+      objectType: 'Stage',
+      objectId: stage.id,
+      projectId: stage.projectId,
+      payload: { moved: { from: stage.position, to: target } },
+    }, tx);
   });
 }
 
@@ -1117,13 +1114,13 @@ export async function removeStage(actor: Actor, stageId: string) {
         payload: { action: 'removed', title: stage.title, position: stage.position },
       },
     });
-  });
-  await record(actor, {
-    action: 'PLAN_CHANGED',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
-    payload: { removed: stage.position },
+    await record(actor, {
+      action: 'PLAN_CHANGED',
+      objectType: 'Stage',
+      objectId: stageId,
+      projectId: stage.projectId,
+      payload: { removed: stage.position },
+    }, tx);
   });
 }
 
@@ -1150,13 +1147,13 @@ export async function applyStageTemplate(actor: Actor, projectId: string) {
     await tx.projectEvent.create({
       data: { projectId, actorId: actor.id, kind: 'PLAN_CHANGED', payload: { action: 'template', count: template.length } },
     });
-  });
-  await record(actor, {
-    action: 'PLAN_CHANGED',
-    objectType: 'Project',
-    objectId: projectId,
-    projectId,
-    payload: { template: template.length },
+    await record(actor, {
+      action: 'PLAN_CHANGED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { template: template.length },
+    }, tx);
   });
 }
 
@@ -1271,13 +1268,13 @@ export async function reopenStage(
         path: `/cabinet/stages/${stage.id}`,
       });
     }
-  });
-  await record(actor, {
-    action: 'STAGE_REOPENED',
-    objectType: 'Stage',
-    objectId: stage.id,
-    projectId: stage.projectId,
-    payload: { from: 'DONE', to: 'IN_PROGRESS', ...dueChange(stage.dueOn, input.dueOn ?? stage.dueOn) },
+    await record(actor, {
+      action: 'STAGE_REOPENED',
+      objectType: 'Stage',
+      objectId: stage.id,
+      projectId: stage.projectId,
+      payload: { from: 'DONE', to: 'IN_PROGRESS', ...dueChange(stage.dueOn, input.dueOn ?? stage.dueOn) },
+    }, tx);
   });
 }
 
@@ -1335,20 +1332,21 @@ export async function editStage(
     });
     if (claimed.count === 0) throw new Error('Этап уже изменён другим действием: обновите страницу');
     if (moved) await announceDueChange(tx, actor, stage.id, stage.dueOn, nextDue, why);
-    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
-  });
-  await record(actor, {
-    action: 'STAGE_EDITED',
-    objectType: 'Stage',
-    objectId: stage.id,
-    projectId: stage.projectId,
-    // Перенос срока — то, о чём потом спрашивают: кто и когда сдвинул.
-    // Прежде журнал помнил только название (решение Р-240).
-    payload: {
-      from: stage.title,
-      to: title,
-      ...dueChange(stage.dueOn, saved.dueOn),
-    },
+    const row = await tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    await record(actor, {
+      action: 'STAGE_EDITED',
+      objectType: 'Stage',
+      objectId: stage.id,
+      projectId: stage.projectId,
+      // Перенос срока — то, о чём потом спрашивают: кто и когда сдвинул.
+      // Прежде журнал помнил только название (решение Р-240).
+      payload: {
+        from: stage.title,
+        to: title,
+        ...dueChange(stage.dueOn, row.dueOn),
+      },
+    }, tx);
+    return row;
   });
   return saved;
 }
@@ -1521,15 +1519,16 @@ export async function rescheduleStage(
     });
     if (claimed.count === 0) throw new Error('Срок этапа уже изменён другим действием: обновите страницу');
     await announceDueChange(tx, actor, stage.id, stage.dueOn, input.dueOn, why);
-    return tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
-  });
-  // В журнал — даты без текста причины (решения Р-234, Р-239).
-  await record(actor, {
-    action: 'STAGE_EDITED',
-    objectType: 'Stage',
-    objectId: stage.id,
-    projectId: stage.projectId,
-    payload: dueChange(stage.dueOn, saved.dueOn),
+    const row = await tx.stage.findUniqueOrThrow({ where: { id: stage.id } });
+    // В журнал — даты без текста причины (решения Р-234, Р-239).
+    await record(actor, {
+      action: 'STAGE_EDITED',
+      objectType: 'Stage',
+      objectId: stage.id,
+      projectId: stage.projectId,
+      payload: dueChange(stage.dueOn, row.dueOn),
+    }, tx);
+    return row;
   });
   return saved;
 }
@@ -1616,20 +1615,20 @@ export async function editProject(
     if (count === 0) throw new Error('Срок или состояние работы уже изменили: обновите страницу');
     const updated = await tx.project.findUniqueOrThrow({ where: { id: input.projectId } });
     if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
+    await record(actor, {
+      action: 'PROJECT_EDITED',
+      objectType: 'Project',
+      objectId: input.projectId,
+      projectId: input.projectId,
+      payload: {
+        title,
+        ...dueChange(before.dueOn, updated.dueOn),
+        ...(before.approvalDays === updated.approvalDays
+          ? {}
+          : { approvalDaysFrom: before.approvalDays, approvalDaysTo: updated.approvalDays }),
+      },
+    }, tx);
     return updated;
-  });
-  await record(actor, {
-    action: 'PROJECT_EDITED',
-    objectType: 'Project',
-    objectId: input.projectId,
-    projectId: input.projectId,
-    payload: {
-      title,
-      ...dueChange(before.dueOn, saved.dueOn),
-      ...(before.approvalDays === saved.approvalDays
-        ? {}
-        : { approvalDaysFrom: before.approvalDays, approvalDaysTo: saved.approvalDays }),
-    },
   });
   return saved;
 }
@@ -1787,15 +1786,14 @@ export async function setProjectStatus(
       key: `project:${projectId}:status-expert:${from}-${to}:${Date.now()}`,
       path: `/cabinet/projects/${saved.code}`,
     });
+    await record(actor, {
+      action: 'PROJECT_STATUS_CHANGED',
+      objectType: 'Project',
+      objectId: projectId,
+      projectId,
+      payload: { from, to },
+    }, tx);
     return saved;
-  });
-
-  await record(actor, {
-    action: 'PROJECT_STATUS_CHANGED',
-    objectType: 'Project',
-    objectId: projectId,
-    projectId,
-    payload: { from, to },
   });
   return saved;
 }
@@ -2272,25 +2270,24 @@ export async function setStageState(
       }
     }
 
+    // Журнал действий: экран журнала предлагал отбор «Изменено состояние
+    // этапа» и «Этап согласован», а записей таких не было — согласование
+    // клиентом нигде, кроме истории этапа, не оставляло следа (решение
+    // Р-239). Причина остановки в журнал не пишется: её текст лежит в
+    // истории этапа и затирается вместе с ней.
+    await record(actor, {
+      action: action === 'STAGE_APPROVE' ? 'STAGE_APPROVED' : 'STAGE_STATE_CHANGED',
+      objectType: 'Stage',
+      objectId: stageId,
+      projectId: stage.projectId,
+      payload: {
+        from,
+        to,
+        ...(via === 'MANUAL' ? {} : { via }),
+        ...(via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? { staffLink: true } : {}),
+      },
+    }, tx);
     return updated;
-  });
-
-  // Журнал действий: экран журнала предлагал отбор «Изменено состояние
-  // этапа» и «Этап согласован», а записей таких не было — согласование
-  // клиентом нигде, кроме истории этапа, не оставляло следа (решение
-  // Р-239). Причина остановки в журнал не пишется: её текст лежит в
-  // истории этапа и затирается вместе с ней.
-  await record(actor, {
-    action: action === 'STAGE_APPROVE' ? 'STAGE_APPROVED' : 'STAGE_STATE_CHANGED',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
-    payload: {
-      from,
-      to,
-      ...(via === 'MANUAL' ? {} : { via }),
-      ...(via === 'CLIENT_APPROVE' && actor.viaStaffLink === true ? { staffLink: true } : {}),
-    },
   });
   return saved;
 }
@@ -2462,16 +2459,15 @@ export async function returnStage(
         payload: { stageId, changeId: created.id, text: body, contactHint },
       },
     });
+    // В журнал — без текста, как и остальные переходы этапа (решение Р-239).
+    await record(actor, {
+      action: 'STAGE_RETURNED',
+      objectType: 'Stage',
+      objectId: stageId,
+      projectId: stage.projectId,
+      payload: { from: 'IN_APPROVAL', to: 'IN_PROGRESS', contactHint },
+    }, tx);
     return created;
-  });
-
-  // В журнал — без текста, как и остальные переходы этапа (решение Р-239).
-  await record(actor, {
-    action: 'STAGE_RETURNED',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
-    payload: { from: 'IN_APPROVAL', to: 'IN_PROGRESS', contactHint },
   });
   return change;
 }

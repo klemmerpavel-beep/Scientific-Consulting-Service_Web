@@ -98,17 +98,17 @@ export async function sendMessage(actor: Actor, projectId: string, body: string)
       },
     });
     await signalMessage(tx, actor, ref, created.id);
+    // В журнал — факт отправки без текста: переписка остаётся в работе и
+    // затирается по требованию субъекта, а журнал хранит идентификаторы
+    // (решение Р-239).
+    await record(actor, {
+      action: 'MESSAGE_SENT',
+      objectType: 'Message',
+      objectId: created.id,
+      projectId,
+      payload: { contactHint: created.containsContactHint },
+    }, tx);
     return created;
-  });
-  // В журнал — факт отправки без текста: переписка остаётся в работе и
-  // затирается по требованию субъекта, а журнал хранит идентификаторы
-  // (решение Р-239).
-  await record(actor, {
-    action: 'MESSAGE_SENT',
-    objectType: 'Message',
-    objectId: message.id,
-    projectId,
-    payload: { contactHint: message.containsContactHint },
   });
   return message;
 }
