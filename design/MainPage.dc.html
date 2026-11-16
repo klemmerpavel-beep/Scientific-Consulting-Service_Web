@@ -178,6 +178,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
 @media (max-width:430px){.mp-head{gap:12px!important}.mp-headright{gap:12px!important}.mp-logo{font-size:22px!important}.mp-cta{padding:12px 16px!important;font-size:12px!important;height:auto!important;min-height:44px}}
+/* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
+@media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
+@media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
+/* Р-951: портреты ролей первого экрана под курсором крупнее на 28 %, как на посадочной (Р-947; замечание владельца 08.11.2026). Рост — от нижней точки круга, подпись роли остаётся открытой; на сенсорных экранах и при уменьшенном движении портрет стоит на месте. */
+.pd-zoom{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
+@media (hover:hover){.pd-zoom:hover{transform:scale(1.28);z-index:2}}
+@media (prefers-reduced-motion:reduce){.pd-zoom:hover{transform:none!important}}
 </style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip">
@@ -268,7 +275,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div>
 <span style="display:inline-block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:18px">Аспирантам и молодым учёным</span>
 <h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,2.8vw,40px);line-height:1.24;font-weight:400;letter-spacing:-.015em;color:var(--pd-ink);text-wrap:pretty;max-width:100%">
-Научное сопровождение <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone">аспирантов и молодых учёных</span>: диссертация, статьи, гранты
+Научное сопровождение <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">аспирантов и молодых учёных</span></span>: диссертация, статьи, гранты
 </h1>
 <p style="margin:26px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Разбираем методологию диссертации, проводим научную экспертизу текста и готовим к защите — автором исследования остаётесь вы.</p>
 <form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
@@ -314,13 +321,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0;display:flex;flex-direction:column;gap:24px;min-height:100%">
 <div class="pd-heroart" style="position:relative;min-height:380px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:4px 8px 0 2%">
 <div class="pd-facea" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(150px,15.5vw,208px);align-items:center;text-align:center">
-<span class="pd-facea-c" style="width:clamp(150px,15.5vw,208px);height:clamp(150px,15.5vw,208px);border-radius:50%;background:var(--pd-accent-edge);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="pd-facea-c pd-zoom" style="width:clamp(150px,15.5vw,208px);height:clamp(150px,15.5vw,208px);border-radius:50%;background:var(--pd-accent-edge);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="mp-photo-1" shape="circle" data-alt="Куратор проекта — кандидат наук вашего направления" placeholder="Фото куратора" style="width:100%;height:100%"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Куратор проекта — кандидат наук вашего направления</span>
 </div>
 <div class="pd-faceb" style="display:flex;flex-direction:column;gap:10px;max-width:clamp(110px,11.3vw,152px);padding-top:clamp(48px,10.4vw,150px);align-items:center;text-align:center">
-<span class="pd-faceb-c" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:var(--pd-accent-soft);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<span class="pd-faceb-c pd-zoom" style="width:clamp(110px,11.3vw,152px);height:clamp(110px,11.3vw,152px);border-radius:50%;background:var(--pd-accent-soft);overflow:hidden;display:block;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <image-slot id="mp-photo-2" shape="circle" data-alt="Менеджер проекта" placeholder="Фото менеджера" style="width:100%;height:100%"></image-slot>
 </span>
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Менеджер проекта — сроки, документы, оплаты</span>
@@ -349,13 +356,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <!-- Р-823 (замечание владельца 06.11.2026): «Кто сопровождает проект» — второй блок страницы, сразу после первого экрана: компетентность команды раньше диагностики и условий. -->
 <!-- «Кто сопровождает»: для клиента две роли — менеджер и куратор (С-5, решение Р-770); методологический разбор и научная экспертиза текста — работа куратора. До 1024 px орбита — сетка без квадратной пропорции: двум карточкам квадрат оставлял пустую строку. -->
-<section id="team" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="team" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <!-- Р-795: четыре роли и карточки «Кто сопровождает» возвращены по указанию владельца 04.11.2026 (состояние приёмки 02.11.2026); метки направлений — по Р-771 и Р-785, движение блока — как было. -->
 <div class="pd-team" style="gap:40px;align-items:center">
 <div style="display:flex;flex-direction:column;gap:24px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Команда</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:24ch;text-wrap:balance">Кто сопровождает проект</h2>
-<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер, эксперт по специальности, методолог и научный редактор ведут проект до защиты. Каждый отвечает за свой участок.</p>
+<p style="margin:0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:40ch">Менеджер, куратор по специальности, методолог и научный редактор ведут проект до защиты. Каждый отвечает за свой участок.</p>
 <div style="display:flex;flex-direction:column;gap:12px">
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">С 2016</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">работаем с аспирантами и соискателями из России и СНГ</span></div>
 <div style="display:flex;align-items:baseline;gap:14px"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;letter-spacing:.06em;color:var(--pd-accent);flex:0 0 auto">04</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">специалиста закрепляем за проектом до самой защиты</span></div>
@@ -420,7 +427,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="pd-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch">
 <span aria-hidden="true" style="width:26px;height:26px;flex:0 0 26px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--pd-accent)"><span style="width:14px;height:14px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ expertMask }};mask:{{ expertMask }}"></span></span>
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Эксперт по специальности</span>
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;font-weight:600;color:var(--pd-ink)">Куратор по специальности</span>
 <span style="margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;color:var(--pd-ink-muted)">04</span>
 </div>
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Разбирает тему с автором и помогает выстроить содержание глав.</span>
@@ -434,7 +441,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div></section>
 
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:14px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Диагностика</span>
@@ -499,7 +506,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px">
+<section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px">
 <!-- Р-889: якорь «Условий» — на шапке раздела (порядок разделов в site-postgrad-order читается по id раздела): к нему ведёт переход из «Диагностики» (точка 03, нормоконтроль). -->
 <div id="contract" style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px;scroll-margin-top:24px">
 <div style="display:flex;flex-direction:column;gap:10px">
@@ -530,11 +537,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </ol>
 </section>
 
-<section id="services" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="services" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Услуги</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:pretty">Сопровождаем диссертацию <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone">от первой главы до защиты</span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:38ch;text-wrap:pretty">Сопровождаем диссертацию <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-8px 0 0 var(--pd-accent-mark),8px 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">от первой главы до защиты</span></span></h2>
 </div>
 </div>
 <div class="pd-services" style="gap:16px">
@@ -556,8 +563,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </article>
 </sc-for>
-</div>
-<div class="pd-services" style="gap:16px;margin-top:16px">
+<!-- Шесть карточек услуг — одна сетка (Р-941): на 481—768 px две колонки дают три ровных ряда, а не 2 + 1 в каждой из двух сеток. -->
 <sc-for list="{{ offerMid }}" as="o" hint-placeholder-count="3">
 <article class="pd-lift" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
@@ -594,7 +600,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="articles" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="articles" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Публикации к защите</span>
@@ -680,7 +686,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="process" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Порядок работы</span>
@@ -716,7 +722,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 <!-- «Как это выглядит внутри» — кабинет клиента на вымышленных данных (план владельца по образцу, С-1, решение Р-591). -->
-<section id="inside" class="pd-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="inside" class="pd-pad" aria-labelledby="pd-in-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Личный кабинет</span>
@@ -761,7 +767,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 
 <!-- Р-882: «География» — тот же раздел, что на «Студентам» (Р-849, Р-856, Р-857): карта России точками, команды в Москве и Санкт-Петербурге, «430+ работ с 2016 года» без подписи-носителя; свой заголовок и вводный текст; место — перед «Вопросами» (указание владельца 13.11.2026). -->
-<section id="geo" class="pd-pad" aria-labelledby="pd-geo-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:80px">
+<section id="geo" class="pd-pad" aria-labelledby="pd-geo-title" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:80px">
 <div class="pd-geo" style="gap:40px;align-items:stretch">
 <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">География</span>
@@ -806,7 +812,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="faq" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="faq" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вопросы</span>
@@ -851,7 +857,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </section>
 
-<section id="request" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="request" class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px">
 <div style="display:flex;flex-direction:column;gap:10px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Заявка</span>
@@ -932,7 +938,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 
 
-<section id="reviews" class="pd-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(72px,7vw,112px) auto 0;padding:0 30px;scroll-margin-top:24px">
+<section id="reviews" class="pd-pad" style="position:relative;z-index:20;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
 <div>
 <span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Отзывы</span>
@@ -1303,18 +1309,13 @@ class Component extends DCLogic {
     // Сгенерированные и чужие лица не ставятся.
     const REVIEWS = [
       // Отзывы, где речь об оценке и преподавателях, — студенческие: на «Аспирантам» их нет (Р-605).
-      { role: 'Олег', field: 'Авито · 1 ноября 2024',
-        text: 'Спасибо за работу, выполнено профессионально не смотря на сложную тему, однозначно буду обращаться ещё)' },
-      { role: 'Роман', field: 'Авито · 30 сентября 2024',
-        text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
+      // Отбор Р-945: остаются отзывы, где названы пояснения, связь, договорённости и сроки; тексты дословные (Р-113).
       { role: 'Ирина', field: 'Авито · 12 июля 2024',
         text: 'Цена соответствует качеству работы, все было выполнено даже раньше срока, в полном объёме. Быстрые ответы, вежливое общение, пояснения по всем вопросам)' },
+      { role: 'Роман', field: 'Авито · 30 сентября 2024',
+        text: 'Работа была выполнена качественно. Все договоренности проработали, цена была объявлена сразу. Человек компетентный и опытный, довериться можно)' },
       { role: 'Ян', field: 'Авито · 2 ноября 2024',
         text: 'Цена оправдана. Срок и требования были идеально выполнены, я очень благодарен таким людям!' },
-      { role: 'Велина', field: 'Авито · 3 ноября 2024',
-        text: 'Работа выполнена качественно, в соответствии с заявленным объявлением, максимально быстро, без технических и иных проблем! Благодарю Вас!' },
-      { role: 'Александра', field: 'Авито · 30 июня 2024',
-        text: 'вежливый, все сделал быстро и оперативно, как и просила, рекомендую!!! еще раз спасибо за оперативность и качество работы' },
     ];
     const revN = REVIEWS.length;
     const revAt = this.state.revAt;

@@ -76,7 +76,13 @@ for (const p of PATHS) {
         href: cta ? cta.getAttribute('href') : null,
         visible: !!r && r.width > 0 && r.height >= 40 && getComputedStyle(cta).display !== 'none' };
     });
-    if (marked) {
+    // Метка data-pd-stick="narrow" (посадочная, Р-948): полоса есть только до 768 px.
+    const narrowOnly = marked ? (await marked.getAttribute('data-pd-stick')) === 'narrow' : false;
+    if (marked && narrowOnly && w > 768) {
+      const shown = await page.evaluate(() => { const s = document.querySelector('.pd-stick'); return !!s && getComputedStyle(s).display !== 'none'; });
+      if (shown) fail('полоса с меткой narrow видна шире 768 px');
+      else info('полоса: только до 768 px, на этой ширине её нет');
+    } else if (marked) {
       if (!bar || !bar.on) fail('полоса не появилась после первого раздела');
       else if (!bar.visible) fail(`кнопка полосы не видна или ниже 40 px («${bar.cta}»)`);
       else if (bar.href !== '#request') {

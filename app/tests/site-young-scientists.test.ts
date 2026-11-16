@@ -76,7 +76,7 @@ describe('«Аспирантам»: первый экран называет м�
 
   it('перенесённый компонент — тот же h1', () => {
     const tsx = read('app/src/components/pages/PostgradPage.tsx');
-    assert.match(tsx.replace(/ /gu, ' '), /аспирантов и молодых учёных<\/span>: диссертация, статьи, гранты/u);
+    assert.match(tsx.replace(/ /gu, ' '), /аспирантов и молодых учёных<\/span><\/span>: диссертация, статьи, гранты/u);
   });
 });
 

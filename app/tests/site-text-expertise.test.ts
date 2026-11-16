@@ -88,3 +88,34 @@ describe('роль куратора и услуги называют научн�
     }
   });
 });
+
+/**
+ * Р-943: глагол той же природы. «Редактируем русский текст» на карточке
+ * посадочной читался как работа над текстом за клиента — ровно то, от чего
+ * уходил Р-785. Проверяется видимый текст: теги, комментарии разметки и
+ * сценария не в счёт.
+ */
+const EDIT_VERB = /редактиру[а-яё]+/iu;
+/** Макет без комментариев разметки и сценария и без тегов. */
+const visible = (html: string) => plain(html.replace(/<!--[\s\S]*?-->/gu, '').replace(/\/\*[\s\S]*?\*\//gu, '').replace(/^\s*\/\/.*$/gmu, ''));
+
+describe('«редактируем» не встречается в текстах клиентских страниц (Р-943)', () => {
+  for (const design of ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage'] as const) {
+    it(design, () => {
+      const text = visible(read(`design/${design}.dc.html`));
+      const hit = EDIT_VERB.exec(text);
+      assert.equal(hit, null, `design/${design}.dc.html: «${hit ? text.slice(Math.max(0, hit.index - 40), hit.index + 40) : ''}»`);
+    });
+  }
+
+  it('главная: карточка 03 называет научную экспертизу русского текста', () => {
+    for (const file of ['design/StartPage.dc.html', 'app/src/components/pages/StartPage.tsx']) {
+      assert.match(read(file), />Проводим научную экспертизу русского текста и[\s ]переводим статьи/u, file);
+    }
+  });
+
+  it('проба: глагол в видимом тексте ловится, в комментарии — нет', () => {
+    assert.match(visible('<p>Редактируем русский текст</p>'), EDIT_VERB);
+    assert.doesNotMatch(visible('<!-- редактируем позже --><p>Разбираем текст</p>'), EDIT_VERB);
+  });
+});

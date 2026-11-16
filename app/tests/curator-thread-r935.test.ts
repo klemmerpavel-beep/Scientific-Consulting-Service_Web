@@ -78,8 +78,10 @@ describe('куда ведут ссылки (Р-935)', () => {
     assert.match(CURATOR_WELCOME.lines[2]!, /в кабинете: «вопрос менеджеру» на карточке работы/u);
   });
 
-  it('миграция ветки — последняя, проверка здоровья её ждёт', () => {
-    assert.equal(LATEST_MIGRATION, '20261115130000_curator_thread');
+  it('миграция ветки — не новее той, что ждёт проверка здоровья', () => {
+    // После Р-952 за ней стоит миграция разбора замечаний (данные, без схемы):
+    // последняя миграция — та или более поздняя, имена сортируются по времени.
+    assert.ok(LATEST_MIGRATION >= '20261115130000_curator_thread', LATEST_MIGRATION);
     assert.match(read('prisma', 'migrations', '20261115130000_curator_thread', 'migration.sql'), /ALTER TYPE "MessageThread" ADD VALUE 'WORK_CURATOR';/u);
   });
 });
