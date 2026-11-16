@@ -368,4 +368,49 @@ describe('защиты финансового контура', { skip: !enabled 
       else process.env.NEXT_PUBLIC_SITE_URL = saved;
     }
   });
+
+  it('денежная запись и строка журнала — одной транзакцией: без строки журнала запись не остаётся (Р-937)', async () => {
+    // Действующее лицо без учётной записи: право по роли есть, а строка
+    // журнала упирается во внешний ключ — так воспроизводится сбой записи
+    // журнала после успешной денежной записи.
+    const ghost = (): Actor => ({ ...head(), id: `нет-такого-${stamp}` });
+
+    // Договор: без строки журнала не заводится.
+    const bare = await newProject('J0');
+    await assert.rejects(() => finance.saveContract(ghost(), { projectId: bare, number: `ЖН-${tail}-0`, totalAmount: 1000n }));
+    assert.equal(await prisma.contract.count({ where: { projectId: bare } }), 0, 'договор остался без строки журнала');
+
+    const projectId = await newProject('J1');
+    const contract = await newContract(projectId, 100_000n);
+    const { tranche } = await finance.addTranche(head(), { contractId: contract.id, title: 'Аванс', amount: 100n });
+
+    // Сумма договора: правка без строки журнала откатывается.
+    await assert.rejects(() => finance.saveContract(ghost(), { projectId, number: contract.number, totalAmount: 200_000n }));
+    assert.equal((await prisma.contract.findUniqueOrThrow({ where: { id: contract.id } })).totalAmount, 100_000n);
+
+    // Счёт: ни перевода транша, ни письма клиенту.
+    await assert.rejects(() => finance.setTrancheStatus(ghost(), tranche.id, 'INVOICED'));
+    assert.equal((await prisma.tranche.findUniqueOrThrow({ where: { id: tranche.id } })).status, 'PLANNED');
+    assert.equal(
+      await prisma.notificationOutbox.count({ where: { projectId, eventKind: 'PAYMENT_STATUS_CHANGED' } }),
+      0,
+      'письмо о счёте ушло без перевода транша',
+    );
+
+    // Перенос плановой даты.
+    await assert.rejects(() => finance.rescheduleTranche(ghost(), tranche.id, new Date('2026-12-01T00:00:00Z'), 'Просил клиент'));
+    assert.equal((await prisma.tranche.findUniqueOrThrow({ where: { id: tranche.id } })).plannedDate, null);
+
+    // Выплата куратору: отметка без строки журнала не остаётся.
+    const payout = await finance.addPayout(head(), { projectId, amount: 5_000n });
+    await assert.rejects(() => finance.markPayoutPaid(ghost(), payout.id, new Date('2026-01-10T00:00:00Z')));
+    assert.equal((await prisma.expertPayout.findUniqueOrThrow({ where: { id: payout.id } })).status, 'ACCRUED');
+
+    // Обычное действие пишет обе записи.
+    await finance.rescheduleTranche(head(), tranche.id, new Date('2026-12-01T00:00:00Z'), 'Просил клиент');
+    assert.equal(
+      await prisma.auditEvent.count({ where: { objectId: tranche.id, action: 'TRANCHE_RESCHEDULED' } }),
+      1,
+    );
+  });
 });
