@@ -1,4 +1,6 @@
+import { FAULT_ID } from '../../lib/cabinet/fault-field';
 import { flashEntry } from '../../lib/cabinet/flash';
+import FieldFault from './FieldFault';
 import { Outcome } from './ui';
 
 /**
@@ -38,9 +40,14 @@ export default async function ActionError({
   if (!here) return null;
   // Отметка — идентификатор отказа: повторный отказ в той же форме снова
   // получает фокус (решение Р-919).
+  // Отказ один на экран, поэтому идентификатор блока постоянный: на него
+  // ссылается поле, к которому отказ относится (решение Р-936).
   return (
-    <Outcome tone="error" mark={id}>
+    <Outcome tone="error" id={FAULT_ID} mark={id}>
       {entry.text.slice(0, 300)}
+      {entry.field === undefined || id === undefined ? null : (
+        <FieldFault field={entry.field} by={FAULT_ID} mark={id} />
+      )}
     </Outcome>
   );
 }

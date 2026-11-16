@@ -15,6 +15,7 @@ import { BRIEF_MAX_BYTES, BriefError } from '../../lib/cabinet/brief/read';
 import { removeOwnerTemplate, saveOwnerTemplate, TEMPLATE_MAX_BYTES, TemplateError } from '../../lib/cabinet/owner-templates';
 import { rateWork, RatingError } from '../../lib/cabinet/ratings';
 import { uploadFailedText } from '../../lib/cabinet/staff-texts';
+import { faultField } from '../../lib/cabinet/fault-field';
 import { withError } from '../../lib/cabinet/flash';
 import { draftFits, markedDraft } from '../../lib/cabinet/flash-value';
 import { draftsFor } from '../../lib/cabinet/message-drafts';
@@ -345,7 +346,10 @@ export async function approveForClient(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось согласовать этап за клиента');
   }
   if (failure !== null) {
-    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { basis } }));
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, {
+        draft: { basis },
+        field: faultField(failure, { 'for-client-basis': 'reason' }),
+      }));
   }
   redirect(`/cabinet/stages/${stageId}`);
 }
@@ -368,6 +372,7 @@ export async function returnStageWithRemarks(form: FormData): Promise<void> {
       await withError(`/cabinet/stages/${stageId}`, failure, {
         slot: 'return',
         draft: { remarks: text },
+        field: faultField(failure, { 'return-remarks': 'text' }),
         anchor: 'return',
       }),
     );
@@ -432,7 +437,10 @@ export async function handBackStageAction(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось вернуть этап куратору');
   }
   if (failure !== null) {
-    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { handback: reason } }));
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, {
+        draft: { handback: reason },
+        field: faultField(failure, { 'handback-reason': 'reason' }),
+      }));
   }
   redirect(`/cabinet/stages/${stageId}`);
 }
@@ -717,7 +725,10 @@ export async function reopenStageAction(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось вернуть этап в работу');
   }
   if (failure !== null) {
-    redirect(await withError(`/cabinet/stages/${stageId}`, failure, { draft: { reopenReason: reason } }));
+    redirect(await withError(`/cabinet/stages/${stageId}`, failure, {
+        draft: { reopenReason: reason },
+        field: faultField(failure, { 'reopen-reason': 'reason', 'reopen-dueOn': 'date' }),
+      }));
   }
   redirect(`/cabinet/stages/${stageId}`);
 }
@@ -765,6 +776,8 @@ export async function moveStageDue(form: FormData): Promise<void> {
     redirect(
       await withError(`/cabinet/stages/${stageId}`, failure, {
         draft: { dueOn: String(form.get('dueOn') ?? ''), dueReason: reason },
+        // Причина — первой: «срок переносится с причиной» называет оба слова.
+        field: faultField(failure, { 'due-reason': 'reason', 'due-dueOn': 'date' }),
       }),
     );
   }
@@ -1006,6 +1019,7 @@ export async function changeProjectStatus(form: FormData): Promise<void> {
     redirect(
       await withError(`/cabinet/projects/${code}/status?to=${encodeURIComponent(status)}`, failure, {
         draft: { reason },
+        field: faultField(failure, { reason: 'reason' }),
       }),
     );
   }
@@ -1265,7 +1279,12 @@ export async function postMessage(form: FormData): Promise<void> {
   // Набранное возвращается в поле, причина — у формы (решение Р-722, как
   // у внутренней ветки, Р-336). Не поместившийся текст причина называет.
   if (failure !== null) {
-    redirect(await withError(target, failure, { slot: 'message', draft: { body }, anchor: 'message' }));
+    redirect(await withError(target, failure, {
+        slot: 'message',
+        draft: { body },
+        anchor: 'message',
+        field: faultField(failure, { body: 'text' }),
+      }));
   }
   redirect(target);
 }
@@ -1403,7 +1422,7 @@ export async function postInternalMessage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
-  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body }, field: faultField(failure, { body: 'text' }) }));
   redirect(target);
 }
 
@@ -1419,7 +1438,7 @@ export async function postCuratorMessage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
-  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body }, field: faultField(failure, { body: 'text' }) }));
   redirect(target);
 }
 
@@ -1438,7 +1457,7 @@ export async function postStaffMessage(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось отправить сообщение');
   }
-  if (failure !== null) redirect(await withError(target, failure, { draft: { body } }));
+  if (failure !== null) redirect(await withError(target, failure, { draft: { body }, field: faultField(failure, { body: 'text' }) }));
   redirect(target);
 }
 
@@ -1637,7 +1656,12 @@ export async function createOrder(form: FormData): Promise<void> {
     const reason = failure ?? 'Не удалось завести заказ';
     // Документ остаётся при форме: отказ не теряет разобранное (Р-560).
     const back = brief === '' ? '/cabinet/manage/orders/new' : `/cabinet/manage/orders/new?brief=${encodeURIComponent(brief)}`;
-    redirect(await withError(back, note === null ? reason : `${reason} ${note}`, { draft }));
+    redirect(
+      await withError(back, note === null ? reason : `${reason} ${note}`, {
+        draft,
+        field: faultField(reason, { email: 'email', title: 'title', customer: 'person' }),
+      }),
+    );
   }
   // Документ, из которого заполнен заказ, — в материалы работы (Р-560).
   // Отказ хранилища заказ не отменяет: он уже заведён.
@@ -1756,6 +1780,7 @@ export async function recordReceiptAction(form: FormData): Promise<void> {
         slot: 'receipt',
         draft: fieldsOf(form, ['amount', 'paidOn', 'note']),
         anchor: 'receipt',
+        field: faultField(failure, { 'receipt-paidOn': 'date', 'receipt-amount': 'amount' }),
       }),
     );
   }
@@ -2059,6 +2084,7 @@ export async function inviteUser(form: FormData): Promise<void> {
       await withError('/cabinet/manage/users?new=1', reason, {
         draft: { ...input, role: String(role) },
         anchor: 'new',
+        field: faultField(reason, { email: 'email', fullName: 'person' }),
       }),
     );
   }
