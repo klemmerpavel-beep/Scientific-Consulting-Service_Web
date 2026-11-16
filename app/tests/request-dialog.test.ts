@@ -93,7 +93,13 @@ describe('закреплённая шапка длинных страниц', ()
       assert.match(header, /^<header data-pd-stick /u, `${page}: шапка без метки`);
       assert.equal(header.match(/data-pd-stick-cta/gu)?.length, 1, `${page}: главная кнопка шапки не отмечена`);
     }
-    assert.doesNotMatch(read('design', 'StartPage.dc.html'), /data-pd-stick/u);
+    // Посадочная (Р-948): полоса только до 768 px — метка narrow, одна кнопка,
+    // от 769 px полоса скрыта правилом макета, якоря — с прежним отступом.
+    const start = read('design', 'StartPage.dc.html');
+    const startHeader = start.slice(start.indexOf('<header'), start.indexOf('</header>'));
+    assert.match(startHeader, /^<header data-pd-stick="narrow" /u, 'посадочная: метка полосы не narrow');
+    assert.equal(startHeader.match(/data-pd-stick-cta/gu)?.length, 1, 'посадочная: главная кнопка шапки не отмечена');
+    assert.ok(start.includes('@media (min-width:769px){.pd-stick{display:none!important}html.pd-has-stick main [id]{scroll-margin-top:24px!important}}'), 'посадочная: от 769 px полоса не скрыта');
   });
 
   it('слой между разделами и кнопкой замечаний, движение по шкале, скрытая полоса вне фокуса', () => {
