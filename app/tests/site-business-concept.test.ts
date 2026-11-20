@@ -145,20 +145,26 @@ describe('«Компаниям»: роли (С-7, С-5; «Кто работае�
     assert.ok(page.includes('>Сверяет отчёт с требованиями получателя.</span>'));
   });
 
-  it('«Кто работает над проектом»: под метками направлений — кнопка «Обсудить проект» к форме, как на «Аспирантам» (Р-877)', () => {
+  it('«Кто работает над проектом»: под метками направлений — кнопка «Оставить заявку» к форме, как на «Аспирантам» (Р-877, подпись — Р-959)', () => {
+    // Р-959 (решение владельца 20.11.2026) сменило подпись Р-877 «Обсудить проект» на
+    // «Оставить заявку»: одна подпись у всех кнопок к заявке. Место и вид кнопки — по Р-877.
     for (const [where, source] of both()) {
       const k = source.search(/class(?:Name)?="bp-orbit"/u);
       assert.ok(k > 0, `${where}: нет орбиты ролей`);
       const left = source.slice(source.lastIndexOf('<section', k), k);
       const chips = left.indexOf('Обоснование внедрения</span>');
-      const link = left.search(/<a (?:className="[^"]*" )?href="#request"[^>]*>Обсудить проект</u);
+      const link = left.search(/<a (?:className="[^"]*" )?href="#request"[^>]*>Оставить заявку</u);
       assert.ok(chips > 0, `${where}: нет меток направлений`);
-      assert.ok(link > chips, `${where}: под метками направлений нет ссылки «Обсудить проект» на #request`);
+      assert.ok(link > chips, `${where}: под метками направлений нет ссылки «Оставить заявку» на #request`);
     }
     // Разметка и оформление — те же, что у кнопки раздела «Кто сопровождает проект» на «Аспирантам».
-    const style = (source: string) => source.match(/<a href="#request" (style="[^"]*" style-hover="[^"]*" style-active="[^"]*")>Обсудить проект</u)?.[1];
+    const style = (source: string) => {
+      const k = source.search(/class="(?:pd|bp)-orbit"/u);
+      const left = source.slice(source.lastIndexOf('<section', k), k);
+      return left.match(/<a href="#request" (style="[^"]*" style-hover="[^"]*" style-active="[^"]*")>Оставить заявку</u)?.[1];
+    };
     const main = style(plain(read('design/MainPage.dc.html')));
-    assert.ok(main, 'на «Аспирантам» нет кнопки «Обсудить проект»');
+    assert.ok(main, 'на «Аспирантам» в «Кто сопровождает проект» нет кнопки «Оставить заявку»');
     assert.equal(style(html()), main);
   });
 
