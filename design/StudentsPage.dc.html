@@ -193,6 +193,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
+/* Р-961: до шести отзывов — сетка от 1025 px: три карточки в ряд (шесть долей, карточка — две), промежуток 16 px, ряды одной высоты, неполный последний ряд — по центру той же ширины карточками (на «Студентам» 3 + 2); все карточки резкие, без стрелок; «Написать отзыв» — под сеткой. До 1024 px — прежняя карусель с высотами Р-940. Встроенные значения сцены перебиты !important. */
+@media (min-width:1025px){.pd-revstage{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:1fr;gap:16px;height:auto!important}.pd-revstage>article{grid-column:span 2;position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-height:236px;margin:0!important;transform:none!important;filter:none!important;opacity:1!important;pointer-events:auto!important;z-index:auto!important}.pd-revstage>article:nth-child(3n+1):nth-last-child(2){grid-column:2/span 2}.pd-revstage>article:nth-child(3n+1):last-child{grid-column:3/span 2}.pd-revnav{display:none!important}}
 /* Р-951: портреты ролей первого экрана под курсором крупнее на 28 %, как на посадочной (Р-947; замечание владельца 08.11.2026). Рост — от нижней точки круга, подпись роли остаётся открытой; на сенсорных экранах и при уменьшенном движении портрет стоит на месте. */
 .pd-zoom{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
 @media (hover:hover){.pd-zoom:hover{transform:scale(1.28);z-index:2}}
@@ -942,7 +944,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:44ch">Отзывы клиентов с Авито. Тексты приведены дословно; публикуются имя и дата без фамилии, фото — только с согласия автора.</p>
 </div>
-<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
+<div class="pd-revstage" role="group" aria-roledescription="{{ revRoleDesc }}" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
@@ -963,7 +965,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </article>
 </sc-for>
 </div>
-<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
+<div class="pd-revnav" style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
 <button type="button" onClick="{{ revPrev }}" aria-label="Предыдущий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
 <span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span>
 </button>
@@ -1039,7 +1041,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false, estKind: 0, estStage: 1, estTerm: 1 };
+  state = { inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, situation: 1, step: 0, open: 0, sentTop: false, sentMain: false, contactTop: 0, contactBottom: 0, offerOpen: false, normOpen: false, navOpen: false, estKind: 0, estStage: 1, estTerm: 1, revWide: false };
   componentDidMount(){
     // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
     // до чтения, — один раз. Если панель уже на экране, при уменьшенном
@@ -1093,6 +1095,11 @@ class Component extends DCLogic {
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
+    // Р-961: от 1025 px отзывы стоят сеткой — карусельные атрибуты снимаются.
+    this.revGrid = window.matchMedia('(min-width:1025px)');
+    this.syncRevGrid = () => this.setState({ revWide: this.revGrid.matches });
+    this.syncRevGrid();
+    this.revGrid.addEventListener('change', this.syncRevGrid);
     // Переход по #norm — быстрая ссылка и группа STU_NORM Директа, пункт
     // меню «Нормоконтроль» — раскрывает раздел: при загрузке страницы, при
     // смене якоря и при повторном нажатии ссылки, когда якорь уже стоит
@@ -1111,6 +1118,7 @@ class Component extends DCLogic {
     document.removeEventListener('click', this.onNormLink);
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
+    if (this.revGrid) this.revGrid.removeEventListener('change', this.syncRevGrid);
   }
   mask(i){ return "url('./assets/icons/" + i + ".svg') center/contain no-repeat"; }
   renderVals(){
@@ -1358,7 +1366,8 @@ class Component extends DCLogic {
         op: '1',
         z: String(3 - a),
         pe: a === 0 ? 'auto' : 'none',
-        hidden: a === 0 ? undefined : 'true'
+        // Р-961: в сетке от 1025 px видны все карточки — для читалки тоже.
+        hidden: a === 0 || this.state.revWide ? undefined : 'true'
       };
     });
     // «Как это выглядит внутри» — кабинет клиента вкладками (С-1, Р-591;
@@ -1431,7 +1440,7 @@ class Component extends DCLogic {
       stopInside: e => e.stopPropagation(),
       sentReview: this.state.sentReview,
       submitReview: e => { e.preventDefault(); this.setState({ sentReview: true }, () => { const el = document.querySelector('[data-sent="review"]'); if (el) el.focus(); }); },
-      reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
+      reviews, revRoleDesc: this.state.revWide ? undefined : 'карусель', revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
       ...(() => {

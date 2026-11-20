@@ -181,6 +181,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 /* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
 @media (max-width:340px){.pd-revstage{height:328px!important}.pd-revstage>article{height:296px!important}}
+/* Р-961: «Шесть шагов» — от 769 px сетка 3 × 2 с промежутком 16 px, ряды одной высоты, все шаги видны сразу; стрелки и полоса прогресса сняты. До 768 px — прежняя лента со стрелками. */
+@media (min-width:769px){.pd-steps{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;overflow:visible!important;scroll-snap-type:none!important}.pd-steps-nav{display:none!important}}
+/* Р-961: до шести отзывов — сетка от 1025 px: три карточки в ряд (шесть долей, карточка — две), промежуток 16 px, ряды одной высоты, неполный последний ряд — по центру той же ширины карточками (на «Студентам» 3 + 2); все карточки резкие, без стрелок; «Написать отзыв» — под сеткой. До 1024 px — прежняя карусель с высотами Р-940. Встроенные значения сцены перебиты !important. */
+@media (min-width:1025px){.pd-revstage{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:1fr;gap:16px;height:auto!important}.pd-revstage>article{grid-column:span 2;position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-height:236px;margin:0!important;transform:none!important;filter:none!important;opacity:1!important;pointer-events:auto!important;z-index:auto!important}.pd-revstage>article:nth-child(3n+1):nth-last-child(2){grid-column:2/span 2}.pd-revstage>article:nth-child(3n+1):last-child{grid-column:3/span 2}.pd-revnav{display:none!important}}
 /* Р-951: портреты ролей первого экрана под курсором крупнее на 28 %, как на посадочной (Р-947; замечание владельца 08.11.2026). Рост — от нижней точки круга, подпись роли остаётся открытой; на сенсорных экранах и при уменьшенном движении портрет стоит на месте. */
 .pd-zoom{position:relative;transform-origin:50% 100%;transition:transform 220ms cubic-bezier(.2,0,.2,1)}
 @media (hover:hover){.pd-zoom:hover{transform:scale(1.28);z-index:2}}
@@ -695,30 +699,25 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <span class="pd-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Этапы по Заданию закрываются актом приёмки</span>
 </div>
-<div data-carousel="process" tabindex="0" role="group" aria-label="Шаги работы — прокрутите стрелками" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
+<div data-carousel="process" class="pd-steps" tabindex="{{ stepTab }}" role="group" aria-label="{{ stepLabel }}" onScroll="{{ onStepScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:10px 2px 12px;margin:-10px -2px -12px">
 <sc-for list="{{ steps }}" as="p" hint-placeholder-count="6">
-<article class="pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;min-height:232px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
+<article class="pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px 22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
-<span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:{{ p.numColor }};font-variant-numeric:tabular-nums">{{ p.num }}</span>
+<span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">{{ p.num }}</span>
 <img src="{{ p.img }}" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0">
 </div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ p.title }}</h3>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.text }}</p>
-<div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--pd-divider);display:flex;flex-wrap:wrap;gap:6px">
-<sc-for list="{{ p.tags }}" as="tag" hint-placeholder-count="3">
-<span style="background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;padding:6px 12px;font-size:13px;line-height:1.5;font-weight:500;color:var(--pd-ink-secondary);white-space:nowrap">{{ tag.text }}</span>
-</sc-for>
-</div>
 </article>
 </sc-for>
 </div>
-<div style="display:flex;align-items:center;gap:24px;margin-top:26px">
+<div class="pd-steps-nav" style="display:flex;align-items:center;gap:24px;margin-top:26px">
 <div style="flex:1 1 auto;height:6px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
 <div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ stepScale }}"></div>
 </div>
 <div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущий шаг" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
-<button type="button" aria-label="Следующий шаг" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-accent-edge);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
+<button type="button" aria-label="Предыдущий шаг" onClick="{{ prevStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ prevMask }};mask:{{ prevMask }}"></span></button>
+<button type="button" aria-label="Следующий шаг" onClick="{{ nextStep }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:17px;height:17px;display:block;background:var(--pd-accent);-webkit-mask:{{ nextMask }};mask:{{ nextMask }}"></span></button>
 </div>
 </div>
 </section>
@@ -947,7 +946,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <p style="margin:0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);max-width:44ch">Отзывы клиентов с Авито. Тексты приведены дословно; публикуются имя и дата без фамилии, фото — только с согласия автора.</p>
 </div>
-<div class="pd-revstage" role="group" aria-roledescription="карусель" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
+<div class="pd-revstage" role="group" aria-roledescription="{{ revRoleDesc }}" aria-label="Отзывы клиентов" style="position:relative;height:268px;margin-top:28px">
 <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="5">
 <article aria-hidden="{{ r.hidden }}" style="position:absolute;left:50%;top:8px;width:min(430px,84vw);height:236px;margin-left:calc(min(430px,84vw) / -2);box-sizing:border-box;display:flex;flex-direction:column;gap:14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:20px 22px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:transform 420ms cubic-bezier(.2,0,.2,1),filter 420ms cubic-bezier(.2,0,.2,1),opacity 420ms cubic-bezier(.2,0,.2,1);transform:{{ r.tf }};filter:{{ r.fl }};opacity:{{ r.op }};z-index:{{ r.z }};pointer-events:{{ r.pe }}">
 <div style="display:flex;align-items:center;gap:12px">
@@ -968,7 +967,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </article>
 </sc-for>
 </div>
-<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
+<div class="pd-revnav" style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px">
 <button type="button" onClick="{{ revPrev }}" aria-label="Предыдущий отзыв" style="appearance:none;cursor:pointer;width:44px;height:44px;flex:0 0 44px;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.94)">
 <span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span>
 </button>
@@ -1044,7 +1043,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { diagAt: 0, inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false };
+  state = { diagAt: 0, inTab: 0, revFormOpen: false, sentReview: false, revAt: 0, open: 0, sent: false, sentTop: false, contact: 0, contactTop: 0, stepPage: 0, stepFrac: 0, offerOpen: false, navOpen: false, revWide: false, stepsWide: false };
   componentDidMount(){
     // Шаги после заявки (Р-885) проявляются по очереди, когда панель доходит
     // до чтения, — один раз. Если панель уже на экране, при уменьшенном
@@ -1096,12 +1095,24 @@ class Component extends DCLogic {
     this.syncNav = () => this.setState({ navOpen: this.wide.matches });
     this.syncNav();
     this.wide.addEventListener('change', this.syncNav);
+    // Р-961: от 769 px «Шесть шагов» — сетка: у неё нет прокрутки, и в обходе клавиатурой она не нужна.
+    this.stepGrid = window.matchMedia('(min-width:769px)');
+    this.syncStepGrid = () => this.setState({ stepsWide: this.stepGrid.matches });
+    this.syncStepGrid();
+    this.stepGrid.addEventListener('change', this.syncStepGrid);
+    // Р-961: от 1025 px отзывы стоят сеткой — карусельные атрибуты снимаются.
+    this.revGrid = window.matchMedia('(min-width:1025px)');
+    this.syncRevGrid = () => this.setState({ revWide: this.revGrid.matches });
+    this.syncRevGrid();
+    this.revGrid.addEventListener('change', this.syncRevGrid);
     this.forceUpdate();
   }
   componentWillUnmount(){
     if (this.flowSeen) this.flowSeen.disconnect();
     window.removeEventListener('keydown', this.onRevKey);
     if (this.wide) this.wide.removeEventListener('change', this.syncNav);
+    if (this.revGrid) this.revGrid.removeEventListener('change', this.syncRevGrid);
+    if (this.stepGrid) this.stepGrid.removeEventListener('change', this.syncStepGrid);
   }
   stepTrack(){ return document.querySelector('[data-carousel="process"]'); }
   goStep(i){
@@ -1124,19 +1135,9 @@ class Component extends DCLogic {
       ['05', 'Этапы с приёмкой', '', 'Куратор разбирает главы, текст пишете вы. Следующий этап оплачивается после приёмки предыдущего.'],
       ['06', 'Подготовка к защите', '', 'Завершающий этап Задания: репетиция ответов на вопросы совета и разбор замечаний рецензентов.']
     ];
-    const stepTags = [
-      ['Разбор задачи', 'Ответ менеджера', 'Срок защиты'],
-      ['Доступ в кабинет', 'Что подготовить', 'Материалы'],
-      ['Подбор куратора', 'Профиль куратора', 'Созвон до 20 минут'],
-      ['Итог консультации', 'Календарный план', 'Стоимость по этапам'],
-      ['Разбор глав', 'Научная экспертиза текста', 'Акт по этапу'],
-      ['Разбор доклада', 'Презентация', 'Репетиция вопросов']
-    ];
     const stepImg = ['ex-3d-envelope', 'pd-3d-checklist', 'ex-3d-question', 'ex-3d-form', 'pd-3d-badge', 'pd-3d-bubbles'];
     const steps = stepData.map(([num, title, time, text], i) => ({
-      num, title, text, img: './assets/art/' + stepImg[i] + '.webp',
-      numColor: i === this.state.stepPage ? 'var(--pd-accent)' : 'var(--pd-ink-muted)',
-      tags: (stepTags[i] || []).map(text => ({ text }))
+      num, title, text, img: './assets/art/' + stepImg[i] + '.webp'
     }));
     const stepFrac = this.state.stepFrac;
     const stepScale = 'scaleX(' + (1 / steps.length + stepFrac * (steps.length - 1) / steps.length) + ')';
@@ -1337,7 +1338,8 @@ class Component extends DCLogic {
         op: '1',
         z: String(3 - a),
         pe: a === 0 ? 'auto' : 'none',
-        hidden: a === 0 ? undefined : 'true'
+        // Р-961: в сетке от 1025 px видны все карточки — для читалки тоже.
+        hidden: a === 0 || this.state.revWide ? undefined : 'true'
       };
     });
     // «Как это выглядит внутри» — кабинет клиента вкладками (С-1, Р-591).
@@ -1405,10 +1407,12 @@ class Component extends DCLogic {
       stopInside: e => e.stopPropagation(),
       sentReview: this.state.sentReview,
       submitReview: e => { e.preventDefault(); this.setState({ sentReview: true }, () => { const el = document.querySelector('[data-sent="review"]'); if (el) el.focus(); }); },
-      reviews, revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
+      reviews, revRoleDesc: this.state.revWide ? undefined : 'карусель', revCounter: 'Отзыв: ' + REVIEWS[revAt].role + ', ' + REVIEWS[revAt].field,
       revPrev: () => this.setState(s => ({ revAt: (s.revAt - 1 + revN) % revN })),
       revNext: () => this.setState(s => ({ revAt: (s.revAt + 1) % revN })),
-      steps, faq, stalls, usp, outcomes, diag,
+      steps, stepTab: this.state.stepsWide ? undefined : 0,
+      stepLabel: this.state.stepsWide ? 'Шаги работы' : 'Шаги работы — прокрутите стрелками',
+      faq, stalls, usp, outcomes, diag,
       // Стрелка-узел «Диагностики» указывает на выбранную строку: шаг строк
       // от 769 px — 56 px высоты и 8 px промежутка (Р-889); до 768 px узел
       // стоит на границе панелей, сдвиг перекрыт правилом макета.
