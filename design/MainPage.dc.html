@@ -591,8 +591,15 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </article>
 </sc-for>
 </div>
+<!-- Р-964: пять карточек-ссылок под сеткой ушли в раскрываемый перечень (решение владельца 20.11.2026): под шестью карточками услуг — одна светлая карточка-ссылка на всю ширину «Полный список услуг — ещё 20 позиций» (исполнение Р-616), по нажатию — прежний перечень из 20 позиций в прежнем порядке. 6 + 20 = 26 — число плашки первого экрана. -->
+<button class="pd-lift" type="button" onClick="{{ toggleOffer }}" aria-expanded="{{ offerOpen }}" aria-controls="mp-offer-list" style="appearance:none;cursor:pointer;box-sizing:border-box;width:100%;margin-top:16px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px 24px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ offerToggleLabel }}</span>
+<span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-accent);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
+</button>
+<div id="mp-offer-list">
+<sc-if value="{{ offerOpen }}" hint-placeholder-val="{{ false }}">
 <div class="pd-services" style="gap:16px;margin-top:16px">
-<sc-for list="{{ offerRest }}" as="o" hint-placeholder-count="5">
+<sc-for list="{{ offerRest }}" as="o" hint-placeholder-count="20">
 <a class="pd-lift" href="#request" style="background:rgba(255,255,255,.92);border:1px solid var(--pd-border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1)">
 <span style="display:flex;align-items:center;gap:10px">
 <span aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;display:block;background:var(--pd-accent);-webkit-mask:{{ checkMask }};mask:{{ checkMask }}"></span>
@@ -601,10 +608,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:18px;height:18px;flex:0 0 18px;display:block;background:var(--pd-ink-muted);-webkit-mask:{{ linkMask }};mask:{{ linkMask }}"></span>
 </a>
 </sc-for>
-<button class="pd-lift" type="button" onClick="{{ toggleOffer }}" aria-expanded="{{ offerOpen }}" style="appearance:none;cursor:pointer;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:16px 24px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:12px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),opacity 180ms cubic-bezier(.2,0,.2,1)" style-active="opacity:.82">
-<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ offerToggleLabel }}</span>
-<span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-accent);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
-</button>
+</div>
+</sc-if>
 </div>
 </section>
 
@@ -1262,7 +1267,8 @@ class Component extends DCLogic {
     }));
     const offerAll = ['Патентование', 'НИОКР для бизнеса', 'Отчёты по практике и НИР', 'Публикации в рецензируемых журналах', 'Автореферат диссертации', 'Монографии', 'Перевод статей на английский', 'Разбор отзывов оппонентов и ведущей организации', 'Методика статистической обработки данных', 'Подбор журнала и подготовка статьи к подаче в индексируемые издания', 'Оформление списка литературы по ГОСТ', 'Доклад и презентация к защите', 'Научная экспертиза текста', 'Проверка на заимствования и корректная цитируемость', 'Сопровождение иностранных аспирантов', 'Регистрация программ для ЭВМ и баз данных', 'Экспертиза технической документации', 'Обоснование научной новизны', 'Планирование эксперимента', 'Апробация на конференциях'];
     const offerOpen = this.state.offerOpen;
-    const offerRest = (offerOpen ? offerAll : offerAll.slice(0, 5)).map(title => ({ title }));
+    // Р-964: перечень раскрывается целиком — без пяти позиций на виду.
+    const offerRest = offerAll.map(title => ({ title }));
     // Р-890: подвал инфографики — как помогаем с публикациями к защите, по
     // формулировкам этой страницы: «Диагностика», точка 04 («Публикаций не
     // хватает для допуска» → «Сверяет публикации с требованиями к допуску»,
@@ -1490,7 +1496,7 @@ class Component extends DCLogic {
       },
       checkMask: this.mask('square-check'), linkMask: this.mask('arrow-right'), talkMask: this.mask('message-circle'),
       clockMask: this.mask('clock'), offerOpen,
-      offerToggleLabel: offerOpen ? 'Свернуть список' : 'Полный список услуг',
+      offerToggleLabel: offerOpen ? 'Свернуть список' : 'Полный список услуг — ещё ' + offerAll.length + ' позиций',
       offerToggleMask: this.mask(offerOpen ? 'arrow-left' : 'arrow-down'),
       toggleOffer: () => this.setState(s => ({ offerOpen: !s.offerOpen })),
       sent: this.state.sent,
