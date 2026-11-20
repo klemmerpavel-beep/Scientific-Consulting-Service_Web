@@ -50,7 +50,8 @@ describe('формы вкладки «Производственный кале�
     // Оба поля — одной атомарной записью, а не двумя вызовами подряд.
     assert.match(code, /saveResponseTerms\(actor, String\(form\.get\('days'\) \?\? ''\), String\(form\.get\('hours'\) \?\? ''\)\)/u);
     assert.doesNotMatch(code, /saveLeadFirstResponseHours/u);
-    assert.match(code, /withError\(back, failure, \{ draft: fieldsOf\(form, form\.has\('hours'\) \? \['days', 'hours'\] : \['days'\]\) \}\)/u);
+    // С черновиком уходит и поле, к которому относится отказ (решение Р-955).
+    assert.match(code, /withError\(back, failure, \{\s*draft: fieldsOf\(form, form\.has\('hours'\) \? \['days', 'hours'\] : \['days'\]\),/u);
     const reaction = form('saveReaction');
     assert.match(reaction, /defaultValue=\{draft\.days \?\? String\(reaction\)\}/u);
     assert.match(reaction, /defaultValue=\{draft\.hours \?\? String\(firstResponse\)\}/u);
