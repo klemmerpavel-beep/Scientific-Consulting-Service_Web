@@ -1363,8 +1363,11 @@ export async function addContactChannel(form: FormData): Promise<void> {
   // причина — у формы (решение Р-722; отказ на экране настроек — Р-373).
   if (failure !== null) {
     const back = failedForm(failure, { kind, preferred: preferred ? 'on' : '' }, { value, note });
+    // Номер или ссылка — поле отказа; предел длины называет оба поля разом
+    // и поля не помечает (решение Р-955).
+    const field = faultField(failure, { value: 'contact' });
     redirect(
-      await withError('/cabinet/settings', back.reason, { slot: 'contact', draft: back.draft, anchor: 'new-contact' }),
+      await withError('/cabinet/settings', back.reason, { slot: 'contact', draft: back.draft, anchor: 'new-contact', field }),
     );
   }
   redirect('/cabinet/settings?saved=1');
@@ -2320,6 +2323,8 @@ export async function saveType(form: FormData): Promise<void> {
       await withError('/cabinet/manage/directory?new=1', reason, {
         draft: { code, name, basePrice: rawPrice, sortOrder: rawOrder },
         anchor: 'new-type',
+        // «Код и название обязательны» называет два поля — без пометки (Р-955).
+        field: faultField(reason, { code: 'code', basePrice: 'amount', sortOrder: 'order' }),
       }),
     );
   }
@@ -2332,7 +2337,7 @@ export async function attachAlias(form: FormData): Promise<void> {
     await addAlias(actor, String(form.get('serviceTypeId') ?? ''), String(form.get('alias') ?? ''));
   } catch (error) {
     const reason = reasonOf(error, 'Не удалось привязать написание');
-    redirect(await withError(`/cabinet/manage/directory`, reason));
+    redirect(await withError(`/cabinet/manage/directory`, reason, { field: faultField(reason, { alias: 'alias' }) }));
   }
   redirect('/cabinet/manage/directory');
 }
@@ -2385,7 +2390,14 @@ export async function saveReaction(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить сроки ответа');
   }
-  if (failure !== null) redirect(await withError(back, failure, { draft: fieldsOf(form, form.has('hours') ? ['days', 'hours'] : ['days']) }));
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        draft: fieldsOf(form, form.has('hours') ? ['days', 'hours'] : ['days']),
+        field: faultField(failure, { days: 'date', hours: 'response' }),
+      }),
+    );
+  }
   redirect(back);
 }
 
@@ -2406,7 +2418,14 @@ export async function addExpenseAction(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось внести расход');
   }
   if (failure !== null) {
-    redirect(await withError(back, failure, { draft: fieldsOf(form, ['month', 'categoryId', 'amount', 'serviceTypeId', 'note']) }));
+    // Статья и тип — выбор из перечня экрана: отказ о них — о перечне, а не
+    // о набранном, поле не помечается (Р-955).
+    redirect(
+      await withError(back, failure, {
+        draft: fieldsOf(form, ['month', 'categoryId', 'amount', 'serviceTypeId', 'note']),
+        field: faultField(failure, { month: 'month', amount: 'amount', note: 'note' }),
+      }),
+    );
   }
   redirect(back);
 }
@@ -2441,7 +2460,14 @@ export async function createAssignmentAction(form: FormData): Promise<void> {
     failure = reasonOf(error, 'Не удалось поставить поручение');
   }
   if (failure !== null) {
-    redirect(await withError(back, failure, { draft: fieldsOf(form, ['assigneeId', 'text', 'dueOn', 'project']) }));
+    // Сотрудник и работа — выбор из перечня экрана, а отказ «сотрудник не
+    // ведёт работу» называет оба: эти поля не помечаются (Р-955).
+    redirect(
+      await withError(back, failure, {
+        draft: fieldsOf(form, ['assigneeId', 'text', 'dueOn', 'project']),
+        field: faultField(failure, { dueOn: 'date', text: 'task' }),
+      }),
+    );
   }
   redirect(`${back}?created=1`);
 }
@@ -2473,7 +2499,9 @@ export async function saveAnalyticsSettings(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить настройки учёта');
   }
-  if (failure !== null) redirect(await withError(back, failure));
+  if (failure !== null) {
+    redirect(await withError(back, failure, { field: faultField(failure, { since: 'date', thresholds: 'threshold' }) }));
+  }
   redirect(back);
 }
 
@@ -2529,7 +2557,11 @@ export async function saveCalendar(form: FormData): Promise<void> {
   } catch (error) {
     failure = reasonOf(error, 'Не удалось сохранить день календаря');
   }
-  if (failure !== null) redirect(await withError(back, failure));
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, { field: faultField(failure, { 'calendar-day': 'day', 'calendar-note': 'note' }) }),
+    );
+  }
   redirect(back);
 }
 
