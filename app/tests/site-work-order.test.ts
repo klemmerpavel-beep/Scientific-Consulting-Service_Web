@@ -222,6 +222,25 @@ describe('две роли для клиента — менеджер и кура
     assert.ok(orbit.includes('>Разбирает с автором тему и содержание глав.</span>'), 'описание куратора');
   });
 
+  it('«Аспирантам» и «Компаниям»: номер роли в углу карточки, как на «Студентам» (Р-954)', () => {
+    for (const [page, cls] of [['MainPage', 'pd'], ['BusinessPage', 'bp']] as const) {
+      const html = design(page);
+      const orbit = html.slice(html.indexOf(`<div class="${cls}-orbit"`), html.indexOf('</section>', html.indexOf(`<div class="${cls}-orbit"`)));
+      const nums = [...orbit.matchAll(new RegExp(`<span class="${cls}-crewnum" style="position:absolute;top:20px;right:19px;[^"]*">(0[1-4])</span>`, 'gu'))].map((m) => m[1]);
+      assert.deepEqual(nums, ['01', '02', '03', '04'], `${page}: номера ролей не в углу карточки`);
+      // «Куратор по специальности» и «Куратор по отрасли» выталкивали «04» на поле карточки (Р-840).
+      assert.doesNotMatch(orbit, /margin-left:auto;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1\.4;color:var\(--pd-ink-muted\)">0[1-4]</u, page);
+      assert.ok(html.includes(`.${cls}-crewcard{position:relative;`), `${page}: карточка — опора для номера`);
+      // Строка заголовка оставляет место под номер: на 1024 px «Куратор по специальности» в одну строку доходил до «04».
+      assert.equal([...orbit.matchAll(/align-items:center;align-self:stretch;padding-right:24px">/gu)].length, 4, `${page}: строка заголовка без места под номер`);
+    }
+    // Описания — в три строки, как на «Студентам»: карточки одной высоты.
+    const main = design('MainPage');
+    for (const text of ['Выстраивает структуру и методологию исследования.', 'Проверяет логику глав и оформление по ГОСТ.', 'Разбирает с автором тему и содержание глав.']) {
+      assert.ok(main.includes(`>${text}</span>`), text);
+    }
+  });
+
   it('главная: карточка «Две роли» словами задания', () => {
     const start = design('StartPage');
     assert.ok(start.includes('>Менеджер — сроки, документы, оплаты. Куратор со степенью по вашей специальности — содержание и методология.</p>'));
