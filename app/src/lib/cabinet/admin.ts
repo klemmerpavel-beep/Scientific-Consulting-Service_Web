@@ -267,18 +267,21 @@ export async function openClientAccess(
       });
       if (twin > 0) throw new Error('Этот адрес уже у другой карточки клиента: карточки сводит руководитель');
       // Запись — условием «почты в карточке всё ещё нет»: адрес, вписанный
-      // за это время другим действием, не затирается.
-      const written = await prisma.clientProfile.updateMany({
-        where: { id: client.id, userId: null, email: client.email },
-        data: { email: typed },
-      });
-      if (written.count === 0) throw new Error('В карточке клиента уже есть почта: обновите страницу');
-      await record(actor, {
-        action: 'CLIENT_EMAIL_ADDED',
-        objectType: 'ClientProfile',
-        objectId: client.id,
-        projectId: project.id,
-        ip,
+      // за это время другим действием, не затирается. Адрес и строка
+      // журнала о нём — одной транзакцией (Р-967).
+      await prisma.$transaction(async (tx) => {
+        const written = await tx.clientProfile.updateMany({
+          where: { id: client.id, userId: null, email: client.email },
+          data: { email: typed },
+        });
+        if (written.count === 0) throw new Error('В карточке клиента уже есть почта: обновите страницу');
+        await record(actor, {
+          action: 'CLIENT_EMAIL_ADDED',
+          objectType: 'ClientProfile',
+          objectId: client.id,
+          projectId: project.id,
+          ip,
+        }, tx);
       });
     }
     if (existing !== null) {
@@ -422,19 +425,25 @@ export async function retryCuratorInvite(actor: Actor, userId: string, ip?: stri
     select: { id: true },
   });
   if (recent !== null) throw new Error('Приглашение уже отправлено заново: повторить можно через десять минут');
-  const claimed = await prisma.notificationOutbox.updateMany({
-    where: { id: row.id, state: 'FAILED' },
-    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+  // Возврат в очередь и строка журнала — одной транзакцией: пауза повтора
+  // считается по журналу, и повтор без строки её бы обходил (Р-967).
+  // Строку уже вернули другим нажатием — действия не было, строки тоже.
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.notificationOutbox.updateMany({
+      where: { id: row.id, state: 'FAILED' },
+      data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+    });
+    if (claimed.count > 0) {
+      await record(actor, {
+        action: 'OUTBOX_RETRY',
+        objectType: 'NotificationOutbox',
+        objectId: row.id,
+        payload: { eventKind: 'CURATOR_INVITED', userId },
+        ip,
+      }, tx);
+    }
+    return claimed.count > 0;
   });
-  if (claimed.count === 0) return false;
-  await record(actor, {
-    action: 'OUTBOX_RETRY',
-    objectType: 'NotificationOutbox',
-    objectId: row.id,
-    payload: { eventKind: 'CURATOR_INVITED', userId },
-    ip,
-  });
-  return true;
 }
 
 /**
@@ -513,17 +522,20 @@ export async function saveRegalia(
   if (data.specialtyCode !== null && !/^\d+(\.\d+){1,3}$/u.test(data.specialtyCode)) {
     throw new Error('Шифр специальности — цифрами через точку, например «1.3.8»');
   }
-  await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
-  await record(actor, {
-    action: 'STAFF_REGALIA_SAVED',
-    objectType: 'ExpertProfile',
-    objectId: userId,
-    payload: {
-      ...('position' in data ? { position: data.position !== null } : {}),
-      degree: data.degree !== null,
-      specialization: data.specialization !== null,
-      code: data.specialtyCode,
-    },
+  // Регалии и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+    await record(actor, {
+      action: 'STAFF_REGALIA_SAVED',
+      objectType: 'ExpertProfile',
+      objectId: userId,
+      payload: {
+        ...('position' in data ? { position: data.position !== null } : {}),
+        degree: data.degree !== null,
+        specialization: data.specialization !== null,
+        code: data.specialtyCode,
+      },
+    }, tx);
   });
 }
 
@@ -735,15 +747,18 @@ export async function saveCuratorProfile(actor: Actor, userId: string, input: Cu
     (key) => !sameValue(before?.[key] ?? null, data[key]),
   );
   if (changed.length === 0) return;
-  await prisma.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
-  await record(actor, {
-    action: 'CURATOR_PROFILE_SAVED',
-    objectType: 'ExpertProfile',
-    objectId: userId,
-    payload: {
-      changed,
-      ...(changed.includes('defaultPayout') ? { defaultPayout: data.defaultPayout?.toString() ?? null } : {}),
-    },
+  // Профиль и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.expertProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+    await record(actor, {
+      action: 'CURATOR_PROFILE_SAVED',
+      objectType: 'ExpertProfile',
+      objectId: userId,
+      payload: {
+        changed,
+        ...(changed.includes('defaultPayout') ? { defaultPayout: data.defaultPayout?.toString() ?? null } : {}),
+      },
+    }, tx);
   });
 }
 
@@ -793,15 +808,19 @@ export async function saveOwnConsent(
     if (marks?.showcaseConsentAt == null) return;
     data = { showcaseConsentAt: null, showcaseConsentHash: null };
   }
-  await prisma.expertProfile.upsert({ where: { userId: actor.id }, create: { userId: actor.id, ...data }, update: data });
-  await record(actor, {
-    action: input.give ? 'CURATOR_CONSENT_GIVEN' : 'CURATOR_CONSENT_WITHDRAWN',
-    objectType: 'ExpertProfile',
-    objectId: actor.id,
-    payload: {
-      consent: input.kind,
-      ...(input.give ? { textHash: shortHash(hash) } : {}),
-    },
+  // Отметка согласия и строка журнала — одной транзакцией: согласие по
+  // 152-ФЗ без сведений, когда и на какой текст оно дано, не остаётся (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.expertProfile.upsert({ where: { userId: actor.id }, create: { userId: actor.id, ...data }, update: data });
+    await record(actor, {
+      action: input.give ? 'CURATOR_CONSENT_GIVEN' : 'CURATOR_CONSENT_WITHDRAWN',
+      objectType: 'ExpertProfile',
+      objectId: actor.id,
+      payload: {
+        consent: input.kind,
+        ...(input.give ? { textHash: shortHash(hash) } : {}),
+      },
+    }, tx);
   });
 }
 
@@ -1073,88 +1092,93 @@ export async function signExpertNda(actor: Actor, userId: string, signedOn: Date
   if (signedOn !== null && signedOn.getTime() > moscowToday().getTime()) {
     throw new Error('Дата договора не может быть позже сегодняшней');
   }
-  // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
-  // договор заводит его сам, а не падает.
-  const before = await prisma.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
-  // Отметка договора гасит «Сообщить руководителю» и дело руководителя
-  // (требование Э-12, решение Р-331).
-  await prisma.expertProfile.upsert({
-    where: { userId },
-    create: { userId, ndaSignedAt: signedOn },
-    update: { ndaSignedAt: signedOn, ...(signedOn === null ? {} : { ndaRequestedAt: null }) },
-  });
-  // Отзыв договора гасит неотправленные письма о работах: отложенные до
-  // утренней сводки ушли бы в 09:00 с названиями этапов и материалов
-  // куратору, которому они уже не положены (Р-237; решение Р-456).
-  // Недоставленные письма о работах гаснут тоже: «Отправить ещё раз»
-  // вернуло бы их в очередь (решение Р-668). Нейтральное «работа снята»
-  // уходит.
-  if ((before?.ndaSignedAt ?? null) !== null && signedOn === null) {
-    await prisma.notificationOutbox.updateMany({
-      where: {
+  // Отметка, гашение писем, строка журнала и письма о доступе — одной
+  // транзакцией (Р-967): сбой записи журнала не оставляет ни договора без
+  // сведений, кто его отметил, ни письма «доступ открыт» без договора.
+  // Письма ставятся в очередь той же транзакцией, как письмо о выплате
+  // (Р-937); уходят они после фиксации — рассылкой.
+  await prisma.$transaction(async (tx) => {
+    // Профиля может не быть у записи, ставшей экспертом до решения Р-225:
+    // договор заводит его сам, а не падает.
+    const before = await tx.expertProfile.findUnique({ where: { userId }, select: { ndaSignedAt: true } });
+    // Отметка договора гасит «Сообщить руководителю» и дело руководителя
+    // (требование Э-12, решение Р-331).
+    await tx.expertProfile.upsert({
+      where: { userId },
+      create: { userId, ndaSignedAt: signedOn },
+      update: { ndaSignedAt: signedOn, ...(signedOn === null ? {} : { ndaRequestedAt: null }) },
+    });
+    // Отзыв договора гасит неотправленные письма о работах: отложенные до
+    // утренней сводки ушли бы в 09:00 с названиями этапов и материалов
+    // куратору, которому они уже не положены (Р-237; решение Р-456).
+    // Недоставленные письма о работах гаснут тоже: «Отправить ещё раз»
+    // вернуло бы их в очередь (решение Р-668). Нейтральное «работа снята»
+    // уходит.
+    if ((before?.ndaSignedAt ?? null) !== null && signedOn === null) {
+      await tx.notificationOutbox.updateMany({
+        where: {
+          userId,
+          projectId: { not: null },
+          state: { in: ['PENDING', 'FAILED'] },
+          eventKind: { not: 'WORK_UNASSIGNED' },
+        },
+        data: { state: 'EXPIRED', failure: null, lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
+      });
+      // И письма о работах, уже вошедшие в неотправленную сводку: сводка
+      // без работы под условие выше не подходит (решение Р-534).
+      await pruneCuratorDigests(
+        tx,
         userId,
-        projectId: { not: null },
-        state: { in: ['PENDING', 'FAILED'] },
-        eventKind: { not: 'WORK_UNASSIGNED' },
-      },
-      data: { state: 'EXPIRED', failure: null, lastError: NDA_REVOKED_NOTE, scheduledAt: new Date() },
-    });
-    // И письма о работах, уже вошедшие в неотправленную сводку: сводка
-    // без работы под условие выше не подходит (решение Р-534).
-    await pruneCuratorDigests(
-      prisma,
-      userId,
-      (row) => row.projectId !== null && row.eventKind !== 'WORK_UNASSIGNED',
-      NDA_REVOKED_NOTE,
-    );
-  }
-  await record(actor, {
-    action: 'EXPERT_NDA_UPDATED',
-    objectType: 'ExpertProfile',
-    objectId: userId,
-    payload: { signedOn: signedOn?.toISOString() ?? null },
-  });
-  // Письмо «Доступ к материалам открыт» — только при первой отметке:
-  // исправление даты письма не даёт (требование Э-03, решение Д-7 плана
-  // куратора). Ключ по учётной записи не даёт второго письма и при
-  // повторной отметке после снятия.
-  if ((before?.ndaSignedAt ?? null) === null && signedOn !== null) {
-    const letter = ndaSignedLetter();
-    await enqueue(prisma, {
-      userId,
-      eventKind: 'NDA_SIGNED',
-      subject: letter.subject,
-      body: letter.body,
-      dedupKey: `nda-signed:${userId}`,
-      path: '/cabinet/projects',
-    });
-    // Менеджерам его действующих работ — куратор может приступать
-    // (улучшение УМ-05, решение Р-375). Тому, кто отметил, не пишется.
-    const [curator, works] = await Promise.all([
-      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fullName: true } }),
-      prisma.project.findMany({
+        (row) => row.projectId !== null && row.eventKind !== 'WORK_UNASSIGNED',
+        NDA_REVOKED_NOTE,
+      );
+    }
+    await record(actor, {
+      action: 'EXPERT_NDA_UPDATED',
+      objectType: 'ExpertProfile',
+      objectId: userId,
+      payload: { signedOn: signedOn?.toISOString() ?? null },
+    }, tx);
+    // Письмо «Доступ к материалам открыт» — только при первой отметке:
+    // исправление даты письма не даёт (требование Э-03, решение Д-7 плана
+    // куратора). Ключ по учётной записи не даёт второго письма и при
+    // повторной отметке после снятия.
+    if ((before?.ndaSignedAt ?? null) === null && signedOn !== null) {
+      const letter = ndaSignedLetter();
+      await enqueue(tx, {
+        userId,
+        eventKind: 'NDA_SIGNED',
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `nda-signed:${userId}`,
+        path: '/cabinet/projects',
+      });
+      // Менеджерам его действующих работ — куратор может приступать
+      // (улучшение УМ-05, решение Р-375). Тому, кто отметил, не пишется.
+      const curator = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { fullName: true } });
+      const works = await tx.project.findMany({
         where: { expertId: userId, status: { in: ['ACTIVE', 'PAUSED'] } },
         orderBy: { code: 'asc' },
         select: { code: true, title: true, managerId: true },
-      }),
-    ]);
-    const byManager = new Map<string, { code: string; title: string }[]>();
-    for (const work of works) {
-      if (work.managerId === actor.id) continue;
-      byManager.set(work.managerId, [...(byManager.get(work.managerId) ?? []), work]);
-    }
-    for (const [managerId, own] of byManager) {
-      const letter = curatorAccessLetter(curator.fullName, own);
-      await enqueue(prisma, {
-        userId: managerId,
-        eventKind: 'CURATOR_NDA_SIGNED',
-        subject: letter.subject,
-        body: letter.body,
-        dedupKey: `nda-signed:${userId}:manager:${managerId}`,
-        path: own.length === 1 ? `/cabinet/projects/${own[0]!.code}` : '/cabinet/projects',
       });
+      const byManager = new Map<string, { code: string; title: string }[]>();
+      for (const work of works) {
+        if (work.managerId === actor.id) continue;
+        byManager.set(work.managerId, [...(byManager.get(work.managerId) ?? []), work]);
+      }
+      for (const [managerId, own] of byManager) {
+        const letter = curatorAccessLetter(curator.fullName, own);
+        await enqueue(tx, {
+          userId: managerId,
+          eventKind: 'CURATOR_NDA_SIGNED',
+          subject: letter.subject,
+          body: letter.body,
+          dedupKey: `nda-signed:${userId}:manager:${managerId}`,
+          path: own.length === 1 ? `/cabinet/projects/${own[0]!.code}` : '/cabinet/projects',
+        });
+      }
     }
-  }
+  });
 }
 
 /**
@@ -1176,35 +1200,38 @@ export async function requestNda(actor: Actor, at: Date = new Date()): Promise<D
   if (!ndaRequestOpen(before, at)) {
     throw new Error('Руководитель уже получил уведомление: повторно сообщить можно через сутки');
   }
-  // Захват по прежнему значению: два нажатия подряд не дают двух писем.
-  const claimed = await prisma.expertProfile.updateMany({
-    where: { userId: actor.id, ndaSignedAt: null, ndaRequestedAt: before },
-    data: { ndaRequestedAt: at },
-  });
-  if (claimed.count === 0) {
-    if (me.expertProfile !== null) throw new Error('Руководитель уже получил уведомление: обновите страницу');
-    await prisma.expertProfile.create({ data: { userId: actor.id, ndaRequestedAt: at } });
-  }
-  const [works, heads] = await Promise.all([
-    prisma.project.count({ where: { expertId: actor.id, status: 'ACTIVE' } }),
-    prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } }),
-  ]);
-  const letter = ndaWaitingLetter({ fullName: me.fullName, email: me.email }, works);
-  for (const head of heads) {
-    await enqueue(prisma, {
-      userId: head.id,
-      eventKind: 'NDA_WAITING',
-      subject: letter.subject,
-      body: letter.body,
-      dedupKey: `nda-waiting:${actor.id}:${at.toISOString()}:${head.id}`,
-      path: `/cabinet/manage/users#nda-${actor.id}`,
+  // Отметка, письма руководителям и строка журнала — одной транзакцией
+  // (Р-967): сбой записи журнала не оставляет отметки, которая на сутки
+  // закрыла бы повторное сообщение, а руководитель письма не получил бы.
+  await prisma.$transaction(async (tx) => {
+    // Захват по прежнему значению: два нажатия подряд не дают двух писем.
+    const claimed = await tx.expertProfile.updateMany({
+      where: { userId: actor.id, ndaSignedAt: null, ndaRequestedAt: before },
+      data: { ndaRequestedAt: at },
     });
-  }
-  await record(actor, {
-    action: 'NDA_REQUESTED',
-    objectType: 'ExpertProfile',
-    objectId: actor.id,
-    payload: { heads: heads.length },
+    if (claimed.count === 0) {
+      if (me.expertProfile !== null) throw new Error('Руководитель уже получил уведомление: обновите страницу');
+      await tx.expertProfile.create({ data: { userId: actor.id, ndaRequestedAt: at } });
+    }
+    const works = await tx.project.count({ where: { expertId: actor.id, status: 'ACTIVE' } });
+    const heads = await tx.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+    const letter = ndaWaitingLetter({ fullName: me.fullName, email: me.email }, works);
+    for (const head of heads) {
+      await enqueue(tx, {
+        userId: head.id,
+        eventKind: 'NDA_WAITING',
+        subject: letter.subject,
+        body: letter.body,
+        dedupKey: `nda-waiting:${actor.id}:${at.toISOString()}:${head.id}`,
+        path: `/cabinet/manage/users#nda-${actor.id}`,
+      });
+    }
+    await record(actor, {
+      action: 'NDA_REQUESTED',
+      objectType: 'ExpertProfile',
+      objectId: actor.id,
+      payload: { heads: heads.length },
+    }, tx);
   });
   return at;
 }
@@ -1289,32 +1316,33 @@ export async function saveServiceType(actor: Actor, input: ServiceTypeInput) {
     sortOrder: input.sortOrder ?? 100,
     isActive: input.isActive ?? true,
   };
-  const type =
-    input.id == null
-      ? await (async () => {
-          const taken = await prisma.serviceType.findUnique({ where: { code }, select: { id: true } });
-          if (taken !== null) throw new Error(`Позиция с кодом «${code}» уже есть`);
-          return prisma.serviceType.create({ data: { code, ...data }, select: { id: true, code: true } });
-        })()
-      : await prisma.serviceType.update({
-          where: { id: input.id },
-          data: {
-            code,
-            name,
-            basePrice: input.basePrice ?? null,
-            sortOrder: input.sortOrder ?? undefined,
-            isActive: input.isActive ?? undefined,
-          },
-          select: { id: true, code: true },
-        });
-
-  await record(actor, {
-    action: 'SERVICE_TYPE_SAVED',
-    objectType: 'ServiceType',
-    objectId: type.id,
-    payload: { code: type.code, name },
+  // Позиция и строка журнала — одной транзакцией (Р-967).
+  return prisma.$transaction(async (tx) => {
+    if (input.id == null && (await tx.serviceType.findUnique({ where: { code }, select: { id: true } })) !== null) {
+      throw new Error(`Позиция с кодом «${code}» уже есть`);
+    }
+    const saved =
+      input.id == null
+        ? await tx.serviceType.create({ data: { code, ...data }, select: { id: true, code: true } })
+        : await tx.serviceType.update({
+            where: { id: input.id },
+            data: {
+              code,
+              name,
+              basePrice: input.basePrice ?? null,
+              sortOrder: input.sortOrder ?? undefined,
+              isActive: input.isActive ?? undefined,
+            },
+            select: { id: true, code: true },
+          });
+    await record(actor, {
+      action: 'SERVICE_TYPE_SAVED',
+      objectType: 'ServiceType',
+      objectId: saved.id,
+      payload: { code: saved.code, name },
+    }, tx);
+    return saved;
   });
-  return type;
 }
 
 /**
@@ -1327,32 +1355,37 @@ export async function addAlias(actor: Actor, serviceTypeId: string, rawAlias: st
   const alias = normalizeTypeAlias(rawAlias);
   if (alias.length === 0) throw new Error('Написание не указано');
 
-  const saved = await prisma.serviceTypeAlias.upsert({
-    where: { alias },
-    create: { alias, serviceTypeId },
-    update: { serviceTypeId },
-    select: { id: true },
+  // Написание и строка журнала — одной транзакцией (Р-967).
+  return prisma.$transaction(async (tx) => {
+    const saved = await tx.serviceTypeAlias.upsert({
+      where: { alias },
+      create: { alias, serviceTypeId },
+      update: { serviceTypeId },
+      select: { id: true },
+    });
+    await record(actor, {
+      action: 'SERVICE_TYPE_ALIAS_ADDED',
+      objectType: 'ServiceTypeAlias',
+      objectId: saved.id,
+      payload: { alias, serviceTypeId },
+    }, tx);
+    return saved;
   });
-  await record(actor, {
-    action: 'SERVICE_TYPE_ALIAS_ADDED',
-    objectType: 'ServiceTypeAlias',
-    objectId: saved.id,
-    payload: { alias, serviceTypeId },
-  });
-  return saved;
 }
 
 export async function removeAlias(actor: Actor, aliasId: string) {
   ensure(actor, 'DIRECTORY_EDIT');
-  const alias = await prisma.serviceTypeAlias.delete({
-    where: { id: aliasId },
-    select: { alias: true },
-  });
-  await record(actor, {
-    action: 'SERVICE_TYPE_ALIAS_REMOVED',
-    objectType: 'ServiceTypeAlias',
-    objectId: aliasId,
-    payload: { alias: alias.alias },
+  await prisma.$transaction(async (tx) => {
+    const alias = await tx.serviceTypeAlias.delete({
+      where: { id: aliasId },
+      select: { alias: true },
+    });
+    await record(actor, {
+      action: 'SERVICE_TYPE_ALIAS_REMOVED',
+      objectType: 'ServiceTypeAlias',
+      objectId: aliasId,
+      payload: { alias: alias.alias },
+    }, tx);
   });
 }
 
@@ -1382,28 +1415,33 @@ export async function saveCalendarDay(
   const note = (input.note ?? '').trim();
   if (note.length > 200) throw new Error('Примечание — не длиннее 200 знаков');
   const day = new Date(`${input.day.toISOString().slice(0, 10)}T00:00:00Z`);
-  await prisma.calendarDay.upsert({
-    where: { day },
-    create: { day, workday: input.workday, note: note || null },
-    update: { workday: input.workday, note: note || null },
-  });
-  await record(actor, {
-    action: 'CALENDAR_DAY_SAVED',
-    objectType: 'CalendarDay',
-    objectId: day.toISOString().slice(0, 10),
-    payload: { workday: input.workday },
+  // День календаря и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.calendarDay.upsert({
+      where: { day },
+      create: { day, workday: input.workday, note: note || null },
+      update: { workday: input.workday, note: note || null },
+    });
+    await record(actor, {
+      action: 'CALENDAR_DAY_SAVED',
+      objectType: 'CalendarDay',
+      objectId: day.toISOString().slice(0, 10),
+      payload: { workday: input.workday },
+    }, tx);
   });
 }
 
 export async function removeCalendarDay(actor: Actor, rawDay: string) {
   ensure(actor, 'DIRECTORY_EDIT');
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(rawDay)) throw new Error('День не найден');
-  const removed = await prisma.calendarDay.deleteMany({ where: { day: new Date(`${rawDay}T00:00:00Z`) } });
-  if (removed.count === 0) throw new Error('День уже снят: обновите страницу');
-  await record(actor, {
-    action: 'CALENDAR_DAY_REMOVED',
-    objectType: 'CalendarDay',
-    objectId: rawDay,
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.calendarDay.deleteMany({ where: { day: new Date(`${rawDay}T00:00:00Z`) } });
+    if (removed.count === 0) throw new Error('День уже снят: обновите страницу');
+    await record(actor, {
+      action: 'CALENDAR_DAY_REMOVED',
+      objectType: 'CalendarDay',
+      objectId: rawDay,
+    }, tx);
   });
 }
 
@@ -1447,37 +1485,41 @@ export async function saveStageTemplateItem(actor: Actor, input: StageTemplateIn
     throw new Error('Длительность — целое число дней от нуля');
   }
 
-  const item = await prisma.stageTemplate.upsert({
-    where: {
-      serviceTypeId_position: { serviceTypeId: input.serviceTypeId, position: input.position },
-    },
-    create: {
-      serviceTypeId: input.serviceTypeId,
-      title,
-      position: input.position,
-      durationDays: input.durationDays ?? null,
-    },
-    update: { title, durationDays: input.durationDays ?? null },
-    select: { id: true },
+  // Строка шаблона и строка журнала — одной транзакцией (Р-967).
+  return prisma.$transaction(async (tx) => {
+    const item = await tx.stageTemplate.upsert({
+      where: {
+        serviceTypeId_position: { serviceTypeId: input.serviceTypeId, position: input.position },
+      },
+      create: {
+        serviceTypeId: input.serviceTypeId,
+        title,
+        position: input.position,
+        durationDays: input.durationDays ?? null,
+      },
+      update: { title, durationDays: input.durationDays ?? null },
+      select: { id: true },
+    });
+    await record(actor, {
+      action: 'STAGE_TEMPLATE_SAVED',
+      objectType: 'StageTemplate',
+      objectId: item.id,
+      payload: { serviceTypeId: input.serviceTypeId, position: input.position, title },
+    }, tx);
+    return item;
   });
-
-  await record(actor, {
-    action: 'STAGE_TEMPLATE_SAVED',
-    objectType: 'StageTemplate',
-    objectId: item.id,
-    payload: { serviceTypeId: input.serviceTypeId, position: input.position, title },
-  });
-  return item;
 }
 
 export async function removeStageTemplateItem(actor: Actor, id: string) {
   ensure(actor, 'DIRECTORY_EDIT');
-  const item = await prisma.stageTemplate.delete({ where: { id }, select: { title: true } });
-  await record(actor, {
-    action: 'STAGE_TEMPLATE_REMOVED',
-    objectType: 'StageTemplate',
-    objectId: id,
-    payload: { title: item.title },
+  await prisma.$transaction(async (tx) => {
+    const item = await tx.stageTemplate.delete({ where: { id }, select: { title: true } });
+    await record(actor, {
+      action: 'STAGE_TEMPLATE_REMOVED',
+      objectType: 'StageTemplate',
+      objectId: id,
+      payload: { title: item.title },
+    }, tx);
   });
 }
 
@@ -1512,25 +1554,28 @@ export async function saveOwnChannels(
   actor: Actor,
   channels: { email: boolean; telegram: boolean; dailyDigest?: boolean },
 ): Promise<void> {
-  await prisma.user.update({
-    where: { id: actor.id },
-    data: {
-      notifyEmail: channels.email,
-      notifyTelegram: channels.telegram,
-      // Сводка раз в день — выбор куратора (улучшение УЭ-01, решение Р-398).
-      ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
-    },
-  });
-  // Отключённый канал — ответ на вопрос «почему не пришло письмо»; прежде
-  // следа не оставалось (решение Р-242).
-  await record(actor, {
-    action: 'NOTIFY_CHANNELS_SAVED',
-    objectType: 'User',
-    objectId: actor.id,
-    payload: {
-      email: channels.email,
-      telegram: channels.telegram,
-      ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
-    },
+  // Каналы и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: actor.id },
+      data: {
+        notifyEmail: channels.email,
+        notifyTelegram: channels.telegram,
+        // Сводка раз в день — выбор куратора (улучшение УЭ-01, решение Р-398).
+        ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
+      },
+    });
+    // Отключённый канал — ответ на вопрос «почему не пришло письмо»; прежде
+    // следа не оставалось (решение Р-242).
+    await record(actor, {
+      action: 'NOTIFY_CHANNELS_SAVED',
+      objectType: 'User',
+      objectId: actor.id,
+      payload: {
+        email: channels.email,
+        telegram: channels.telegram,
+        ...(actor.role === 'EXPERT' && channels.dailyDigest !== undefined ? { dailyDigest: channels.dailyDigest } : {}),
+      },
+    }, tx);
   });
 }

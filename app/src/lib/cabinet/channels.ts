@@ -164,28 +164,33 @@ export async function addContact(actor: Actor, input: ContactInput): Promise<voi
         preferred: input.preferred === true,
       },
     });
-  });
-
-  // Что именно человек указал, в журнал не пишется: там был бы его
-  // телефон, а журнал живёт дольше самих сведений.
-  await record(actor, {
-    action: 'CONTACT_ADDED',
-    objectType: 'ContactChannel',
-    objectId: actor.id,
-    payload: { kind: input.kind },
+    // Что именно человек указал, в журнал не пишется: там был бы его
+    // телефон, а журнал живёт дольше самих сведений. Строка — той же
+    // транзакцией, что и способ связи (Р-967).
+    await record(actor, {
+      action: 'CONTACT_ADDED',
+      objectType: 'ContactChannel',
+      objectId: actor.id,
+      payload: { kind: input.kind },
+    }, tx);
   });
 }
 
 /** Убрать свой способ связи. */
 export async function dropContact(actor: Actor, id: string): Promise<void> {
-  const removed = await prisma.contactChannel.deleteMany({
-    where: { id, userId: actor.id },
-  });
-  if (removed.count === 0) return;
-  await record(actor, {
-    action: 'CONTACT_REMOVED',
-    objectType: 'ContactChannel',
-    objectId: actor.id,
+  // Способ связи и строка журнала — одной транзакцией (Р-967). Чужой или
+  // уже убранный способ не убирается — действия не было, строки тоже.
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.contactChannel.deleteMany({
+      where: { id, userId: actor.id },
+    });
+    if (removed.count > 0) {
+      await record(actor, {
+        action: 'CONTACT_REMOVED',
+        objectType: 'ContactChannel',
+        objectId: actor.id,
+      }, tx);
+    }
   });
 }
 
@@ -197,15 +202,16 @@ export async function preferContact(actor: Actor, id: string): Promise<void> {
   });
   // Сопровождение — не способ связи и предпочтительным не бывает (Р-401).
   if (own === null || own.kind === 'FULL_SUPPORT') return;
-  await prisma.$transaction([
-    prisma.contactChannel.updateMany({ where: { userId: actor.id }, data: { preferred: false } }),
-    prisma.contactChannel.update({ where: { id: own.id }, data: { preferred: true } }),
-  ]);
-  await record(actor, {
-    action: 'CONTACT_PREFERRED',
-    objectType: 'ContactChannel',
-    objectId: actor.id,
-    payload: { kind: own.kind },
+  // Отметка и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.contactChannel.updateMany({ where: { userId: actor.id }, data: { preferred: false } });
+    await tx.contactChannel.update({ where: { id: own.id }, data: { preferred: true } });
+    await record(actor, {
+      action: 'CONTACT_PREFERRED',
+      objectType: 'ContactChannel',
+      objectId: actor.id,
+      payload: { kind: own.kind },
+    }, tx);
   });
 }
 
@@ -221,16 +227,19 @@ export async function setFullSupport(actor: Actor, on: boolean): Promise<void> {
     select: { id: true },
   });
   if (on === existing.length > 0) return;
-  if (on) {
-    await prisma.contactChannel.create({ data: { userId: actor.id, kind: 'FULL_SUPPORT', preferred: false } });
-  } else {
-    await prisma.contactChannel.deleteMany({ where: { userId: actor.id, kind: 'FULL_SUPPORT' } });
-  }
-  await record(actor, {
-    action: on ? 'CONTACT_ADDED' : 'CONTACT_REMOVED',
-    objectType: 'ContactChannel',
-    objectId: actor.id,
-    payload: { kind: 'FULL_SUPPORT' },
+  // Отметка и строка журнала — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    if (on) {
+      await tx.contactChannel.create({ data: { userId: actor.id, kind: 'FULL_SUPPORT', preferred: false } });
+    } else {
+      await tx.contactChannel.deleteMany({ where: { userId: actor.id, kind: 'FULL_SUPPORT' } });
+    }
+    await record(actor, {
+      action: on ? 'CONTACT_ADDED' : 'CONTACT_REMOVED',
+      objectType: 'ContactChannel',
+      objectId: actor.id,
+      payload: { kind: 'FULL_SUPPORT' },
+    }, tx);
   });
 }
 
@@ -420,13 +429,13 @@ export async function saveRules(
         })),
       });
     }
-  });
-
-  await record(actor, {
-    action: 'NOTIFY_RULES_SAVED',
-    objectType: 'NotifyRule',
-    objectId: actor.id,
-    payload: { rules: clean.filter((rule) => rule.enabled).length },
+    // Правила и строка журнала — одной транзакцией (Р-967).
+    await record(actor, {
+      action: 'NOTIFY_RULES_SAVED',
+      objectType: 'NotifyRule',
+      objectId: actor.id,
+      payload: { rules: clean.filter((rule) => rule.enabled).length },
+    }, tx);
   });
 }
 
