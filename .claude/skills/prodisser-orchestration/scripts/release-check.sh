@@ -60,7 +60,17 @@ if [ -n "$site" ]; then
   if (cd "$out" && NODE_PATH=/opt/node22/lib/node_modules node "$skill/ui-checks.mjs" --base "http://127.0.0.1:$port") > "$out/ui.log" 2>&1 \
       && grep -q "Замечаний нет" "$out/ui.log"
   then rows+=("ok    ui-checks"); else rows+=("FAIL  ui-checks (журнал $out/ui.log)"); fail=1; fi
-  kill "$(cat "$out/server.pid")" 2>/dev/null
+  # Сервер работает отдельным процессом next-server, номер из server.pid его не
+  # останавливает: гасим процессы с этим портом и рабочим каталогом внутри копии.
+  stop_server() {
+    local sig=$1 p
+    for p in /proc/[0-9]*; do
+      case "$(readlink "$p/cwd" 2>/dev/null)" in
+        "$dir"/app*) tr '\0' '\n' < "$p/environ" 2>/dev/null | grep -qx "PORT=$port" && kill "-$sig" "${p#/proc/}" 2>/dev/null ;;
+      esac
+    done
+  }
+  stop_server TERM; sleep 3; stop_server KILL
 fi
 step preview env DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci NEXT_PUBLIC_SITE_URL=https://prodisser.ru npm run build:preview
 
