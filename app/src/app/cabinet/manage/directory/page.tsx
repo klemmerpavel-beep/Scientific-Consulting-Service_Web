@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
-import { flashText, formDraft } from '../../../../lib/cabinet/flash';
+import { FAULT_ID } from '../../../../lib/cabinet/fault-field';
+import { flashEntry, formDraft } from '../../../../lib/cabinet/flash';
 import { redirect } from 'next/navigation';
 
+import FieldFault from '../../../../components/cabinet/FieldFault';
 import Shell from '../../../../components/cabinet/Shell';
 import { MONO } from '../../../../components/cabinet/tokens';
 import {
@@ -99,7 +101,15 @@ export default async function DirectoryScreen({
 
   const sp = await searchParams;
   // Причина отказа — по метке из одноразовой cookie, не из адреса (Р-243).
-  const failure = await flashText(sp.error);
+  // С ней — поле, к которому отказ относится (решения Р-936, Р-955).
+  const fault = await flashEntry(sp.error);
+  const failure = fault?.text;
+  // Поле, к которому относится отказ, ссылается на блок отказа; блок на
+  // экране один — вверху или в свёртке «Добавить позицию» (Р-955).
+  const fieldFault =
+    fault?.field === undefined || sp.error === undefined ? null : (
+      <FieldFault field={fault.field} by={FAULT_ID} mark={sp.error} />
+    );
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'types';
   // Отказ «Добавить позицию» возвращает к свёртке по якорю #new-type: она
   // раскрыта, поля держат набранное, а причина стоит в ней, над полями, —
@@ -148,8 +158,9 @@ export default async function DirectoryScreen({
       </FilterBar>
 
       {failure === undefined || typeFailed ? null : (
-        <Outcome tone="error">
+        <Outcome tone="error" id={FAULT_ID} mark={sp.error}>
           {failure}
+          {fieldFault}
         </Outcome>
       )}
 
@@ -242,9 +253,12 @@ export default async function DirectoryScreen({
           <Disclosure title="Добавить позицию" open={sp.new === '1'} id="new-type">
             <Form action={saveType}>
               {typeFailed ? (
-                <Notice tone="error" role="alert">
-                  {failure}
-                </Notice>
+                <div id={FAULT_ID}>
+                  <Notice tone="error" role="alert">
+                    {failure}
+                  </Notice>
+                  {fieldFault}
+                </div>
               ) : null}
               <FormRow>
                 <Field
