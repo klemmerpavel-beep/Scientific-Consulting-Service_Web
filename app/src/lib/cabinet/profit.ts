@@ -102,12 +102,16 @@ export async function removeExpense(actor: Actor, id: string): Promise<void> {
   ensure(actor, 'PAYMENT_EDIT');
   const row = await prisma.expense.findUnique({ where: { id }, select: { month: true, amount: true, categoryId: true } });
   if (row === null) throw new Error('Расход не найден');
-  await prisma.expense.delete({ where: { id } });
-  await record(actor, {
-    action: 'EXPENSE_REMOVED',
-    objectType: 'Expense',
-    objectId: id,
-    payload: { month: keyOf(row.month), category: row.categoryId, amount: row.amount.toString() },
+  // Удаление и строка журнала с прежними величинами — одной транзакцией,
+  // как внесение расхода (Р-463, Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.expense.delete({ where: { id } });
+    await record(actor, {
+      action: 'EXPENSE_REMOVED',
+      objectType: 'Expense',
+      objectId: id,
+      payload: { month: keyOf(row.month), category: row.categoryId, amount: row.amount.toString() },
+    }, tx);
   });
 }
 

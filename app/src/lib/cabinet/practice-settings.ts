@@ -16,7 +16,12 @@ import { ANALYTICS_SINCE_DEFAULT } from './analytics/metrics.ts';
 import { moscowToday } from './clock.ts';
 import { SHOWCASE_TEXT_MAX, consentTextHash, normalizeConsentText, shortHash } from './curator-consents.ts';
 
-type Db = Prisma.TransactionClient | typeof prisma;
+/**
+ * Соединение транзакции вызывающего: настройка и строка журнала о ней
+ * пишутся одной транзакцией (Р-967). Прежде одиночное сохранение шло
+ * через общее соединение, и строка журнала ложилась отдельной записью.
+ */
+type Tx = Prisma.TransactionClient;
 
 const REACTION_KEY = 'reactionDays';
 /** По умолчанию — один рабочий день (В-18). */
@@ -40,9 +45,9 @@ function reactionValue(raw: string): number {
 }
 
 /** Записать срок реакции и журнал; прежнее значение — без записи. */
-async function writeReaction(actor: Actor, value: number, before: number, db: Db = prisma): Promise<void> {
+async function writeReaction(actor: Actor, value: number, before: number, tx: Tx): Promise<void> {
   if (before === value) return;
-  await db.practiceSetting.upsert({
+  await tx.practiceSetting.upsert({
     where: { key: REACTION_KEY },
     create: { key: REACTION_KEY, value: String(value), updatedById: actor.id },
     update: { value: String(value), updatedById: actor.id, updatedAt: new Date() },
@@ -55,7 +60,7 @@ async function writeReaction(actor: Actor, value: number, before: number, db: Db
       objectId: REACTION_KEY,
       payload: { from: before, to: value },
     },
-    db,
+    tx,
   );
 }
 
@@ -63,7 +68,10 @@ async function writeReaction(actor: Actor, value: number, before: number, db: Db
 export async function saveReactionDays(actor: Actor, raw: string): Promise<void> {
   ensure(actor, 'DIRECTORY_EDIT');
   const value = reactionValue(raw);
-  await writeReaction(actor, value, await reactionDays());
+  const before = await reactionDays();
+  await prisma.$transaction(async (tx) => {
+    await writeReaction(actor, value, before, tx);
+  });
 }
 
 // ───────────── Первый ответ на заявку (п. 2.8 задания, Р-766) ───────────────
@@ -100,7 +108,10 @@ function leadResponseValue(raw: string): number {
 export async function saveLeadFirstResponseHours(actor: Actor, raw: string): Promise<void> {
   ensure(actor, 'DIRECTORY_EDIT');
   const value = leadResponseValue(raw);
-  await saveSetting(actor, LEAD_RESPONSE_KEY, String(value), String(await leadFirstResponseHours()));
+  const before = String(await leadFirstResponseHours());
+  await prisma.$transaction(async (tx) => {
+    await saveSetting(actor, LEAD_RESPONSE_KEY, String(value), before, tx);
+  });
 }
 
 /**
@@ -162,9 +173,9 @@ export async function confidenceThresholds(): Promise<ConfidenceThresholds> {
   return (row === null ? null : parseThresholds(row.value)) ?? THRESHOLDS_DEFAULT;
 }
 
-async function saveSetting(actor: Actor, key: string, value: string, before: string, db: Db = prisma): Promise<void> {
+async function saveSetting(actor: Actor, key: string, value: string, before: string, tx: Tx): Promise<void> {
   if (before === value) return;
-  await db.practiceSetting.upsert({
+  await tx.practiceSetting.upsert({
     where: { key },
     create: { key, value, updatedById: actor.id },
     update: { value, updatedById: actor.id, updatedAt: new Date() },
@@ -177,7 +188,7 @@ async function saveSetting(actor: Actor, key: string, value: string, before: str
       objectId: key,
       payload: { from: before, to: value },
     },
-    db,
+    tx,
   );
 }
 
@@ -189,7 +200,9 @@ export async function saveAnalyticsSince(actor: Actor, raw: string): Promise<voi
     throw new Error('Дата начала учёта — день не раньше 2000 года и не позже сегодняшнего');
   }
   const before = (await analyticsSince()).toISOString().slice(0, 10);
-  await saveSetting(actor, SINCE_KEY, date.toISOString().slice(0, 10), before);
+  await prisma.$transaction(async (tx) => {
+    await saveSetting(actor, SINCE_KEY, date.toISOString().slice(0, 10), before, tx);
+  });
 }
 
 /** Сохранить пороги уверенности: три убывающих целых числа, например «20, 10, 5». */
@@ -200,12 +213,15 @@ export async function saveConfidenceThresholds(actor: Actor, raw: string): Promi
     throw new Error('Пороги уверенности — три убывающих целых числа наблюдений, например «20, 10, 5»');
   }
   const current = await confidenceThresholds();
-  await saveSetting(
-    actor,
-    THRESHOLDS_KEY,
-    `${value.sure},${value.likely},${value.maybe}`,
-    `${current.sure},${current.likely},${current.maybe}`,
-  );
+  await prisma.$transaction(async (tx) => {
+    await saveSetting(
+      actor,
+      THRESHOLDS_KEY,
+      `${value.sure},${value.likely},${value.maybe}`,
+      `${current.sure},${current.likely},${current.maybe}`,
+      tx,
+    );
+  });
 }
 
 // ───────────── Текст согласия на витрину кураторов (П-12, Р-768) ────────────
@@ -237,20 +253,24 @@ export async function saveShowcaseConsentText(actor: Actor, raw: string): Promis
   }
   const before = await showcaseConsentText();
   if (before === text) return;
-  await prisma.practiceSetting.upsert({
-    where: { key: SHOWCASE_TEXT_KEY },
-    create: { key: SHOWCASE_TEXT_KEY, value: text, updatedById: actor.id },
-    update: { value: text, updatedById: actor.id, updatedAt: new Date() },
-  });
-  await record(actor, {
-    action: 'SHOWCASE_CONSENT_TEXT_SAVED',
-    objectType: 'PracticeSetting',
-    objectId: SHOWCASE_TEXT_KEY,
-    payload: {
-      from: before === '' ? null : shortHash(consentTextHash(before)),
-      to: text === '' ? null : shortHash(consentTextHash(text)),
-      chars: text.length,
-      text,
-    },
+  // Текст и строка журнала — одной транзакцией (Р-967): по строке журнала
+  // видно, на какой текст согласился куратор, и текст без неё не остаётся.
+  await prisma.$transaction(async (tx) => {
+    await tx.practiceSetting.upsert({
+      where: { key: SHOWCASE_TEXT_KEY },
+      create: { key: SHOWCASE_TEXT_KEY, value: text, updatedById: actor.id },
+      update: { value: text, updatedById: actor.id, updatedAt: new Date() },
+    });
+    await record(actor, {
+      action: 'SHOWCASE_CONSENT_TEXT_SAVED',
+      objectType: 'PracticeSetting',
+      objectId: SHOWCASE_TEXT_KEY,
+      payload: {
+        from: before === '' ? null : shortHash(consentTextHash(before)),
+        to: text === '' ? null : shortHash(consentTextHash(text)),
+        chars: text.length,
+        text,
+      },
+    }, tx);
   });
 }

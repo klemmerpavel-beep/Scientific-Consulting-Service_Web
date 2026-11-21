@@ -186,23 +186,27 @@ export async function saveYear(actor: Actor, input: YearInput): Promise<void> {
     updatedById: actor.id,
   };
 
-  await prisma.yearlyFinance.upsert({
-    where: { year: input.year },
-    create: { year: input.year, ...data, note },
-    update: note === null ? data : { ...data, note },
-  });
+  // Величины года и строка журнала — одной транзакцией (Р-967): спорная
+  // цифра без автора и даты не остаётся.
+  await prisma.$transaction(async (tx) => {
+    await tx.yearlyFinance.upsert({
+      where: { year: input.year },
+      create: { year: input.year, ...data, note },
+      update: note === null ? data : { ...data, note },
+    });
 
-  // В журнал уходят сами величины: спорная цифра должна иметь автора, дату и
-  // прежнее значение — иначе через год источник расхождения не установить.
-  await record(actor, {
-    action: 'FINANCE_YEAR_SAVE',
-    objectType: 'YearlyFinance',
-    objectId: String(input.year),
-    payload: {
-      year: input.year,
-      revenue: input.revenue.toString(),
-      costs: input.costs.toString(),
-    },
+    // В журнал уходят сами величины: спорная цифра должна иметь автора, дату и
+    // прежнее значение — иначе через год источник расхождения не установить.
+    await record(actor, {
+      action: 'FINANCE_YEAR_SAVE',
+      objectType: 'YearlyFinance',
+      objectId: String(input.year),
+      payload: {
+        year: input.year,
+        revenue: input.revenue.toString(),
+        costs: input.costs.toString(),
+      },
+    }, tx);
   });
 }
 
@@ -220,17 +224,20 @@ export async function removeYear(actor: Actor, year: number): Promise<void> {
     select: { revenue: true, costs: true, note: true },
   });
   if (entered === null) throw new Error(`Введённых величин за ${year} год нет: удалять нечего`);
-  const removed = await prisma.yearlyFinance.deleteMany({ where: { year } });
-  if (removed.count === 0) throw new Error('Год уже удалён: обновите страницу');
-  await record(actor, {
-    action: 'FINANCE_YEAR_REMOVE',
-    objectType: 'YearlyFinance',
-    objectId: String(year),
-    payload: {
-      year,
-      revenue: entered.revenue.toString(),
-      costs: entered.costs.toString(),
-      note: entered.note,
-    },
+  // Удаление и строка журнала с прежними величинами — одной транзакцией (Р-967).
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.yearlyFinance.deleteMany({ where: { year } });
+    if (removed.count === 0) throw new Error('Год уже удалён: обновите страницу');
+    await record(actor, {
+      action: 'FINANCE_YEAR_REMOVE',
+      objectType: 'YearlyFinance',
+      objectId: String(year),
+      payload: {
+        year,
+        revenue: entered.revenue.toString(),
+        costs: entered.costs.toString(),
+        note: entered.note,
+      },
+    }, tx);
   });
 }
