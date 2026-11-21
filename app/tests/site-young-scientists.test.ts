@@ -145,7 +145,8 @@ describe('«Аспирантам»: раздел «Публикации к за�
   });
 
   it('кнопка «Оставить заявку» ведёт к прежней форме #request, своей формы у раздела нет (Р-96)', () => {
-    assert.equal((block.match(/<a href="#request"[^>]*>Оставить заявку<\/a>/gu) ?? []).length, 1);
+    // Со стрелкой 15 px справа — исполнение кнопки раздела (Р-960).
+    assert.equal((block.match(/<a href="#request"[^>]*>Оставить заявку(?:<span aria-hidden="true"[^>]*><\/span>)?<\/a>/gu) ?? []).length, 1);
     assert.doesNotMatch(block, /<form|<input|<textarea/u);
     assert.equal((MAIN.match(/<form/gu) ?? []).length, 3, 'на «Аспирантам» три формы: первый экран, заявка, отзыв');
   });

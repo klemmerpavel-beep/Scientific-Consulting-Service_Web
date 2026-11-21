@@ -9,7 +9,7 @@
 1. Синтаксис `.dc.html`
 2. Заголовок раздела (Р-607)
 3. Подсветка в заголовке (Р-32, Р-614)
-4. Кнопка действия и вторичное действие (Р-610, Р-616)
+4. Кнопка действия и вторичное действие (Р-610, Р-616, Р-959, Р-960)
 5. Закреплённая полоса (Р-609, Р-612)
 6. Вкладки экранов на телефоне (Р-613)
 7. Карточка отзыва: фото или инициал (Р-590, Р-617)
@@ -66,23 +66,54 @@
   8 px. `multiply` оставляет видимыми буквы строки выше, которые фон
   второй строки закрывал при интерлиньяже 1.24.
 
-## 4. Кнопка действия и вторичное действие (Р-610, Р-616)
+## 4. Кнопка действия и вторичное действие (Р-610, Р-616, Р-959, Р-960)
+
+Исполнений тёмной кнопки два, одно на весь сайт (Р-960); текст всегда
+Inter 15 px / 600, без верхнего регистра и разрядки.
+
+**Кнопка раздела** — тёмная кнопка в разделе, ведущая к форме заявки или
+анкете: исполнение кнопки «Географии» (Р-882) — поля `14px 32px` (47 px),
+стрелка 15 px справа через 12 px, без `min-height`:
 
 ```html
-<a href="#request" style="display:inline-flex;align-items:center;min-height:44px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:12px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку</a>
+<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
 ```
 
-- Без верхнего регистра и разрядки; формулировка «Оставить заявку»,
-  контекстные — «Обсудить проект», «Обсудить работу».
+На тёмной панели — белая того же размера (`background:var(--pd-ink-inverse);
+color:var(--pd-ink)`), стрелка цвета `--pd-ink`.
+
+**Кнопка отправки формы** — первый экран, заявка, отзыв, анкета,
+«Добавить в список» в «Инструментах»: `min-height: 52px`, поля `0 34px`,
+текст по центру, без стрелки:
+
+```html
+<button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;min-height:52px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Отправить заявку</button>
+```
+
+«Дальше» в анкете «Экспертам» — той же высоты и полей, со стрелкой
+направления. Кнопки шапки и закреплённой полосы живут по своим правилам
+(Р-588, Р-609) и этим рецептом не меняются; на первом экране без формы
+(«Экспертам») кнопка-ссылка крупная — 52 px, поля `0 34px`, 15 px.
+Охраняет тест `site-cta-look-r960`.
+
+- Подпись всех тёмных кнопок к форме заявки — «Оставить заявку» (Р-959),
+  у отправки нижней формы — «Отправить заявку», на «Экспертам» —
+  «Заполнить анкету». Исключение одно — «Получить смету» в «Подборе
+  сметы» «Студентам»: кнопка переносит выбранный срок в форму (Р-886).
+  Прежние контекстные подписи «Обсудить проект», «Обсудить мой срок»,
+  «Обсудить работу» сняты (Р-959, тест `site-cta-label-r959`); ссылки
+  внутри карточек («Обсудить пакет», «Разобрать…») — не кнопки, а переходы
+  по смыслу карточки (Р-847).
 - Ссылка `#request` в разделе ведёт к форме внизу страницы; та же ссылка в
   шапке или полосе раскрывает окно заявки (Р-484).
 - Под пунктами вкладок «Как это выглядит внутри» кнопка стоит после
   списка галочек: раздел в середине длинной страницы.
-- Вторичная кнопка («Написать отзыв», «Как устроена работа») — pill без
-  заливки: рамка 1 px в покое прозрачная, при наведении — `--pd-ink`
-  (Р-627). Раскрытие списка («Полный список услуг») — светлая
-  карточка-ссылка (Р-616). Вторая тёмная кнопка рядом не ставится: две
-  тёмные кнопки спорят.
+- Вторичная кнопка («Написать отзыв», «Как устроена работа», «Назад») —
+  pill без заливки: рамка 1 px в покое прозрачная, при наведении —
+  `--pd-ink` (Р-627); в паре с крупной кнопкой — той же высоты 52 px.
+  Раскрытие списка («Полный список услуг») — светлая карточка-ссылка
+  (Р-616). Вторая тёмная кнопка рядом не ставится: две тёмные кнопки
+  спорят.
 
 ### Подъём блока при наведении (Р-628)
 

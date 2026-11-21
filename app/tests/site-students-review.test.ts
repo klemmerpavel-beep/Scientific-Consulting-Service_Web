@@ -291,9 +291,9 @@ describe('«Студентам»: «Этапы» — горизонтальна�
     assert.ok(css.includes('.sp-stage-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}'));
   });
 
-  it('прежняя раскладка «перечень слева, карточка справа» снята; кнопка «Обсудить мой срок» — в строке с условием приёмки', () => {
+  it('прежняя раскладка «перечень слева, карточка справа» снята; кнопка «Оставить заявку» — в строке с условием приёмки (подпись — Р-959)', () => {
     for (const source of [HTML, TSX]) assert.doesNotMatch(source, /pd-in-body|sp-rt-a|sp-rt-b|sp-rt-c|sp-duo/u);
-    assert.match(route, /Каждый этап заканчивается приёмкой[^<]*<\/p>\n<a href="#request"[^>]*>Обсудить мой срок</u);
+    assert.match(route, /Каждый этап заканчивается приёмкой[^<]*<\/p>\n<a href="#request"[^>]*>Оставить заявку</u);
   });
 });
 
@@ -324,17 +324,20 @@ describe('«Студентам»: «Как это выглядит внутри�
 });
 
 describe('«Студентам»: подписи кнопок действия (Р-847, Р-853, Р-886)', () => {
-  it('«Оставить заявку» везде, кроме «Этапов» и «Подбора сметы»: там — «Обсудить мой срок» (как на выкате № 155) и «Получить смету» (выбор владельца 13.11.2026)', () => {
+  it('«Оставить заявку» везде, кроме «Подбора сметы»: там — «Получить смету» (выбор владельца 13.11.2026); в «Этапах» — тоже «Оставить заявку» (Р-959)', () => {
+    // Р-959 (решение владельца 20.11.2026) меняет часть Р-853: «Обсудить мой срок» в
+    // «Этапах» (как на выкате № 155) стала «Оставить заявку». «Получить смету» остаётся —
+    // кнопка переносит выбранный срок в форму (Р-886).
     const buttons = [...PAGE.matchAll(/<a (?:[^>]*\s)?href="#request"[^>]*background:var\(--pd-ink\)[^>]*>([^<]+)</gu)].map((m) => m[1]!.trim());
     assert.ok(buttons.length >= 3, `кнопок действия ${buttons.length}`);
-    for (const label of buttons) assert.ok(label === 'Оставить заявку' || label === 'Обсудить мой срок' || label === 'Получить смету', label);
+    for (const label of buttons) assert.ok(label === 'Оставить заявку' || label === 'Получить смету', label);
     const cost = PAGE.slice(PAGE.indexOf('<section id="cost"'), PAGE.indexOf('</section>', PAGE.indexOf('<section id="cost"')));
     assert.match(cost, /<a href="#request" onClick="\{\{ estGo \}\}"[^>]*>Получить смету</u);
     assert.equal(buttons.filter((b) => b === 'Получить смету').length, 1, '«Получить смету» — только в «Подборе сметы»');
     const at = PAGE.indexOf('<section id="route"');
     const route = PAGE.slice(at, PAGE.indexOf('</section>', at));
-    assert.match(route, /<a href="#request"[^>]*>Обсудить мой срок</u);
-    assert.equal(buttons.filter((b) => b === 'Обсудить мой срок').length, 1, '«Обсудить мой срок» — только в «Этапах»');
+    assert.match(route, /<a href="#request"[^>]*>Оставить заявку</u);
+    assert.doesNotMatch(PAGE, />Обсудить мой срок</u, 'подпись «Обсудить мой срок» снята Р-959');
     // Блок ролей оставлен в виде Р-840 со снимка владельца: кнопка «Оставить заявку».
     assert.doesNotMatch(PAGE, />Обсудить работу</u);
   });
