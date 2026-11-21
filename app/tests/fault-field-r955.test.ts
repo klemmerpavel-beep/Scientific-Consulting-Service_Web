@@ -273,11 +273,8 @@ describe('отказ называет поле в формах второй оч
     assert.match(directory, /<div id=\{FAULT_ID\}>\s*<Notice tone="error" role="alert">\s*\{failure\}\s*<\/Notice>\s*\{fieldFault\}\s*<\/div>/u);
   });
 
-  it('шаблон этапов поля не называет: отказ возвращает на вкладку типов, где формы нет', () => {
-    const code = body('saveStageTemplate');
-    assert.doesNotMatch(code, /faultField/u);
-    assert.match(code, /withError\(`\/cabinet\/manage\/directory`, reason\)/u);
-  });
+  // Шаблон этапов: возврат на свою вкладку и пометка поля — решение Р-968,
+  // проверка `stage-template-back-r968.test.ts`.
 
   it('запрос удаления данных поля не называет: флажок без идентификатора, отметку требует браузер', () => {
     assert.doesNotMatch(body('requestMyErasure'), /faultField/u);

@@ -64,8 +64,11 @@ export async function saveOwnerTemplate(
 
   const ext = path.extname(input.originalName).toLowerCase().slice(0, 10);
   const key = `templates/${randomUUID()}${/^\.[a-z0-9]+$/u.test(ext) ? ext : ''}`;
+  // Порядок (Р-967): сначала файл — без него строке не на что ссылаться;
+  // затем строка и запись журнала одной транзакцией; прежний объект
+  // убирается последним, после фиксации: откат оставил бы строку,
+  // ведущую на удалённый файл. Отказ транзакции убирает новый объект.
   await storage().put(key, input.body, input.contentType || 'application/octet-stream');
-  const existing = await prisma.documentTemplate.findFirst({ where: { title, deletedAt: null }, select: { id: true, storageKey: true } });
   const data = {
     title,
     note,
@@ -77,24 +80,28 @@ export async function saveOwnerTemplate(
     sha256: sha256(input.body),
     uploadedById: actor.id,
   };
-  let saved: { id: string };
+  let saved: { id: string; replaced: string | null };
   try {
-    saved = existing === null
-      ? await prisma.documentTemplate.create({ data, select: { id: true } })
-      : await prisma.documentTemplate.update({ where: { id: existing.id }, data, select: { id: true } });
+    saved = await prisma.$transaction(async (tx) => {
+      const existing = await tx.documentTemplate.findFirst({ where: { title, deletedAt: null }, select: { id: true, storageKey: true } });
+      const row = existing === null
+        ? await tx.documentTemplate.create({ data, select: { id: true } })
+        : await tx.documentTemplate.update({ where: { id: existing.id }, data, select: { id: true } });
+      await record(actor, {
+        action: existing === null ? 'TEMPLATE_UPLOADED' : 'TEMPLATE_REPLACED',
+        objectType: 'DocumentTemplate',
+        objectId: row.id,
+        payload: { title, audience },
+        ip,
+      }, tx);
+      return { id: row.id, replaced: existing?.storageKey ?? null };
+    });
   } catch (error) {
     await storage().remove(key).catch(() => undefined);
     throw error;
   }
-  if (existing !== null) await storage().remove(existing.storageKey).catch(() => undefined);
-  await record(actor, {
-    action: existing === null ? 'TEMPLATE_UPLOADED' : 'TEMPLATE_REPLACED',
-    objectType: 'DocumentTemplate',
-    objectId: saved.id,
-    payload: { title, audience },
-    ip,
-  });
-  return { id: saved.id, replaced: existing !== null };
+  if (saved.replaced !== null) await storage().remove(saved.replaced).catch(() => undefined);
+  return { id: saved.id, replaced: saved.replaced !== null };
 }
 
 /** Убрать шаблон: строка помечается, объект удаляется. Только руководитель. */
@@ -102,9 +109,13 @@ export async function removeOwnerTemplate(actor: Actor, id: string, ip: string |
   ensure(actor, 'DIRECTORY_EDIT');
   const row = await prisma.documentTemplate.findFirst({ where: { id, deletedAt: null }, select: { id: true, title: true, storageKey: true } });
   if (row === null) throw new TemplateError('Шаблон не найден: обновите страницу.');
-  await prisma.documentTemplate.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+  // Пометка и строка журнала — одной транзакцией; объект убирается после
+  // фиксации: откат не оставляет живой строки без файла (Р-967).
+  await prisma.$transaction(async (tx) => {
+    await tx.documentTemplate.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+    await record(actor, { action: 'TEMPLATE_REMOVED', objectType: 'DocumentTemplate', objectId: row.id, payload: { title: row.title }, ip }, tx);
+  });
   await storage().remove(row.storageKey).catch(() => undefined);
-  await record(actor, { action: 'TEMPLATE_REMOVED', objectType: 'DocumentTemplate', objectId: row.id, payload: { title: row.title }, ip });
 }
 
 /** Файл шаблона для выдачи; не положен или убран — `null`. */

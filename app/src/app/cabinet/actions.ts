@@ -2670,9 +2670,19 @@ export async function addMaterialVersion(form: FormData): Promise<void> {
   redirect(back);
 }
 
+/**
+ * Этап шаблона (решение Р-968): исход и отказ — на вкладке «Шаблоны
+ * этапов», где стоит форма. С разведения вкладок (Р-177) оба вели на адрес
+ * без вкладки — на «Типы сопровождения»: отказ стоял там без формы, а
+ * сохранение уводило с шаблона, который только что дополняли. Отказ,
+ * называющий поле, помечает его (Р-936, Р-955); тип сопровождения — выбор
+ * из перечня экрана — поля не получает.
+ */
 export async function saveStageTemplate(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=stages';
   const durationRaw = String(form.get('durationDays') ?? '').trim();
+  let failure: string | null = null;
   try {
     await saveStageTemplateItem(actor, {
       serviceTypeId: String(form.get('serviceTypeId') ?? ''),
@@ -2681,22 +2691,29 @@ export async function saveStageTemplate(form: FormData): Promise<void> {
       durationDays: durationRaw.length === 0 ? null : Number(durationRaw),
     });
   } catch (error) {
-    const reason = reasonOf(error, 'Не удалось сохранить этап шаблона');
-    redirect(await withError(`/cabinet/manage/directory`, reason));
+    failure = reasonOf(error, 'Не удалось сохранить этап шаблона');
   }
-  redirect('/cabinet/manage/directory');
+  if (failure !== null) {
+    redirect(
+      await withError(back, failure, {
+        field: faultField(failure, { 'template-position': 'order', 'template-title': 'title', 'template-durationDays': 'duration' }),
+      }),
+    );
+  }
+  redirect(back);
 }
 
 export async function dropStageTemplate(form: FormData): Promise<void> {
   const actor = await actorOrRedirect();
+  const back = '/cabinet/manage/directory?tab=stages';
   let failure: string | null = null;
   try {
     await removeStageTemplateItem(actor, String(form.get('id') ?? ''));
   } catch (error) {
     failure = reasonOf(error, 'Не удалось убрать этап шаблона');
   }
-  if (failure !== null) redirect(await withError('/cabinet/manage/directory', failure));
-  redirect('/cabinet/manage/directory');
+  if (failure !== null) redirect(await withError(back, failure));
+  redirect(back);
 }
 
 /**
