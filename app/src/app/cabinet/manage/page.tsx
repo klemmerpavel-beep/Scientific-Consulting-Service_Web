@@ -22,6 +22,7 @@ import {
   TABLE_CELL,
   TABLE_HEAD,
   TABLE_NUM,
+  TableCard,
   Tabs,
   Text,
   Tile,
@@ -42,7 +43,7 @@ import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
 import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
 import { answerSegments } from '../../../lib/cabinet/summary-answer';
-import { CHECK_TITLE } from '../../../lib/cabinet/head-checks';
+import { CHECK_TITLE, storageGaps } from '../../../lib/cabinet/head-checks';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
 import { daysPast, moscowToday, now as clockNow } from '../../../lib/cabinet/clock';
@@ -78,6 +79,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * зависеть от дня съёмки (решение Р-205).
  */
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
+
+/** Сколько расхождений с хранилищем показывать на «Сводке» (Р-986). */
+const STORAGE_ROWS = 20;
 
 /**
  * Ступень тревоги по величине просрочки.
@@ -213,6 +217,10 @@ export default async function ManageQueue({
   // набором, что дело «Ответ руководителя» (решение Р-739).
   const { headReplies } = sources;
   const term = actor.role === 'HEAD' ? await reactionDays() : 0;
+  // Сверка версий материалов с хранилищем — проверка руководителя (К-5,
+  // решение Р-986). Остальным ролям служба отвечает `null` и сверки не
+  // делает: ни строк, ни числа расхождений на их экране нет.
+  const storage = await storageGaps(actor);
   // «Команда» — лента плашек всех сотрудников (РК-06, Р-343; Р-575).
   const team = actor.role === 'HEAD' ? teamBrief(await teamLoad(actor)) : [];
   // Рекомендации — для группы «Возможность» «Разбора практики»; первой
@@ -1788,6 +1796,72 @@ export default async function ManageQueue({
               </li>
             ))}
           </ul>
+        </Block>
+      )}
+
+      {/* Сверка файлов с хранилищем — только руководителю, только чтение:
+          версии без файла, файлы без версии, расхождение размера и файл
+          изъятой версии. Кнопок удаления нет: решает человек (К-5, ответ
+          владельца 20.11.2026, решение Р-986). Код работы на экран не
+          выводится — название работы ссылкой на её материалы (Р-189). */}
+      {storage === null ? null : (
+        <Block id="storage" style={{ marginBottom: 20 }}>
+          <Heading level={2} size={3} style={{ marginBottom: storage.failed || storage.rows.length === 0 ? 4 : 8 }}>
+            {storage.failed || storage.rows.length === 0 ? 'Сверка файлов с хранилищем' : `Сверка файлов с хранилищем · ${storage.rows.length}`}
+          </Heading>
+          {storage.failed ? (
+            <Text muted size={14}>
+              Сверка не выполнена: хранилище не ответило. Причина — в журнале сервера.
+            </Text>
+          ) : storage.rows.length === 0 ? (
+            <Text muted size={14}>
+              Расхождений нет
+            </Text>
+          ) : (
+            <>
+              <Text muted size={13} style={{ marginBottom: 12 }}>
+                Только сверка: версии и файлы не удаляются и не исправляются сами. Пропавший файл прикладывают
+                заново на экране материалов работы.
+              </Text>
+              <TableCard label="Расхождения версий материалов с хранилищем">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      <th scope="col" style={TABLE_HEAD}>Материал</th>
+                      <th scope="col" style={TABLE_HEAD}>Работа</th>
+                      <th scope="col" style={TABLE_HEAD}>Версия</th>
+                      <th scope="col" style={TABLE_HEAD}>Расхождение</th>
+                      <th scope="col" style={TABLE_HEAD}>Дата</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {storage.rows.slice(0, STORAGE_ROWS).map((row, index) => (
+                      <tr key={index}>
+                        <td style={TABLE_CELL}>{row.material ?? '—'}</td>
+                        <td style={TABLE_CELL}>
+                          {row.work === null ? (
+                            '—'
+                          ) : (
+                            <a href={`/cabinet/projects/${row.work.code}/materials`} className="cab-mark">
+                              {row.work.title}
+                            </a>
+                          )}
+                        </td>
+                        <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.version === null ? '—' : `v${row.version}`}</td>
+                        <td style={TABLE_CELL}>{row.label}</td>
+                        <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.at === null ? '—' : formatDay(row.at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableCard>
+              {storage.rows.length > STORAGE_ROWS ? (
+                <Text muted size={13} style={{ marginTop: 8 }}>
+                  {`И ещё ${storage.rows.length - STORAGE_ROWS}: показаны первые ${STORAGE_ROWS}.`}
+                </Text>
+              ) : null}
+            </>
+          )}
         </Block>
       )}
 

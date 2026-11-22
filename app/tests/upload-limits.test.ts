@@ -99,6 +99,10 @@ describe('пределы загрузки файлов', () => {
             String.raw`^\s*(ok|off|bad) "`,
             // Перечень секретов, чья длина сверяется (Р-431): имена, не значения.
             String.raw`^\s*for name in (?:[A-Z_]+ ?)+; do$`,
+            // Сверка файлов работ (Р-986): секрет рассылки уходит приложению
+            // заголовком через ввод curl, как в outbox.sh (Р-454), и в отчёт
+            // не попадает — печатаются только числа ответа.
+            String.raw`^\s*answer=\$\(printf 'x-cabinet-cron: %s\\n' "\$\(read_env CABINET_CRON_SECRET\)" \| curl -fsS --noproxy '\*' -m 60 -H @- "\$STORAGE_CHECK" 2>/dev/null \|\| true\)$`,
           ].join('|'),
           'u',
         ),

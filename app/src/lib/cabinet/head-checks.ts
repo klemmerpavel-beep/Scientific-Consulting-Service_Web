@@ -23,6 +23,7 @@ import { APPROVAL_VIA_LABEL } from './code-labels.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
+import { checkStorage, STORAGE_GAP_LABEL, type StorageGapKind } from './storage-check.ts';
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -191,4 +192,47 @@ export async function calendarGaps(actor: Actor, at: Date = clockNow()): Promise
     if (listed === 0) gaps.push({ year });
   }
   return gaps;
+}
+
+/** Строка перечня «Сверка файлов с хранилищем» — без ключа объекта. */
+export interface StorageGapRow {
+  readonly kind: StorageGapKind;
+  readonly label: string;
+  readonly material: string | null;
+  readonly work: { readonly code: string; readonly title: string } | null;
+  readonly version: number | null;
+  readonly at: Date | null;
+}
+
+/** Перечень расхождений для «Сводки»: строки либо отказ сверки. */
+export type StorageGapsView = { readonly failed: false; readonly rows: readonly StorageGapRow[] } | { readonly failed: true };
+
+/**
+ * Расхождения версий материалов с хранилищем — проверка руководителя на
+ * «Сводке» (план доработки 19.11.2026, К-5; решение Р-986). Только
+ * руководителю: клиенту, куратору и менеджеру — `null`, сверка для них не
+ * выполняется вовсе, и ни строки, ни числа до экрана не доходят. Только
+ * чтение: удалять и исправлять отсюда нечем. Отказ хранилища экран
+ * «Сводки» не роняет — перечень говорит, что сверка не выполнена.
+ */
+export async function storageGaps(actor: Actor): Promise<StorageGapsView | null> {
+  if (actor.role !== 'HEAD' || actor.status !== 'ACTIVE') return null;
+  ensure(actor, 'AUDIT_VIEW');
+  try {
+    const check = await checkStorage();
+    return {
+      failed: false,
+      rows: check.gaps.map((gap) => ({
+        kind: gap.kind,
+        label: STORAGE_GAP_LABEL[gap.kind],
+        material: gap.material,
+        work: gap.work,
+        version: gap.version,
+        at: gap.at,
+      })),
+    };
+  } catch (error) {
+    console.error('[storage-check] сверка версий с хранилищем не выполнена', error);
+    return { failed: true };
+  }
 }
