@@ -196,3 +196,58 @@ describe('«Компаниям»: новые тексты проходят text-
     assert.doesNotMatch(all, /гарант|под ключ|напишем|пишем|за вас/iu);
   });
 });
+
+/**
+ * Заголовки четырёх разделов «Компаниям» — до 52 знаков (Р-976, задача С-6.4,
+ * указание владельца 22.11.2026; методика, §8). Подсветка h2 страницы — одна, на
+ * «Пяти пакетах», фрагмент «до постановки на баланс» (Р-32). Заголовок #request
+ * — он же заголовок окна заявки (`RequestDialog` берёт h2 раздела формы).
+ * `<title>` и описания страницы не меняются.
+ */
+describe('«Компаниям»: четыре заголовка до 52 знаков (Р-976)', () => {
+  const HEADS = {
+    trl: 'Девять уровней готовности и документы на выходе',
+    packs: 'Пять пакетов: от техзадания до постановки на баланс',
+    rights: 'Права на результат и материалы после проекта',
+    request: 'Опишите разработку — разберём её и посчитаем смету',
+  } as const;
+  /** Видимый текст h2 раздела с данным id. */
+  const h2 = (source: string, id: string) => {
+    const at = source.search(new RegExp(`<section (?:className="[^"]*" )?id="${id}"`, 'u'));
+    assert.ok(at > 0, `нет раздела #${id}`);
+    const head = source.slice(at).match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/u);
+    assert.ok(head, `в #${id} нет h2`);
+    // Части заголовка «Пяти пакетов» — блоками в две строки: между ними пробел.
+    return head[1]!.replace(/<[^>]*>/gu, ' ').replace(/\{" "\}/gu, ' ').replace(/\s+/gu, ' ').trim();
+  };
+
+  it('макет и компонент: заголовки дословно, каждый не длиннее 52 знаков', () => {
+    for (const [where, source] of both()) {
+      for (const [id, text] of Object.entries(HEADS)) {
+        assert.equal(h2(source, id), text, `${where}: #${id}`);
+        assert.ok(text.length <= 52, `#${id}: ${text.length} знаков`);
+      }
+      assert.doesNotMatch(source, /На каком уровне разработка|постановки прав на баланс<\/span><\/span><\/h2>|Кому принадлежит результат|разберём задачу и посчитаем/u, `${where}: остался прежний заголовок`);
+    }
+  });
+
+  it('подсветка: в h1 и ровно в одном h2 — «до постановки на баланс» в «Пяти пакетах» (Р-32)', () => {
+    const page = html();
+    const marked = [...page.matchAll(/<(h1|h2)\b[^>]*>([\s\S]*?)<\/\1>/gu)].filter((m) => m[2]!.includes('background:var(--pd-accent-mark)'));
+    assert.deepEqual(marked.map((m) => m[1]), ['h1', 'h2']);
+    assert.match(marked[1]![2]!, /<span style="position:relative">до постановки на баланс<\/span><\/span>$/u);
+  });
+
+  it('<title> и описания страницы — прежние', () => {
+    const page = read('design/BusinessPage.dc.html');
+    assert.ok(page.includes('<title>НИОКР, патенты и гранты для бизнеса — ProDisser</title>'));
+    const desc = 'Техзадание и патентная чистота, НИОКР под сдачу, заявки на гранты, постановка прав на баланс. Шкала уровней готовности 1—9, пять пакетов, каталог из 52 позиций.';
+    assert.ok(page.includes(`<meta name="description" content="${desc}">`));
+    assert.ok(page.includes(`<meta property="og:description" content="${desc}">`));
+  });
+
+  it('окно заявки берёт заголовок из h2 раздела формы', () => {
+    const dialog = read('app/src/components/RequestDialog.tsx');
+    assert.ok(dialog.includes("const heading = section?.querySelector('h2')?.textContent?.trim() || 'Оставить заявку';"));
+  });
+});
