@@ -147,12 +147,57 @@ describe('Снимки кабинета на сайте (Р-958): дата, до
   });
 
   for (const p of PAGES) {
-    it(`${p.page}: подпись снимка материалов — редакция главы и замечания куратора`, () => {
+    // «Компаниям» — свой набор на работе НИОКР (Р-973): там версии отчёта о НИР.
+    const what = p.page === 'BusinessPage' ? 'версии отчёта о НИР' : 'редакция главы';
+    it(`${p.page}: подпись снимка материалов — ${what} и замечания куратора`, () => {
       const { tabs } = shotsFor(read('design', `${p.page}.dc.html`), p)(0);
       const materials = tabs.find((t) => /-tab-materials\.webp$/u.test(t.img));
       assert.ok(materials, 'нет снимка материалов');
-      assert.match(materials.alt, /редакция главы[^.]*, замечания куратора и загрузка новой версии\./u);
+      assert.match(materials.alt, p.page === 'BusinessPage'
+        ? /версии отчёта о НИР, замечания куратора и загрузка новой версии\./u
+        : /редакция главы[^.]*, замечания куратора и загрузка новой версии\./u);
       assert.doesNotMatch(materials.alt, /версии главы/u);
     });
   }
+});
+
+/**
+ * «Компаниям», «Как это выглядит внутри» (Р-973, задача С-6.1, ответ владельца
+ * 22.11.2026 «Пакет 02 „НИОКР под сдачу“»): свой набор снимков
+ * `bp-tab-{card,stage,materials,payments}` на вымышленной работе организации
+ * «НИОКР: программа и методика испытаний» вместо общих `cl-tab-*` посадочной и
+ * «Аспирантам». Подписи вкладок и строки о вымышленных данных — прежние, `alt` —
+ * по новому снимку, без диссертации и главы.
+ */
+describe('«Компаниям»: свои снимки кабинета на работе НИОКР (Р-973)', () => {
+  const business = PAGES.find((p) => p.page === 'BusinessPage')!;
+  const tabsOf = (page: (typeof PAGES)[number]) => shotsFor(read('design', `${page.page}.dc.html`), page)(0).tabs as Array<Tab & { label: string; caption: string }>;
+
+  it('четыре вкладки — снимки bp-tab-* по порядку, подписи вкладок и строки о вымышленных данных прежние', () => {
+    const tabs = tabsOf(business);
+    assert.deepEqual(tabs.map((t) => t.img), ['card', 'stage', 'materials', 'payments'].map((n) => `./assets/art/bp-tab-${n}.webp`));
+    assert.deepEqual(tabs.map((t) => t.label), ['Карточка работы', 'Согласование этапа', 'Материалы и версии', 'Оплаты и документы']);
+    assert.deepEqual(tabs.map((t) => t.caption), [
+      'Карточка работы. На снимке вымышленные данные.',
+      'Этап на согласовании. На снимке вымышленные данные.',
+      'Материалы работы. На снимке вымышленные данные.',
+      'Оплаты и документы. Суммы на снимке скрыты: смета считается для каждой работы.',
+    ]);
+    for (const t of tabs) assert.doesNotMatch(t.alt, /глав|диссертац/u, `${t.img}: подпись о диссертации`);
+    assert.match(tabs[0]!.alt, /^Карточка работы НИОКР /u);
+    assert.match(tabs[1]!.alt, /этапа «Программа и методика испытаний»/u);
+  });
+
+  it('снимки «Компаниям» — свои: не совпадают с общими cl-tab-*; посадочная и «Аспирантам» остаются на cl-tab-*', () => {
+    for (const n of ['card', 'stage', 'materials', 'payments']) {
+      const own = readFileSync(path.join(ROOT, 'design', 'assets', 'art', `bp-tab-${n}.webp`));
+      const shared = readFileSync(path.join(ROOT, 'design', 'assets', 'art', `cl-tab-${n}.webp`));
+      assert.ok(!own.equals(shared), `bp-tab-${n}.webp совпадает с cl-tab-${n}.webp`);
+    }
+    assert.doesNotMatch(read('design', 'BusinessPage.dc.html'), /'\.\/assets\/art\/cl-tab-/u, '«Компаниям» ссылается на общий снимок');
+    assert.doesNotMatch(read('app', 'src', 'components', 'pages', 'BusinessPage.tsx'), /\/assets\/art\/cl-tab-/u, 'компонент «Компаниям» ссылается на общий снимок');
+    for (const page of PAGES.filter((p) => p.page === 'StartPage' || p.page === 'MainPage')) {
+      assert.ok(tabsOf(page).every((t) => /\/cl-tab-/u.test(t.img)), `${page.page}: не на общих снимках cl-tab-*`);
+    }
+  });
 });
