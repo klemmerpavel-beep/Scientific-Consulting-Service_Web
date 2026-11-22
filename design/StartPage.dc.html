@@ -246,9 +246,13 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 
 
+<!-- Р-993: над h2 каждого раздела посадочной — метка, как «Личный кабинет» над «Как это выглядит внутри» (Inter 12 px, .06em, верхний регистр, --pd-ink-muted, Р-482): «Для кого», «Услуги», «Договор», «Заявка». У трёх карточек направлений одна кромка --pd-accent: направления равноправны (Р-44), серая кромка в системе означает «неактивная». -->
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:70px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Для кого</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Три направления работы</h2>
+</div>
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">На каждой странице — состав работ, сроки и порядок сметы</span>
 </div>
 <div class="pd-routes" style="gap:16px;align-items:stretch">
@@ -282,7 +286,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </span>
 </span>
 </a>
-<a class="pd-lift" href="./business.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
+<a class="pd-lift" href="./business.html" style="display:flex;flex-direction:column;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05);transition:border-color 180ms cubic-bezier(.2,0,.2,1),box-shadow 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-active="transform:translateY(1px)">
 <span class="pd-routebg" style="display:block;height:355px;background:var(--pd-accent-mark);transition:background 220ms cubic-bezier(.2,0,.2,1)">
 <span style="display:block;width:100%;height:355px">
 <image-slot id="sp-route-3" shape="rect" fit="cover" data-alt="Научный коллектив компании обсуждает разработку" placeholder="Фото: команда" style="width:100%;height:355px"></image-slot>
@@ -343,7 +347,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:80px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Услуги</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что входит в сопровождение</h2>
+</div>
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Условия фиксируются до согласования Задания</span>
 </div>
 <div data-carousel="scope" class="pd-scope" tabindex="{{ scopeTab }}" role="group" aria-label="{{ scopeLabel }}" onScroll="{{ onScopeScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
@@ -398,7 +405,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:70px auto 0;padding:0 30px">
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Договор</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Обязательства и документы</h2>
+</div>
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Все документы доступны до оплаты</span>
 </div>
 <!-- Р-992: шесть обязательств — одна белая карточка-список (DESIGN-SYSTEM §7, «Карточка-список»; образец — «Студентам», Р-798, Р-799): от 769 px две колонки, промежуток 32 px, до 768 px — одна; между пунктами линия --pd-border, кромок снизу нет. Лента со стрелками снята вместе с её доступными именами (Р-957). -->
@@ -476,6 +486,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 </div>
 <div style="background:var(--pd-accent-tint);border:1px solid var(--pd-accent-mark);box-sizing:border-box;border-radius:14px;padding:28px 26px;display:flex;flex-direction:column;justify-content:center;gap:8px">
+<span style="margin-bottom:2px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Заявка</span>
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Оставьте заявку</h2>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Консультация не оплачивается: назовём объём работ, сроки и порядок сметы до согласования Задания. Отвечает менеджер проекта, <span style="white-space:nowrap">Пн—Пт 10:00—19:00</span>.</p>
 
