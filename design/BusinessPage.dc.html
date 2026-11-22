@@ -216,6 +216,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .bp-orbit{margin-top:156px}
 @media (max-width:1024px){.bp-orbit{margin-top:0}.bp-crewfig{position:relative;left:auto;top:auto;transform:none;display:block;height:190px;margin:0 auto -42px}}
 @media (max-width:480px){.bp-crewfig{height:168px;margin-bottom:-38px}}
+/* Р-980 (указание владельца 22.11.2026, С-6.8): карточки ролей стоят парами на одной высоте, как на «Аспирантам» (Р-963) и «Студентам» (Р-856): «Менеджер» (01) поднят к «Методологу» (02) — top 7,077 %, «Куратор по отрасли» (04) — к «Научному редактору» (03), top 63,385 %. На 1025—1099 px описание методолога — в четыре строки, и верхние карточки закрывали бы макушки фигур нижней пары: там фигуры 03 и 04 стоят на 24 px ниже — той же высоты и над своими карточками; карточки, точки орбит и тексты на месте. */
+@media (min-width:1025px) and (max-width:1099px){.bp-crew[data-row=low]>.bp-crewfig{top:-142px}}
 
 /* «Как это выглядит внутри» — кабинет клиента вкладками (С-1, Р-591): тот же
    компонент, что на «Экспертам» (Р-584): pill-кнопки на тихой подложке,
@@ -468,7 +470,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;text-align:center;color:var(--pd-ink-secondary)">Ставите задачу и принимаете этапы</span>
 </div>
 </div>
-<div class="bp-crew" style="position:absolute;left:4.396%;top:14.154%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
+<div class="bp-crew" style="position:absolute;left:4.396%;top:7.077%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
 <img class="bp-crewfig" src="./assets/crew/manager.webp" alt="" aria-hidden="true" width="260" height="440" loading="lazy" decoding="async">
 <div class="bp-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch;padding-right:24px">
@@ -490,7 +492,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Выстраивает структуру исследования и программу испытаний.</span>
 </div>
 </div>
-<div class="bp-crew" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
+<div class="bp-crew" data-row="low" style="position:absolute;left:0.617%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
 <img class="bp-crewfig" src="./assets/crew/editor.webp" alt="" aria-hidden="true" width="212" height="440" loading="lazy" decoding="async">
 <div class="bp-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch;padding-right:24px">
@@ -501,7 +503,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="align-self:stretch;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;color:var(--pd-ink-secondary)">Сверяет отчёт с требованиями получателя.</span>
 </div>
 </div>
-<div class="bp-crew" style="position:absolute;left:55.677%;top:68.923%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
+<div class="bp-crew" data-row="low" style="position:absolute;left:55.677%;top:63.385%;width:31.26%;min-width:186px;display:flex;flex-direction:column;align-items:stretch">
 <img class="bp-crewfig" src="./assets/crew/expert.webp" alt="" aria-hidden="true" width="226" height="440" loading="lazy" decoding="async">
 <div class="bp-crewcard pd-lift" style="min-height:138px;box-sizing:border-box;border:1px solid var(--pd-border);border-radius:14px;background:var(--pd-ink-inverse);box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px;align-items:flex-start;transition:box-shadow 200ms cubic-bezier(.2,0,.2,1),border-color 200ms cubic-bezier(.2,0,.2,1)">
 <div style="display:flex;flex-direction:row;gap:10px;align-items:center;align-self:stretch;padding-right:24px">
