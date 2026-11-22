@@ -201,3 +201,57 @@ describe('«Компаниям»: свои снимки кабинета на р
     }
   });
 });
+
+/**
+ * «Компаниям», «Как это выглядит внутри» в исполнении «Студентам» (Р-975,
+ * задача С-6.3, указание владельца 22.11.2026): текст и снимок — одна карточка
+ * из двух панелей (Р-845); над заголовком — «Экран N из 4», под пунктами —
+ * переход к следующей вкладке и кнопка раздела «Оставить заявку» (Р-960),
+ * внизу — подпись о вымышленных данных; поля панелей — 24 px сверху и снизу,
+ * как на «Студентам» (Р-856). Тексты вкладок прежние.
+ */
+describe('«Компаниям», «Как это выглядит внутри»: карточка из двух панелей, как на «Студентам» (Р-975)', () => {
+  const html = read('design', 'BusinessPage.dc.html');
+  const students = read('design', 'StudentsPage.dc.html');
+
+  it('макет: «Экран N из 4» над заголовком, под пунктами — переход и кнопка раздела, внизу — подпись; снимок без второй рамки', () => {
+    const section = inside(html);
+    assert.match(section, /<div id="pd-in-panel" role="tabpanel" aria-labelledby="\{\{ inTabLabelledBy \}\}" class="bp-in-card" style="margin-top:24px;background:var\(--pd-ink-inverse\);border:1px solid var\(--pd-border\);border-radius:14px;overflow:hidden;/u);
+    const text = section.slice(section.indexOf('<div class="bp-in-text"'), section.indexOf('<div class="bp-in-shot"'));
+    const order = ['{{ inStep }}', '{{ inTitle }}', '{{ inText }}', '{{ inPoints }}', 'onClick="{{ inNext }}"', '>Оставить заявку<', '{{ inCaption }}'].map((x) => text.indexOf(x));
+    assert.ok(order.every((x) => x > 0), `в текстовой панели нет части: ${order}`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, 'порядок: экран, заголовок, текст, пункты, переход, кнопка, подпись');
+    assert.match(text, /<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var\(--pd-ink\);color:var\(--pd-ink-inverse\);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;/u, 'кнопка — не в исполнении кнопки раздела Р-960');
+    assert.match(text, /<span style="margin-top:auto;[^"]*border-top:1px solid var\(--pd-border\);[^"]*">\{\{ inCaption \}\}<\/span>\n<\/div>\n$/u, 'подпись не прижата к низу панели');
+    assert.doesNotMatch(section, /<figure|pd-in-body/u, 'у снимка снова своя рамка или прежняя раскладка');
+  });
+
+  it('поля и колонки — те же, что на «Студентам» (Р-845, Р-856)', () => {
+    for (const [mine, theirs] of [
+      ['.bp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}', '.sp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}'],
+      ['.bp-in-text{padding:24px 28px;border-right:1px solid var(--pd-border)}', '.sp-in-text{padding:24px 28px;border-right:1px solid var(--pd-border)}'],
+      ['.bp-in-shot{padding:24px}', '.sp-in-shot{padding:24px}'],
+      ['@media (max-width:1024px){.bp-in-card{grid-template-columns:minmax(0,1fr)}.bp-in-text{border-right:0;border-bottom:1px solid var(--pd-border)}}', '@media (max-width:1024px){.sp-in-card{grid-template-columns:minmax(0,1fr)}.sp-in-text{border-right:0;border-bottom:1px solid var(--pd-border)}}'],
+      ['@media (max-width:480px){.bp-in-text{padding:20px}.bp-in-shot{padding:12px}}', '@media (max-width:480px){.sp-in-text{padding:20px}.sp-in-shot{padding:12px}}'],
+    ]) {
+      assert.ok(students.includes(theirs), `на «Студентам» нет ${theirs}`);
+      assert.ok(html.includes(mine), `на «Компаниям» нет ${mine}`);
+    }
+    assert.match(inside(html), /<div class="bp-in-shot" style="display:flex;align-items:center;min-width:0">/u);
+  });
+
+  it('логика: «Экран N из 4» и переход к следующей вкладке по кругу, как на «Студентам»', () => {
+    for (const line of [
+      "inStep: 'Экран ' + (this.state.inTab + 1) + ' из ' + IN_TABS.length,",
+      "inNextLabel: 'Следующий: ' + IN_TABS[(this.state.inTab + 1) % IN_TABS.length].label,",
+      'inNext: () => this.setState(s => ({ inTab: (s.inTab + 1) % IN_TABS.length })),',
+    ]) {
+      assert.ok(students.includes(line), `на «Студентам» нет ${line}`);
+      assert.ok(html.includes(line), `на «Компаниям» нет ${line}`);
+    }
+    const tsx = inside(read('app', 'src', 'components', 'pages', 'BusinessPage.tsx'));
+    assert.match(tsx, /className="bp-in-card"/u);
+    assert.match(tsx, /onClick=\{inNext\}/u);
+    assert.match(tsx, /\{inStep\}/u);
+  });
+});

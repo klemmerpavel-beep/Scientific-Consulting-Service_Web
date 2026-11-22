@@ -223,8 +223,12 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 .pd-in-tablist{display:inline-flex;gap:4px;padding:4px;background:var(--pd-surface-quiet);border:1px solid var(--pd-border);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .pd-in-tablist::-webkit-scrollbar{display:none}
 @media (max-width:768px){.pd-in-tablist{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-radius:14px!important}.pd-in-tablist [role=tab]{justify-content:center;text-align:center;white-space:normal!important;padding:6px 12px!important;border-radius:10px!important}}
-.pd-in-body{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
-@media (max-width:1024px){.pd-in-body{grid-template-columns:minmax(0,1fr)}}
+/* Р-975 (указание владельца 22.11.2026, С-6.3): текст вкладки и снимок — одна карточка из двух панелей, как на «Студентам» (Р-845, Р-856): слева на тихой подложке «Экран N из 4», заголовок, текст и пункты, под ними переход к следующей вкладке и кнопка раздела (Р-960), внизу подпись о вымышленных данных; справа снимок без второй рамки. Поля обеих панелей — 24 px сверху и снизу: верх «Экрана N из 4» — по верху снимка, низ подписи — по его низу. До 1024 px панели одна над другой. */
+.bp-in-card{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
+.bp-in-text{padding:24px 28px;border-right:1px solid var(--pd-border)}
+.bp-in-shot{padding:24px}
+@media (max-width:1024px){.bp-in-card{grid-template-columns:minmax(0,1fr)}.bp-in-text{border-right:0;border-bottom:1px solid var(--pd-border)}}
+@media (max-width:480px){.bp-in-text{padding:20px}.bp-in-shot{padding:12px}}
 @media (max-width:768px){.pd-in-sub{text-align:left!important;margin-left:0!important}}
 /* Отзывы на узком экране (Р-940): карточка шириной 84vw держит семь-восемь строк отзыва — высота 236 px до 430 px мала. */
 @media (max-width:430px){.pd-revstage{height:304px!important}.pd-revstage>article{height:272px!important}}
@@ -720,26 +724,35 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </sc-if>
 </sc-for>
 </div>
-<div id="pd-in-panel" role="tabpanel" aria-labelledby="{{ inTabLabelledBy }}" class="pd-in-body" style="gap:32px;align-items:center;margin-top:24px">
-<div style="display:flex;flex-direction:column;gap:14px">
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ inTitle }}</h3>
-<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">{{ inText }}</p>
-<ul style="margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
+<!-- Р-975: карточка из двух панелей в исполнении «Студентам» (Р-845, Р-856); «Экран N из 4» — над заголовком, под пунктами — переход к следующей вкладке и кнопка раздела «Оставить заявку» (Р-960), внизу — подпись о вымышленных данных. -->
+<div id="pd-in-panel" role="tabpanel" aria-labelledby="{{ inTabLabelledBy }}" class="bp-in-card" style="margin-top:24px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<div class="bp-in-text" style="background:var(--pd-surface-quiet);display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-direction:column;gap:6px">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);font-variant-numeric:tabular-nums">{{ inStep }}</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ inTitle }}</h3>
+</div>
+<p style="margin:0;font-size:15px;line-height:1.6;color:var(--pd-ink-secondary)">{{ inText }}</p>
+<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px">
 <sc-for list="{{ inPoints }}" as="p" hint-placeholder-count="3">
-<li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
+<li style="display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;color:var(--pd-ink)"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;margin-top:-1px"><span style="width:12px;height:12px;display:block;background:var(--pd-accent);-webkit-mask:{{ inCheckMask }};mask:{{ inCheckMask }}"></span></span><span>{{ p.text }}</span></li>
 </sc-for>
 </ul>
-<div style="margin-top:12px"><a href="#request" style="display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a></div>
 </div>
-<figure style="margin:0;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:10px">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px">
+<button type="button" onClick="{{ inNext }}" style="appearance:none;border:0;background:transparent;cursor:pointer;min-height:44px;padding:0;display:inline-flex;align-items:center;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">{{ inNextLabel }}<span aria-hidden="true" style="width:16px;height:16px;flex:0 0 16px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></button>
+<a href="#request" style="align-self:flex-start;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+</div>
+<span style="margin-top:auto;padding-top:12px;border-top:1px solid var(--pd-border);font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</span>
+</div>
+<div class="bp-in-shot" style="display:flex;align-items:center;min-width:0">
 <!-- Р-881: снимки всех вкладок — стопкой в одной области: виден снимок выбранной вкладки (opacity 1), остальные прозрачны и скрыты от читалки; смена — 220 мс. Прежде у единственного img менялся src, и на медленной сети браузер показывал снимок прежней вкладки, пока не загрузится новый. Первый снимок грузится сразу, остальные — с появлением раздела. -->
 <div class="pd-in-shots" style="display:grid;width:100%;border-radius:10px;background:var(--pd-surface-quiet)">
 <sc-for list="{{ inShots }}" as="shot" hint-placeholder-count="4">
 <img src="{{ shot.src }}" alt="{{ shot.alt }}" aria-hidden="{{ shot.hidden }}" width="1440" height="900" loading="{{ shot.loading }}" decoding="async" style="grid-area:1/1;display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--pd-divider);opacity:{{ shot.op }};transition:opacity 220ms cubic-bezier(.2,0,.2,1)">
 </sc-for>
 </div>
-<figcaption style="padding:10px 6px 2px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">{{ inCaption }}</figcaption>
-</figure>
+</div>
 </div>
 </section>
 
@@ -1502,6 +1515,10 @@ class Component extends DCLogic {
       inTabLabelledBy: 'pd-in-tab-' + this.state.inTab,
       inTitle: inTab.title, inText: inTab.text, inCaption: inTab.caption,
       inPoints: inTab.points.map(text => ({ text })),
+      // Р-975: «Экран N из 4» над заголовком и переход к следующей вкладке, как на «Студентам» (Р-845).
+      inStep: 'Экран ' + (this.state.inTab + 1) + ' из ' + IN_TABS.length,
+      inNextLabel: 'Следующий: ' + IN_TABS[(this.state.inTab + 1) % IN_TABS.length].label,
+      inNext: () => this.setState(s => ({ inTab: (s.inTab + 1) % IN_TABS.length })),
       // Р-881: снимки всех вкладок в разметке сразу; подпись alt — только у снимка
       // выбранной вкладки, прочие прозрачны и скрыты от читалки.
       inShots: IN_TABS.map((t, i) => {
