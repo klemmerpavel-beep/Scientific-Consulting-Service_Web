@@ -622,7 +622,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">{{ p.what }}</span>
 </div>
 <div style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);display:flex;flex-direction:column;align-items:flex-start;gap:4px">
-<a href="#request" aria-label="{{ p.cta }}" style="flex:0 0 auto;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Обсудить пакет<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
+<a href="#request" aria-label="{{ p.cta }}" onClick="{{ p.pick }}" style="flex:0 0 auto;display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:13px;line-height:1.4;font-weight:600;color:var(--pd-accent);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">Обсудить пакет<span aria-hidden="true" style="width:14px;height:14px;display:block;background:var(--pd-accent);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </div>
 </div>
 </article>
@@ -1233,11 +1233,18 @@ class Component extends DCLogic {
     // поиск, работа по этапам с приёмкой, заявка по форме конкурса, права на
     // разработку, рынок и решение о внедрении. Набор pd-* — решения Р-61, Р-64.
     const packIcons = ['pd-patsearch', 'pd-stages', 'pd-grant', 'pd-asset', 'pd-market'];
+    // Р-977 (указание владельца 22.11.2026, С-6.5): «Обсудить пакет «…»» ведёт к
+    // форме заявки и выбирает пакет в поле «Что нужно» (#bp-need) — варианты
+    // поля совпадают с названиями пакетов (needs). Состав, порядок и варианты
+    // полей прежние; без сценария ссылка — обычный якорь #request. Так же
+    // «Получить смету» на «Студентам» ставит срок в поле формы (Р-886).
+    const pickNeed = label => () => { const field = document.getElementById('bp-need'); if (field) field.value = label; };
     const packs = packData.map(([anchor, num, title, term, span, titleSize, who, what], i) => ({
       anchor, num, title, term, titleSize, who, what,
       // Пять ссылок «Обсудить пакет» ведут в одну форму, поэтому у каждой свой
       // aria-label: без него скринридер читает пять одинаковых ссылок подряд.
       cta: 'Обсудить пакет «' + title + '»',
+      pick: pickNeed(title),
       art: "url('./assets/art/pack-" + (i + 1) + ".webp')",
       icon: "url('./assets/icons/" + packIcons[i] + ".svg') center/contain no-repeat",
       span: packSpans[anchor] || span,

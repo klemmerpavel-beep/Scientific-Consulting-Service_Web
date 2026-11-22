@@ -251,3 +251,55 @@ describe('«Компаниям»: четыре заголовка до 52 зна
     assert.ok(dialog.includes("const heading = section?.querySelector('h2')?.textContent?.trim() || 'Оставить заявку';"));
   });
 });
+
+/**
+ * «Обсудить пакет «…»» выбирает пакет в поле «Что нужно» формы заявки (Р-977,
+ * задача С-6.5, ответ владельца на квиз 20.11.2026 — «Подставлять»). Варианты
+ * поля совпадают с названиями пяти пакетов; состав, порядок и перечень
+ * вариантов полей не меняются; без сценария ссылка — обычный якорь #request.
+ * Выбор проверяется исполнением кода макета на заглушке документа.
+ */
+describe('«Компаниям»: «Обсудить пакет» выбирает пакет в поле «Что нужно» (Р-977)', () => {
+  const NEEDS = ['Ещё не определились', 'Техзадание и патентная чистота', 'НИОКР под сдачу', 'Заявка на грант или субсидию', 'Разработка в нематериальный актив', 'Рынок и решение о внедрении', 'Патентный поиск и охранные документы', 'Обоснование расходов на НИОКР'];
+  const page = () => read('design/BusinessPage.dc.html');
+  const packTitles = (source: string) => {
+    const at = source.indexOf('const packData = [');
+    return [...source.slice(at, source.indexOf('\n    ];', at)).matchAll(/\['pack-\d', '0\d', '([^']+)'/gu)].map((m) => m[1]!);
+  };
+
+  it('варианты поля «Что нужно» прежние; названия пяти пакетов — среди них', () => {
+    const source = page();
+    const m = source.match(/needs: \[([^\]]*)\]\.map\(label => \(\{ label \}\)\),/u);
+    assert.ok(m, 'нет вариантов поля «Что нужно»');
+    assert.deepEqual([...m[1]!.matchAll(/'([^']+)'/gu)].map((x) => x[1]), NEEDS);
+    const titles = packTitles(source);
+    assert.equal(titles.length, 5);
+    for (const t of titles) assert.ok(NEEDS.includes(t), `пакета «${t}» нет среди вариантов`);
+    assert.match(source, /<select id="bp-need" name="need" [^>]*>\n<sc-for list="\{\{ needs \}\}" as="n" hint-placeholder-count="5">\n<option value="\{\{ n\.label \}\}">\{\{ n\.label \}\}<\/option>/u);
+  });
+
+  it('ссылка «Обсудить пакет» — якорь #request с выбором пакета; в компоненте то же', () => {
+    assert.match(page(), /<a href="#request" aria-label="\{\{ p\.cta \}\}" onClick="\{\{ p\.pick \}\}" style="[^"]*"[^>]*>Обсудить пакет<span/u);
+    assert.ok(page().includes("      pick: pickNeed(title),\n"), 'у пакета нет выбора');
+    assert.match(read('app/src/components/pages/BusinessPage.tsx'), /<a (?:className="[^"]*" )?href="#request" aria-label=\{p\.cta\} onClick=\{p\.pick\} style=/u);
+  });
+
+  it('нажатие ставит в поле #bp-need название своего пакета и не отменяет переход', () => {
+    const source = page();
+    const line = source.match(/^ {4}const pickNeed = (label => \(\) => \{[^\n]*\});$/mu);
+    assert.ok(line, 'нет функции выбора пакета');
+    assert.doesNotMatch(line[1]!, /preventDefault|scroll|focus/u, 'выбор меняет поведение якоря');
+    const pickNeed = new Function('document', `return ${line[1]};`);
+    for (const title of packTitles(source)) {
+      const field = { value: 'Ещё не определились' };
+      const asked: string[] = [];
+      const doc = { getElementById: (id: string) => { asked.push(id); return id === 'bp-need' ? field : null; } };
+      (pickNeed(doc) as (label: string) => () => void)(title)();
+      assert.deepEqual(asked, ['bp-need'], 'выбор не в поле формы раздела заявки');
+      assert.equal(field.value, title);
+      assert.ok(NEEDS.includes(field.value));
+    }
+    // Без поля (страница без формы) — ничего не ломается.
+    (pickNeed({ getElementById: () => null }) as (label: string) => () => void)('НИОКР под сдачу')();
+  });
+});
