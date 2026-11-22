@@ -75,7 +75,7 @@ describe('посадочная: первый экран по варианту А
     assert.ok(h1);
     assert.equal(plain(h1[2]), 'ProDisser — научный консалтинг для студентов, аспирантов, молодых учёных и компаний');
     assert.match(h1[1], /max-width:24ch/u);
-    assert.match(h1[2], /<span style="background:var\(--pd-accent-mark\);border-radius:6px;padding:2px 0;box-shadow:-10px 0 0 var\(--pd-accent-mark\),10px 0 0 var\(--pd-accent-mark\);mix-blend-mode:multiply;/u);
+    assert.match(h1[2], /<span style="background:var\(--pd-accent-mark\);border-radius:6px;padding:2px 0;box-shadow:-\.1em 0 0 var\(--pd-accent-mark\),\.1em 0 0 var\(--pd-accent-mark\);mix-blend-mode:multiply;/u);
     assert.doesNotMatch(h1[2], /margin-left:-10px/u);
     assert.match(hero, /^<section class="pd-pad" style="max-width:1220px;margin:0 auto;padding:32px 30px 0;/u);
     assert.match(hero, /<p style="margin:20px 0 0;font-size:16px;line-height:1\.6;color:var\(--pd-ink-secondary\);max-width:52ch">\{\{ lead \}\}<\/p>/u);
