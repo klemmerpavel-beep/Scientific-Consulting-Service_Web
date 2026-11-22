@@ -44,7 +44,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
    на странице, ничего не переигрывают при обновлении содержимого. */
 @keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 [role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}</style>
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Р-994: строка «Запись добавлена…» появляется так же, как подтверждение (transform и opacity, 220 мс; при уменьшенном движении — сразу). Ссылка «К списку» — только до 900 px: шире список стоит рядом с формой. */
+.tl-added{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
+@media (min-width:901px){.tl-tolist{display:none!important}}</style>
 </helmet>
 <div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
 <a class="pd-skip" href="#main">Перейти к содержанию</a>
@@ -162,6 +165,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <button type="submit" disabled="{{ pending }}" style="appearance:none;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 34px;min-height:52px;box-sizing:border-box;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover)" style-active="transform:scale(.97)">Добавить в список</button>
 <span style="font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">Поля со звёздочкой обязательны</span>
 </div>
+<!-- Р-994: видимый отклик после добавления записи — строка под кнопкой. Голосом её не объявляет: живая область «В списке N записей» у списка уже есть. Ссылка «К списку» — до 900 px, где список стоит под формой. -->
+<sc-if value="{{ added }}" hint-placeholder-val="{{ false }}">
+<p class="tl-added" style="margin:-8px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)"><span>{{ addedText }}</span><a class="tl-tolist" href="#tl-list" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent-press)">К списку</a></p>
+</sc-if>
 </form>
 </section>
 <section aria-labelledby="tl-list" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:26px 28px 28px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);display:flex;flex-direction:column;gap:20px;min-width:0">
@@ -202,7 +209,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section aria-labelledby="tl-rules" class="tl-two" style="margin-top:clamp(56px,6vw,88px)">
 <div style="display:flex;flex-direction:column;gap:12px">
 <span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Правила описания</span>
-<h2 id="tl-rules" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что учитывает оформитель</h2>
+<h2 id="tl-rules" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что учитывает оформитель</h2>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Вузы и диссертационные советы уточняют ГОСТ своими правилами. Сверьте результат с методичкой кафедры или требованиями совета.</p>
 </div>
 <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
@@ -216,7 +223,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <section aria-labelledby="tl-samples" style="margin-top:clamp(56px,6vw,88px);display:flex;flex-direction:column;gap:20px">
 <div style="display:flex;flex-direction:column;gap:12px;max-width:66ch">
 <span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Образцы</span>
-<h2 id="tl-samples" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Как выглядят записи разных видов</h2>
+<h2 id="tl-samples" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Как выглядят записи разных видов</h2>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Образцы составлены этим же оформителем. Данные условные: подставьте свои сведения из выходных данных источника.</p>
 </div>
 <div class="tl-samples">
@@ -230,7 +237,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </section>
 <section aria-labelledby="tl-more" style="margin-top:clamp(56px,6vw,88px);background:var(--pd-accent-tint);border-radius:14px;padding:clamp(24px,3vw,36px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px 32px">
 <div style="display:flex;flex-direction:column;gap:8px;max-width:60ch">
-<h2 id="tl-more" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:22px;line-height:1.4;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Список — часть оформления работы</h2>
+<span style="display:block;margin-bottom:4px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Сопровождение</span>
+<h2 id="tl-more" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Список — часть оформления работы</h2>
 <p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Куратор со степенью по вашей специальности сверяет структуру, ссылочный аппарат и список литературы с ГОСТ и требованиями вашей кафедры или совета. Автором работы остаётесь вы.</p>
 </div>
 <a href="./index.html#request" style="display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
@@ -251,7 +259,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
 class Component extends DCLogic {
-  state = { kind: 0, items: [], sort: true, typeTag: true, copied: false, copyFail: false };
+  state = { kind: 0, items: [], sort: true, typeTag: true, copied: false, copyFail: false, added: false };
 
   componentDidMount(){
     document.documentElement.lang = 'ru';
@@ -468,7 +476,7 @@ class Component extends DCLogic {
       text: this.display(r.text),
       raw: r.text,
       removeLabel: `Удалить запись ${i + 1}`,
-      remove: () => this.setState((s) => ({ items: s.items.filter((x) => x.id !== r.id), copied: false, copyFail: false })),
+      remove: () => this.setState((s) => ({ items: s.items.filter((x) => x.id !== r.id), copied: false, copyFail: false, added: false })),
     }));
     const text = list.map((r) => `${r.num} ${r.raw}`).join('\n');
     return {
@@ -486,6 +494,9 @@ class Component extends DCLogic {
       hasItems: list.length > 0,
       noItems: list.length === 0,
       countText: `В списке ${list.length} ${this.plural(list.length)}`,
+      // Р-994: отклик под кнопкой «Добавить в список» — до удаления записи или очистки списка.
+      added: this.state.added && list.length > 0,
+      addedText: `Запись добавлена. В\u00a0списке ${list.length} ${this.plural(list.length)}`,
       sort: this.state.sort,
       typeTag: tag,
       toggleSort: () => this.setState((s) => ({ sort: !s.sort, copied: false })),
@@ -496,7 +507,7 @@ class Component extends DCLogic {
         const data = {};
         new FormData(form).forEach((v, key) => { data[key] = String(v); });
         if (!this.formatEntry(k, data, tag)) return;
-        this.setState((s) => ({ items: [...s.items, { id: `${Date.now()}-${s.items.length}`, kind: k, data }], copied: false, copyFail: false }));
+        this.setState((s) => ({ items: [...s.items, { id: `${Date.now()}-${s.items.length}`, kind: k, data }], copied: false, copyFail: false, added: true }));
         form.reset();
       },
       copyList: () => {
@@ -504,7 +515,7 @@ class Component extends DCLogic {
         const fail = () => this.setState({ copied: false, copyFail: true });
         try { navigator.clipboard.writeText(text).then(done, fail); } catch (err) { fail(); }
       },
-      clearList: () => this.setState({ items: [], copied: false, copyFail: false }),
+      clearList: () => this.setState({ items: [], copied: false, copyFail: false, added: false }),
       copied: this.state.copied,
       copyFail: this.state.copyFail,
       // Образцы считает тот же оформитель, поэтому они не расходятся с
