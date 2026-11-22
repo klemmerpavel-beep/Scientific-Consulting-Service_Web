@@ -50,7 +50,7 @@ import { record } from './audit.ts';
 import { contactKeys, leadMatchesContacts } from './contacts.ts';
 import { ERASED_KEY_PREFIX, erasedKey, erasedTwin, normalizeName, signatureBase } from './import/etl.ts';
 import { prisma } from '../db.ts';
-import { storage } from './storage.ts';
+import { removeObjects, storage } from './storage.ts';
 import { enqueue } from './outbox.ts';
 import { moscowToday } from './clock.ts';
 
@@ -238,9 +238,22 @@ export async function ownErasureRequest(actor: Actor): Promise<Date | null> {
 }
 
 /**
- * Исполнить требование. Порядок важен: объекты хранилища удаляются до
- * затирания строк версий, иначе ключ объекта будет потерян и мусор
- * останется в хранилище навсегда.
+ * Исполнить требование. Порядок (К-6, решение Р-1006): затирание, пометка
+ * изъятых версий и вложений, журнал доступа к файлам, отчёт и строка
+ * журнала — одной транзакцией; объекты хранилища удаляются после её
+ * фиксации. Ключ объекта при затирании не стирается — строка версии и
+ * вложения его хранит, — поэтому удаление после фиксации ключа не теряет.
+ *
+ * Прежде объекты удалялись до транзакции, а журнал доступа и строка
+ * журнала шли после неё порознь: отказ транзакции оставлял удалённые
+ * файлы при незатёртых данных и без строки журнала, обрыв после неё —
+ * исполненное требование без строки. Теперь отказ транзакции не трогает
+ * ничего; несостоявшееся удаление объекта действие не откатывает —
+ * данные затёрты, строка изъята и ни экраном, ни зеркалом не выдаётся,
+ * число неудалённых попадает в отчёт требования, ключ — в журнал
+ * сервера, а удаление повторяет еженедельная чистка `deploy/retention.sh`
+ * по ключам изъятых строк; версию, изъятую с оставшимся файлом, видит и
+ * сверка с хранилищем (Р-986).
  */
 export async function executeErasure(actor: Actor, requestId: string): Promise<ErasureReport> {
   ensure(actor, 'ERASURE_EXECUTE');
@@ -412,29 +425,16 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
           select: { id: true, storageKey: true, purgedAt: true },
         });
   const storedLeadFiles = leadFiles.filter((file) => file.purgedAt === null);
-
-  let objectsPurged = 0;
-  let objectsFailed = 0;
-  if (request.scope === 'PERSONAL_DATA_AND_FILES') {
-    for (const object of [...versions, ...storedLeadFiles]) {
-      try {
-        await storage().remove(object.storageKey);
-        objectsPurged += 1;
-      } catch {
-        // Отсутствие объекта ошибкой не считается (`rm` с `force`), так что
-        // сюда приводит настоящий отказ хранилища. Строка версии всё равно
-        // затирается и помечается изъятой — ни экран, ни зеркало её больше
-        // не выдают, — расхождение попадает в отчёт, а удаление объекта
-        // повторяет еженедельная чистка `deploy/retention.sh` по ключам
-        // изъятых строк (проверка 09.10.2026).
-        objectsFailed += 1;
-      }
-    }
-  }
+  // Объекты к удалению — версии работ и вложения, ещё лежащие при заявке.
+  // Удаляются после фиксации транзакции, по ключам, прочитанным здесь.
+  const objects =
+    request.scope === 'PERSONAL_DATA_AND_FILES'
+      ? [...versions, ...storedLeadFiles].map((object) => object.storageKey)
+      : [];
 
   const executedAt = new Date();
 
-  const result = await prisma.$transaction(async (tx) => {
+  const report = await prisma.$transaction(async (tx) => {
     // Требование захватывается условием на исполнение: второе нажатие
     // ждёт первого и находит требование исполненным. Прежде проверка
     // стояла вне транзакции, и двойное нажатие исполняло всё дважды.
@@ -828,35 +828,22 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       userErased = true;
     }
 
-    await tx.erasureRequest.update({
-      where: { id: request.id },
-      data: {
-        approvedById: actor.id,
-        executedAt,
-        report: {
-          projects: projectIds.length,
-          messages: messages.count,
-          versions: purgedVersions.count,
-          objectsPurged,
-          objectsFailed,
-          sessionsRevoked,
-          tokensBurned,
-          userErased,
-          leads: leads.count,
-          loginAttempts: loginAttempts.count,
-          texts: materials.count + stages.count + comments.count + reasons.count + assignmentsErased.count + leadComments.count + ratingsErased.count,
-          events: events.count + journal.count + personal.count + reversals,
-          notifications: notifications.count,
-          importRows: importRowsErased.count,
-          contracts: contracts.length,
-          contractTotal: contractTotal.toString(),
-        },
-      },
-    });
+    // Изъятие файла — событие того же рода, что и его выдача: строка
+    // журнала доступа по каждой изъятой версии — той же транзакцией.
+    if (request.scope === 'PERSONAL_DATA_AND_FILES' && versions.length > 0) {
+      await tx.fileAccessLog.createMany({
+        data: versions.map((version) => ({ versionId: version.id, userId: actor.id, action: 'PURGE' as const })),
+      });
+    }
 
-    return {
+    const counts = {
+      projects: projectIds.length,
       messages: messages.count,
       versions: purgedVersions.count,
+      // Итог удаления объектов известен после фиксации: отказ хранилища
+      // поправляет эти два числа ниже.
+      objectsPurged: objects.length,
+      objectsFailed: 0,
       sessionsRevoked,
       tokensBurned,
       userErased,
@@ -866,31 +853,45 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
       events: events.count + journal.count + personal.count + reversals,
       notifications: notifications.count,
       importRows: importRowsErased.count,
-    };
-  });
-
-  // Запись в журнал доступа делается после транзакции и по каждому объекту:
-  // изъятие файла — событие того же рода, что и его выдача.
-  if (request.scope === 'PERSONAL_DATA_AND_FILES') {
-    for (const version of versions) {
-      await prisma.fileAccessLog.create({
-        data: { versionId: version.id, userId: actor.id, action: 'PURGE' },
-      });
-    }
-  }
-
-  await record(actor, {
-    action: 'ERASURE_EXECUTED',
-    objectType: 'ErasureRequest',
-    objectId: request.id,
-    payload: {
-      clientId: client.id,
-      projects: projectIds.length,
-      objectsPurged,
-      objectsFailed,
+      contracts: contracts.length,
       contractTotal: contractTotal.toString(),
-    },
+    };
+    await tx.erasureRequest.update({
+      where: { id: request.id },
+      data: { approvedById: actor.id, executedAt, report: counts },
+    });
+
+    // Строка журнала — в транзакции исполнения. Персональных данных в ней
+    // нет: идентификатор карточки, числа и сумма договоров (учёт).
+    await record(actor, {
+      action: 'ERASURE_EXECUTED',
+      objectType: 'ErasureRequest',
+      objectId: request.id,
+      payload: {
+        clientId: client.id,
+        projects: projectIds.length,
+        files: objects.length,
+        contractTotal: contractTotal.toString(),
+      },
+    }, tx);
+
+    return counts;
   });
+
+  // Объекты — после фиксации. Отсутствие объекта ошибкой не считается
+  // (`rm` с `force`), так что отказ здесь — настоящий отказ хранилища:
+  // число неудалённых — в отчёт требования, ключи — в журнал сервера,
+  // удаление повторяет еженедельная чистка (проверка 09.10.2026).
+  const objectsFailed = await removeObjects(storage(), objects, 'изъятый объект не удалён, удаление повторит retention.sh');
+  const objectsPurged = objects.length - objectsFailed;
+  if (objectsFailed > 0) {
+    await prisma.erasureRequest
+      .update({
+        where: { id: request.id },
+        data: { report: { ...report, objectsPurged, objectsFailed } },
+      })
+      .catch((error: unknown) => console.error('[erasure] отчёт требования не поправлен после отказа хранилища', request.id, error));
+  }
 
   return {
     requestId: request.id,
@@ -898,19 +899,19 @@ export async function executeErasure(actor: Actor, requestId: string): Promise<E
     executedAt,
     scope: request.scope,
     projects: projectIds.length,
-    messages: result.messages,
-    versions: result.versions,
+    messages: report.messages,
+    versions: report.versions,
     objectsPurged,
     objectsFailed,
-    sessionsRevoked: result.sessionsRevoked,
-    tokensBurned: result.tokensBurned,
-    userErased: result.userErased,
-    leads: result.leads,
-    loginAttempts: result.loginAttempts,
-    texts: result.texts,
-    events: result.events,
-    notifications: result.notifications,
-    importRows: result.importRows,
+    sessionsRevoked: report.sessionsRevoked,
+    tokensBurned: report.tokensBurned,
+    userErased: report.userErased,
+    leads: report.leads,
+    loginAttempts: report.loginAttempts,
+    texts: report.texts,
+    events: report.events,
+    notifications: report.notifications,
+    importRows: report.importRows,
     preserved: { contracts: contracts.length, contractTotal: contractTotal.toString() },
   };
 }

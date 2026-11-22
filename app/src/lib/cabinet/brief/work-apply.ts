@@ -4,10 +4,11 @@
  * Исходные данные на утверждение — тема, цель, задачи, план — приходят
  * документом. Экран сравнения показывает, что было и что станет; человек
  * отмечает, что перенести. Тема и суть задачи ложатся в карточку работы
- * через `editProject` с его пределами; вуз и направление дополняют только
- * пустые поля карточки клиента — заполненное не затирается. Документ
- * прикладывается к выбранному этапу: клиент утверждает его штатным
- * согласованием этапа.
+ * правкой карточки (`planProjectEdit`) с её пределами; вуз и направление
+ * дополняют только пустые поля карточки клиента — заполненное не
+ * затирается. Документ прикладывается к выбранному этапу: клиент
+ * утверждает его штатным согласованием этапа. Всё это и строки журнала —
+ * одной транзакцией, файл версии — до неё (К-6, решение Р-1006).
  *
  * Несколько вариантов темы — выбор того, который выбрал клиент; выбор
  * пишется в журнал действий.
@@ -16,8 +17,10 @@
 import { prisma } from '../../db.ts';
 import { ensure, ensureWorkOpen, scopeProjects, type Actor } from '../access.ts';
 import { record } from '../audit.ts';
-import { editProject } from '../projects.ts';
-import { attachBrief, loadBrief } from './intake.ts';
+import { nextSlot, planUpload, writeVersion } from '../materials.ts';
+import { planProjectEdit, writeProjectEdit } from '../projects.ts';
+import { removeObjects, storage, undoObjectsOnFailure } from '../storage.ts';
+import { loadBrief, stagedBrief } from './intake.ts';
 import { variantFields, workBriefRows, type WorkBriefKey } from './work-rows.ts';
 
 export type { WorkBriefKey } from './work-rows.ts';
@@ -63,9 +66,10 @@ export async function previewWorkBrief(actor: Actor, code: string, ref: string |
 }
 
 /**
- * Применить отмеченное и приложить документ. Тема и суть — через
- * `editProject`: пределы и правила карточки те же. Срок работы и название
- * не трогаются. Документ ложится на этап, если он выбран и открыт.
+ * Применить отмеченное и приложить документ. Тема и суть — правкой
+ * карточки (`planProjectEdit`, `writeProjectEdit`): пределы и правила те
+ * же, что у формы. Срок работы и название не трогаются. Документ ложится
+ * на этап, если он выбран и открыт.
  */
 export async function applyWorkBrief(
   actor: Actor,
@@ -93,36 +97,54 @@ export async function applyWorkBrief(
 
   const topic = pick('topic');
   const summary = pick('summary');
-  if (topic !== undefined || summary !== undefined) {
-    await editProject(actor, {
-      projectId: project.id,
-      title: project.title,
-      topic: topic ?? project.topic,
-      summary: summary ?? project.summary,
-      dueOn: project.dueOn,
+  // Порядок (К-6, решение Р-1006): правка карточки и загрузка документа
+  // проверяются до записи; файл версии пишется первым; правка карточки,
+  // дополнение карточки клиента, версия с письмами и все три строки
+  // журнала — одной транзакцией; временный объект убирается после её
+  // фиксации. Прежде правка, карточка клиента, версия и строка журнала
+  // шли порознь: отказ загрузки оставлял карточку исправленной без
+  // документа, а обрыв перед строкой — исправленную без строки журнала.
+  const edit =
+    topic === undefined && summary === undefined
+      ? null
+      : await planProjectEdit(actor, {
+          projectId: project.id,
+          title: project.title,
+          topic: topic ?? project.topic,
+          summary: summary ?? project.summary,
+          dueOn: project.dueOn,
+        });
+  const doc = await stagedBrief(actor, input.ref, { projectId: project.id, stageId: stage?.id ?? null, title: 'Исходные данные работы' });
+  const upload = doc === null ? null : await planUpload(actor, doc.upload);
+  const slot = upload === null ? null : await nextSlot(upload);
+  const store = storage();
+  if (doc !== null && slot !== null) await store.put(slot.key, doc.upload.body, doc.upload.contentType);
+
+  await undoObjectsOnFailure(store, slot === null ? [] : [slot.key], async () => {
+    await prisma.$transaction(async (tx) => {
+      if (edit !== null) await writeProjectEdit(tx, actor, edit);
+      // Карточка клиента: только пустые поля, условием в запросе — гонка
+      // двух правок не затрёт уже заполненное.
+      for (const key of ['university', 'speciality'] as const) {
+        const value = pick(key);
+        if (value === undefined) continue;
+        await tx.clientProfile.updateMany({ where: { id: project.clientId, [key]: null }, data: { [key]: value.slice(0, 300) } });
+      }
+      if (upload !== null && slot !== null) await writeVersion(tx, actor, upload, slot, ip);
+      await record(actor, {
+        action: 'BRIEF_APPLIED',
+        objectType: 'Project',
+        objectId: project.id,
+        projectId: project.id,
+        payload: {
+          fields: chosen.map((row) => row.key),
+          variant: input.variant === null ? null : (loaded.brief.variants[input.variant]?.label ?? null),
+          stageId: stage?.id ?? null,
+          attached: upload !== null,
+        },
+      }, tx);
     });
-  }
-  // Карточка клиента: только пустые поля, условием в запросе — гонка двух
-  // правок не затрёт уже заполненное.
-  for (const key of ['university', 'speciality'] as const) {
-    const value = pick(key);
-    if (value === undefined) continue;
-    await prisma.clientProfile.updateMany({ where: { id: project.clientId, [key]: null }, data: { [key]: value.slice(0, 300) } });
-  }
-
-  const attached = await attachBrief(actor, input.ref, { projectId: project.id, stageId: stage?.id ?? null, title: 'Исходные данные работы' }, ip);
-
-  await record(actor, {
-    action: 'BRIEF_APPLIED',
-    objectType: 'Project',
-    objectId: project.id,
-    projectId: project.id,
-    payload: {
-      fields: chosen.map((row) => row.key),
-      variant: input.variant === null ? null : (loaded.brief.variants[input.variant]?.label ?? null),
-      stageId: stage?.id ?? null,
-      attached,
-    },
   });
-  return { applied: chosen.map((row) => row.key), attached };
+  if (doc !== null) await removeObjects(store, [doc.key], 'временный объект документа не убран');
+  return { applied: chosen.map((row) => row.key), attached: upload !== null };
 }
