@@ -185,12 +185,14 @@ describe('«Компаниям»: имена кнопок и ссылок сод
     assert.match(sources[1]!, /\{t\.num\}<\/span> <span/u);
   });
 
-  it('ссылка «Обсудить это направление» и кнопки «Чем закреплено»', () => {
+  it('ссылка «Обсудить это направление»; «Чем закреплено» — строка-факт, не кнопка (Р-974)', () => {
     for (const source of sources) {
       assert.match(source, /cta: 'Обсудить это направление «' \+ title \+ '»',/u);
-      assert.match(source, /proofAria: 'Чем закреплено: механизм «' \+ title \+ '»',/u);
       assert.match(source, />Обсудить это направление</u);
-      assert.match(source, /<span>Чем закреплено<\/span>/u);
+      // Р-974 (указание владельца 22.11.2026) сняло кнопки «Чем закреплено» с
+      // раскрытием: строка видна сразу, имени-подписи кнопке больше не нужно.
+      assert.doesNotMatch(source, /proofAria|bp-mechbtn/u);
+      assert.match(source, /<span style=(?:"font-weight:600;color:var\(--pd-ink\)"|\{\{ fontWeight: "600", color: "var\(--pd-ink\)" \}\})>Чем закреплено:<\/span>/u);
     }
   });
 });
