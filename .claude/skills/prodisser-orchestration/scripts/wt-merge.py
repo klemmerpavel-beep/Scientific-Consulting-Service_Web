@@ -80,11 +80,6 @@ def main():
     r = subprocess.run(['git', 'merge', '--no-commit', '--no-ff', branch], capture_output=True, text=True)
     conflicted = [p for p in git('diff', '--name-only', '--diff-filter=U').split() if p]
     other = [p for p in conflicted if p not in (JOURNAL, SUMMARY)]
-    if other:
-        print('Конфликты вне журнала — разберите вручную, слияние не завершено:')
-        for p in other:
-            print('  ' + p)
-        sys.exit(2)
     if r.returncode != 0 and not conflicted:
         sys.exit(f'git merge: {r.stdout.strip()} {r.stderr.strip()}')
 
@@ -140,6 +135,14 @@ def main():
         if now[num].strip() != theirs_e[num].strip():
             sys.exit(f'Текст Р-{num} разошёлся с веткой.')
     git('add', JOURNAL, SUMMARY)
+    if other:
+        # Журнал и сводка уже собраны; остальное — руками (для макетов —
+        # затем sync-check.sh), `git add` и коммит слияния.
+        print(f'Журнал собран: дописано записей — {len(added)}, строк приёмки — {len(new_rows)}.')
+        print('Конфликты вне журнала — разберите вручную, слияние не завершено:')
+        for p in other:
+            print('  ' + p)
+        sys.exit(2)
     print(f'Готово: {branch} слита без коммита; дописано записей — {len(added)}, строк приёмки — {len(new_rows)}.')
     print('Дальше: проверки и `git commit` с подписью сеанса.')
 
