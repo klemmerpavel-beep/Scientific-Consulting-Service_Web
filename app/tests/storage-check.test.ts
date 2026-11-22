@@ -94,7 +94,10 @@ describe('отчёт цепочки и экран руководителя: со
     assert.match(route, /sameSecret\(request\.headers\.get\('x-cabinet-cron'\), secret\)/u);
     assert.match(route, /status: 404/u);
     const answer = route.slice(route.indexOf('NextResponse.json({'), route.indexOf('});', route.indexOf('NextResponse.json({')));
-    assert.deepEqual([...answer.matchAll(/^\s+(\w+):/gmu)].map((m) => m[1]), ['ok', 'missing', 'size', 'purgedKept', 'orphans']);
+    assert.deepEqual(
+      [...answer.matchAll(/^\s+(\w+):/gmu)].map((m) => m[1]),
+      ['ok', 'missing', 'size', 'purgedKept', 'orphans', 'leadOrphans', 'leadKept', 'expertOrphans'],
+    );
     assert.doesNotMatch(route, /gaps|key:|title/u);
     assert.doesNotMatch(route, /\b(?:remove|delete|update|create)\w*\(/u, 'сверка только читает');
   });

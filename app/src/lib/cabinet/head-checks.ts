@@ -23,7 +23,7 @@ import { APPROVAL_VIA_LABEL } from './code-labels.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
-import { checkStorage, STORAGE_GAP_LABEL, type StorageGapKind } from './storage-check.ts';
+import { checkStorage, storageGapLabel, type StorageGapKind, type StorageSection } from './storage-check.ts';
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -194,13 +194,20 @@ export async function calendarGaps(actor: Actor, at: Date = clockNow()): Promise
   return gaps;
 }
 
-/** Строка перечня «Сверка файлов с хранилищем» — без ключа объекта. */
+/**
+ * Строка перечня «Сверка файлов с хранилищем» — без ключа объекта. У
+ * версии — материал, работа и номер; у вложения — номер заявки; у файла
+ * анкеты — дата анкеты: без ФИО, контактов и имён файлов (Р-1007).
+ */
 export interface StorageGapRow {
+  readonly section: StorageSection;
   readonly kind: StorageGapKind;
   readonly label: string;
   readonly material: string | null;
   readonly work: { readonly code: string; readonly title: string } | null;
   readonly version: number | null;
+  readonly lead: { readonly id: string; readonly number: number } | null;
+  readonly application: { readonly id: string; readonly createdAt: Date } | null;
   readonly at: Date | null;
 }
 
@@ -208,8 +215,9 @@ export interface StorageGapRow {
 export type StorageGapsView = { readonly failed: false; readonly rows: readonly StorageGapRow[] } | { readonly failed: true };
 
 /**
- * Расхождения версий материалов с хранилищем — проверка руководителя на
- * «Сводке» (план доработки 19.11.2026, К-5; решение Р-986). Только
+ * Расхождения файлов с хранилищем — версии материалов (план доработки
+ * 19.11.2026, К-5; решение Р-986), вложения заявок и файлы анкет
+ * экспертов (Р-1007) — проверка руководителя на «Сводке». Только
  * руководителю: клиенту, куратору и менеджеру — `null`, сверка для них не
  * выполняется вовсе, и ни строки, ни числа до экрана не доходят. Только
  * чтение: удалять и исправлять отсюда нечем. Отказ хранилища экран
@@ -223,16 +231,19 @@ export async function storageGaps(actor: Actor): Promise<StorageGapsView | null>
     return {
       failed: false,
       rows: check.gaps.map((gap) => ({
+        section: gap.section,
         kind: gap.kind,
-        label: STORAGE_GAP_LABEL[gap.kind],
+        label: storageGapLabel(gap.section, gap.kind),
         material: gap.material,
         work: gap.work,
         version: gap.version,
+        lead: gap.lead,
+        application: gap.application,
         at: gap.at,
       })),
     };
   } catch (error) {
-    console.error('[storage-check] сверка версий с хранилищем не выполнена', error);
+    console.error('[storage-check] сверка файлов с хранилищем не выполнена', error);
     return { failed: true };
   }
 }

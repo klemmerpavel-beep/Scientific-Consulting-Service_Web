@@ -43,7 +43,8 @@ import { LEAD_STATUS_LABEL } from '../../../lib/cabinet/lead-labels';
 import { leadQueue } from '../../../lib/cabinet/queries';
 import { attentionParts, attentionSources, practiceLight } from '../../../lib/cabinet/attention';
 import { answerSegments } from '../../../lib/cabinet/summary-answer';
-import { CHECK_TITLE, storageGaps } from '../../../lib/cabinet/head-checks';
+import { CHECK_TITLE, storageGaps, type StorageGapRow } from '../../../lib/cabinet/head-checks';
+import { LEAD_PURGE_GRACE_DAYS, STORAGE_SECTIONS, STORAGE_SECTION_TITLE, type StorageSection } from '../../../lib/cabinet/storage-gaps';
 import { reactionDays } from '../../../lib/cabinet/practice-settings';
 import { notifyChannelsDown } from '../../../lib/cabinet/outbox';
 import { daysPast, moscowToday, now as clockNow } from '../../../lib/cabinet/clock';
@@ -80,8 +81,35 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 const overdueDays = (dueOn: Date | null): number | null => daysPast(dueOn);
 
-/** Сколько расхождений с хранилищем показывать на «Сводке» (Р-986). */
+/** Сколько расхождений с хранилищем показывать на «Сводке» в каждом разделе (Р-986, Р-1007). */
 const STORAGE_ROWS = 20;
+
+/** Пояснение под разделом сверки: что делать с расхождением (Р-986, Р-1007). */
+const STORAGE_SECTION_NOTE: Readonly<Record<StorageSection, string>> = {
+  MATERIALS: 'Пропавший файл прикладывают заново на экране материалов работы.',
+  LEADS: `Файл изъятого или перенесённого вложения повторно удаляет еженедельная чистка — здесь он, только если остался дольше ${LEAD_PURGE_GRACE_DAYS} суток.`,
+  EXPERTS: 'Файл остаётся, если его не удалось удалить вместе с анкетой; чистка по сроку его не найдёт.',
+};
+
+/** Первая колонка раздела сверки: чей файл — без ФИО и контактов (Р-1007). */
+function storageOwner(row: StorageGapRow): ReactNode {
+  if (row.section === 'LEADS') {
+    return row.lead === null ? (
+      'заявка удалена'
+    ) : (
+      <a href={`/cabinet/manage/leads/${row.lead.id}`} className="cab-mark">
+        {leadNumberLabel(row.lead.number)}
+      </a>
+    );
+  }
+  return row.application === null ? (
+    'анкета удалена'
+  ) : (
+    <a href={`/cabinet/manage/experts/${row.application.id}`} className="cab-mark">
+      {`от ${formatDay(row.application.createdAt)}`}
+    </a>
+  );
+}
 
 /**
  * Ступень тревоги по величине просрочки.
@@ -1801,9 +1829,13 @@ export default async function ManageQueue({
 
       {/* Сверка файлов с хранилищем — только руководителю, только чтение:
           версии без файла, файлы без версии, расхождение размера и файл
-          изъятой версии. Кнопок удаления нет: решает человек (К-5, ответ
-          владельца 20.11.2026, решение Р-986). Код работы на экран не
-          выводится — название работы ссылкой на её материалы (Р-189). */}
+          изъятой версии (К-5, ответ владельца 20.11.2026, решение Р-986);
+          файлы вложений заявок и анкет кандидатов без записи и файл
+          изъятого или перенесённого вложения после срока чистки (ответ
+          владельца 22.11.2026, решение Р-1007). Кнопок удаления нет:
+          решает человек. Код работы на экран не выводится — название
+          работы ссылкой на её материалы (Р-189); у заявки — номер, у
+          анкеты — дата, без ФИО и контактов. */}
       {storage === null ? null : (
         <Block id="storage" style={{ marginBottom: 20 }}>
           <Heading level={2} size={3} style={{ marginBottom: storage.failed || storage.rows.length === 0 ? 4 : 8 }}>
@@ -1815,49 +1847,86 @@ export default async function ManageQueue({
             </Text>
           ) : storage.rows.length === 0 ? (
             <Text muted size={14}>
-              Расхождений нет
+              Расхождений нет — сверены версии материалов, вложения заявок и файлы анкет кандидатов.
             </Text>
           ) : (
             <>
-              <Text muted size={13} style={{ marginBottom: 12 }}>
-                Только сверка: версии и файлы не удаляются и не исправляются сами. Пропавший файл прикладывают
-                заново на экране материалов работы.
+              <Text muted size={13}>
+                Только сверка: файлы и записи не удаляются и не исправляются сами.
               </Text>
-              <TableCard label="Расхождения версий материалов с хранилищем">
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-                  <thead>
-                    <tr>
-                      <th scope="col" style={TABLE_HEAD}>Материал</th>
-                      <th scope="col" style={TABLE_HEAD}>Работа</th>
-                      <th scope="col" style={TABLE_HEAD}>Версия</th>
-                      <th scope="col" style={TABLE_HEAD}>Расхождение</th>
-                      <th scope="col" style={TABLE_HEAD}>Дата</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {storage.rows.slice(0, STORAGE_ROWS).map((row, index) => (
-                      <tr key={index}>
-                        <td style={TABLE_CELL}>{row.material ?? '—'}</td>
-                        <td style={TABLE_CELL}>
-                          {row.work === null ? (
-                            '—'
+              {STORAGE_SECTIONS.map((section) => {
+                const rows = storage.rows.filter((row) => row.section === section);
+                if (rows.length === 0) return null;
+                const title = STORAGE_SECTION_TITLE[section];
+                return (
+                  <Fragment key={section}>
+                    <Heading level={3} size={3} style={{ margin: '18px 0 4px' }}>
+                      {`${title} · ${rows.length}`}
+                    </Heading>
+                    <Text muted size={13} style={{ marginBottom: 10 }}>
+                      {STORAGE_SECTION_NOTE[section]}
+                    </Text>
+                    <TableCard label={`${title}: расхождения с хранилищем`}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: section === 'MATERIALS' ? 720 : 480 }}>
+                        <thead>
+                          {section === 'MATERIALS' ? (
+                            <tr>
+                              <th scope="col" style={TABLE_HEAD}>Материал</th>
+                              <th scope="col" style={TABLE_HEAD}>Работа</th>
+                              <th scope="col" style={TABLE_HEAD}>Версия</th>
+                              <th scope="col" style={TABLE_HEAD}>Расхождение</th>
+                              <th scope="col" style={TABLE_HEAD}>Дата</th>
+                            </tr>
                           ) : (
-                            <a href={`/cabinet/projects/${row.work.code}/materials`} className="cab-mark">
-                              {row.work.title}
-                            </a>
+                            <tr>
+                              <th scope="col" style={TABLE_HEAD}>{section === 'LEADS' ? 'Заявка' : 'Анкета'}</th>
+                              <th scope="col" style={TABLE_HEAD}>Расхождение</th>
+                              <th scope="col" style={TABLE_HEAD}>Дата</th>
+                            </tr>
                           )}
-                        </td>
-                        <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.version === null ? '—' : `v${row.version}`}</td>
-                        <td style={TABLE_CELL}>{row.label}</td>
-                        <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.at === null ? '—' : formatDay(row.at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableCard>
-              {storage.rows.length > STORAGE_ROWS ? (
-                <Text muted size={13} style={{ marginTop: 8 }}>
-                  {`И ещё ${storage.rows.length - STORAGE_ROWS}: показаны первые ${STORAGE_ROWS}.`}
+                        </thead>
+                        <tbody>
+                          {rows.slice(0, STORAGE_ROWS).map((row, index) =>
+                            section === 'MATERIALS' ? (
+                              <tr key={index}>
+                                <td style={TABLE_CELL}>{row.material ?? '—'}</td>
+                                <td style={TABLE_CELL}>
+                                  {row.work === null ? (
+                                    '—'
+                                  ) : (
+                                    <a href={`/cabinet/projects/${row.work.code}/materials`} className="cab-mark">
+                                      {row.work.title}
+                                    </a>
+                                  )}
+                                </td>
+                                <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.version === null ? '—' : `v${row.version}`}</td>
+                                <td style={TABLE_CELL}>{row.label}</td>
+                                <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.at === null ? '—' : formatDay(row.at)}</td>
+                              </tr>
+                            ) : (
+                              <tr key={index}>
+                                <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{storageOwner(row)}</td>
+                                <td style={TABLE_CELL}>{row.label}</td>
+                                <td style={{ ...TABLE_CELL, whiteSpace: 'nowrap' }}>{row.at === null ? '—' : formatDay(row.at)}</td>
+                              </tr>
+                            ),
+                          )}
+                        </tbody>
+                      </table>
+                    </TableCard>
+                    {rows.length > STORAGE_ROWS ? (
+                      <Text muted size={13} style={{ marginTop: 8 }}>
+                        {`И ещё ${rows.length - STORAGE_ROWS}: показаны первые ${STORAGE_ROWS}.`}
+                      </Text>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+              {STORAGE_SECTIONS.some((section) => !storage.rows.some((row) => row.section === section)) ? (
+                <Text muted size={13} style={{ marginTop: 14 }}>
+                  {`Без расхождений: ${STORAGE_SECTIONS.filter((section) => !storage.rows.some((row) => row.section === section))
+                    .map((section) => STORAGE_SECTION_TITLE[section].toLowerCase())
+                    .join(', ')}.`}
                 </Text>
               ) : null}
             </>

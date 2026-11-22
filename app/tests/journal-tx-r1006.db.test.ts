@@ -303,6 +303,12 @@ describe('действия с файлами: журнал в транзакци
     // Исходный объект остался: вложение изъято, ключ выбирает чистка по сроку.
     assert.deepEqual(await keysUnder(`leads/${second.lead.id}/`), [second.key]);
     assert.ok((await purgedKeys()).includes(second.key), 'чистка по сроку не найдёт оставшийся объект');
+    // До срока чистки сверка о нём молчит, после — видит (Р-1007).
+    assert.deepEqual(await gapsOf(`leads/${second.lead.id}/`), []);
+    assert.deepEqual(
+      (await checkStorage(prisma, inner, new Date(Date.now() + 9 * 24 * 60 * 60 * 1000))).gaps.filter((gap) => gap.key === second.key).map((gap) => [gap.section, gap.kind]),
+      [['LEADS', 'PURGED_KEPT']],
+    );
     assert.ok(logged.some((line) => line.includes(second.key)));
   });
 
@@ -336,9 +342,10 @@ describe('действия с файлами: журнал в транзакци
     failRemove = null;
     assert.equal(await prisma.expertApplication.count({ where: { id: second.id } }), 0);
     assert.equal(await prisma.auditEvent.count({ where: { action: 'EXPERT_APPLICATION_DELETED', objectId: second.id } }), 1);
-    // Объект остался без строки: ключ — в журнале сервера. Сверка Р-986 файлов
-    // анкет не обходит — это названо в «Чего решение не закрывает».
+    // Объект остался без строки: ключ — в журнале сервера, файл без записи
+    // анкеты видит сверка (Р-1007; прежде анкеты были вне сверки).
     assert.deepEqual(await keysUnder(`experts/${second.id}/`), [second.key]);
+    assert.deepEqual(await gapsOf(`experts/${second.id}/`), ['ORPHAN']);
     assert.ok(logged.some((line) => line.includes(second.key)));
     await inner.remove(second.key);
   });
