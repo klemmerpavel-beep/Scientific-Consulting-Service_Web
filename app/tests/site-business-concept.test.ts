@@ -303,3 +303,28 @@ describe('«Компаниям»: «Обсудить пакет» выбирае
     (pickNeed({ getElementById: () => null }) as (label: string) => () => void)('НИОКР под сдачу')();
   });
 });
+
+/**
+ * Под «Пятью пакетами» — кнопка раздела «Оставить заявку» (Р-978, задача С-6.6,
+ * указание владельца 22.11.2026): исполнение кнопки «Географии» (Р-960) — 15/600,
+ * поля 14 × 32, стрелка 15 px; ведёт к форме #request. Ссылки «Обсудить
+ * пакет» в карточках остаются.
+ */
+describe('«Компаниям»: под «Пятью пакетами» — кнопка «Оставить заявку» (Р-978)', () => {
+  for (const [where, source] of both()) {
+    it(`${where}: последним элементом раздела #packs, после сетки карточек`, () => {
+      const at = source.search(/<section (?:className="[^"]*" )?id="packs"/u);
+      const section = source.slice(at, source.indexOf('</section>', at));
+      const grid = section.lastIndexOf('</article>');
+      const tail = section.slice(grid);
+      const m = tail.match(/<a (?:className="[^"]*" )?href="#request" style=(?:"([^"]*)"|\{\{([^}]*)\}\})[^>]*>Оставить заявку<span aria-hidden="true" style=(?:"[^"]*width:15px;height:15px;[^"]*mask|\{\{ width: "15px", height: "15px",[^}]*[mM]ask)/u);
+      assert.ok(m, 'под сеткой пакетов нет кнопки «Оставить заявку» со стрелкой');
+      const style = (m[1] ?? m[2])!;
+      for (const want of [/font-size:15px|fontSize: "15px"/u, /font-weight:600|fontWeight: "600"/u, /padding:14px 32px|padding: "14px 32px"/u, /gap:12px|gap: "12px"/u, /background:var\(--pd-ink\)|background: "var\(--pd-ink\)"/u]) {
+        assert.match(style, want, `кнопка не в исполнении Р-960: ${want}`);
+      }
+      assert.doesNotMatch(style, /min-height|minHeight/u);
+      assert.equal((section.match(/>Обсудить пакет</gu) ?? []).length, 1, 'ссылка «Обсудить пакет» в карточке — одна (в цикле по пакетам)');
+    });
+  }
+});
