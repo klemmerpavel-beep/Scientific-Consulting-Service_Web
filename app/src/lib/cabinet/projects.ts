@@ -619,15 +619,18 @@ export async function assignExpert(
     if (nextRole === current.expertRole) {
       return prisma.project.findUniqueOrThrow({ where: { id: projectId } });
     }
-    const updated = await prisma.project.update({ where: { id: projectId }, data: { expertRole: nextRole } });
-    await record(actor, {
-      action: 'PROJECT_EDITED',
-      objectType: 'Project',
-      objectId: projectId,
-      projectId,
-      payload: { expertRoleFrom: current.expertRole, expertRoleTo: nextRole },
+    // Правка роли и строка журнала — одной транзакцией (Ф-15, Р-985).
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.project.update({ where: { id: projectId }, data: { expertRole: nextRole } });
+      await record(actor, {
+        action: 'PROJECT_EDITED',
+        objectType: 'Project',
+        objectId: projectId,
+        projectId,
+        payload: { expertRoleFrom: current.expertRole, expertRoleTo: nextRole },
+      }, tx);
+      return updated;
     });
-    return updated;
   }
 
   const project = await prisma.$transaction(async (tx) => {
@@ -2310,16 +2313,21 @@ export async function acknowledgeReturn(actor: Actor, stageId: string) {
   ensure(actor, 'STAGE_SET_STATE', stage.project);
   if (stage.project.status !== 'ACTIVE') throw new Error(INACTIVE_PROJECT);
   if (stage.returnedAt === null) throw new Error('Этап не возвращался клиентом');
-  const marked = await prisma.stage.updateMany({
-    where: { id: stageId, returnedAt: { not: null }, returnAckAt: null },
-    data: { returnAckAt: new Date() },
-  });
-  if (marked.count === 0) return;
-  await record(actor, {
-    action: 'STAGE_RETURN_ACKNOWLEDGED',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
+  // Отметка и строка журнала — одной транзакцией (Ф-15, Р-985); отметку
+  // уже поставили — действия не было, строки тоже.
+  await prisma.$transaction(async (tx) => {
+    const marked = await tx.stage.updateMany({
+      where: { id: stageId, returnedAt: { not: null }, returnAckAt: null },
+      data: { returnAckAt: new Date() },
+    });
+    if (marked.count > 0) {
+      await record(actor, {
+        action: 'STAGE_RETURN_ACKNOWLEDGED',
+        objectType: 'Stage',
+        objectId: stageId,
+        projectId: stage.projectId,
+      }, tx);
+    }
   });
 }
 

@@ -192,20 +192,24 @@ async function applyReview(actor: Actor | null, id: string, input: FeedbackRevie
     return;
   }
 
-  await prisma.feedback.update({
-    where: { id },
-    data: { severity, status, note: nextNote, resolvedAt },
-  });
-  await record(actor, {
-    action: 'FEEDBACK_REVIEWED',
-    objectType: 'Feedback',
-    objectId: id,
-    payload: {
-      status: { from: current.status, to: status },
-      severity: { from: current.severity, to: severity },
-      note: nextNote !== null,
-      ...(actor === null ? { via: 'key' } : {}),
-    },
+  // Разбор и строка журнала — одной транзакцией (Ф-15, Р-985): и с экрана,
+  // и по ключу выгрузки.
+  await prisma.$transaction(async (tx) => {
+    await tx.feedback.update({
+      where: { id },
+      data: { severity, status, note: nextNote, resolvedAt },
+    });
+    await record(actor, {
+      action: 'FEEDBACK_REVIEWED',
+      objectType: 'Feedback',
+      objectId: id,
+      payload: {
+        status: { from: current.status, to: status },
+        severity: { from: current.severity, to: severity },
+        note: nextNote !== null,
+        ...(actor === null ? { via: 'key' } : {}),
+      },
+    }, tx);
   });
 }
 

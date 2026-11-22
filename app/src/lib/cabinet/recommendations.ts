@@ -92,56 +92,62 @@ export async function markRecommendation(
   if (status === 'DONE' && expected !== undefined && expected !== 'ACCEPTED') {
     throw new Error('Сделанной отмечают принятую рекомендацию');
   }
-  if (status === null) {
-    if (expected === null) {
-      // На экране отметки не было: снимать нечего, а появившуюся — не трогаем.
-      if ((await prisma.recommendationMark.count({ where: { key: { in: keys } } })) > 0) throw changed;
-      return;
-    }
-    let removed = await prisma.recommendationMark.deleteMany({
-      where: expected === undefined ? { key: { in: keys } } : { key, status: expected },
-    });
-    if (legacy !== undefined && expected !== undefined) {
-      // Видна отметка сезона, а без неё — прежнего вида; снимаются обе (Р-656).
-      if (removed.count > 0) await prisma.recommendationMark.deleteMany({ where: { key: legacy } });
-      else if ((await prisma.recommendationMark.count({ where: { key } })) === 0) {
-        removed = await prisma.recommendationMark.deleteMany({ where: { key: legacy, status: expected } });
-      }
-    }
-    if (expected !== undefined && removed.count === 0) throw changed;
-  } else if (expected === undefined) {
-    await prisma.recommendationMark.upsert({
-      where: { key },
-      create: { key, status, userId: actor.id },
-      update: { status, userId: actor.id, at: new Date() },
-    });
-  } else if (expected === null) {
-    const created = await prisma.recommendationMark.createMany({
-      data: [{ key, status, userId: actor.id }],
-      skipDuplicates: true,
-    });
-    if (created.count === 0) throw changed;
-  } else {
-    let updated = await prisma.recommendationMark.updateMany({
-      where: { key, status: expected },
-      data: { status, userId: actor.id, at: new Date() },
-    });
-    if (updated.count === 0 && legacy !== undefined) {
-      // Видна отметка прежнего вида: новая пишется ключом сезона (Р-656).
-      if ((await prisma.recommendationMark.count({ where: { key: legacy, status: expected } })) > 0) {
-        updated = await prisma.recommendationMark.createMany({ data: [{ key, status, userId: actor.id }], skipDuplicates: true });
-        // Прежняя строка своё отслужила: при обратном сдвиге медианы она
-        // снова стала бы видна рядом с отметкой сезона.
-        if (updated.count > 0) await prisma.recommendationMark.deleteMany({ where: { key: legacy } });
-      }
-    }
-    if (updated.count === 0) throw changed;
+  if (status === null && expected === null) {
+    // На экране отметки не было: снимать нечего, а появившуюся — не трогаем.
+    if ((await prisma.recommendationMark.count({ where: { key: { in: keys } } })) > 0) throw changed;
+    return;
   }
-  await record(actor, {
-    action: 'RECOMMENDATION_MARKED',
-    objectType: 'RecommendationMark',
-    objectId: key,
-    payload: { status },
+  // Отметка и строка журнала — одной транзакцией (Ф-15, Р-985): прежде
+  // снятие, перенос ключа сезона и строка шли порознь.
+  await prisma.$transaction(async (tx) => {
+    if (status === null) {
+      // «Отметки не было» (`null`) при снятии разобран выше, до транзакции.
+      const seen = expected ?? undefined;
+      let removed = await tx.recommendationMark.deleteMany({
+        where: seen === undefined ? { key: { in: keys } } : { key, status: seen },
+      });
+      if (legacy !== undefined && seen !== undefined) {
+        // Видна отметка сезона, а без неё — прежнего вида; снимаются обе (Р-656).
+        if (removed.count > 0) await tx.recommendationMark.deleteMany({ where: { key: legacy } });
+        else if ((await tx.recommendationMark.count({ where: { key } })) === 0) {
+          removed = await tx.recommendationMark.deleteMany({ where: { key: legacy, status: seen } });
+        }
+      }
+      if (seen !== undefined && removed.count === 0) throw changed;
+    } else if (expected === undefined) {
+      await tx.recommendationMark.upsert({
+        where: { key },
+        create: { key, status, userId: actor.id },
+        update: { status, userId: actor.id, at: new Date() },
+      });
+    } else if (expected === null) {
+      const created = await tx.recommendationMark.createMany({
+        data: [{ key, status, userId: actor.id }],
+        skipDuplicates: true,
+      });
+      if (created.count === 0) throw changed;
+    } else {
+      let updated = await tx.recommendationMark.updateMany({
+        where: { key, status: expected },
+        data: { status, userId: actor.id, at: new Date() },
+      });
+      if (updated.count === 0 && legacy !== undefined) {
+        // Видна отметка прежнего вида: новая пишется ключом сезона (Р-656).
+        if ((await tx.recommendationMark.count({ where: { key: legacy, status: expected } })) > 0) {
+          updated = await tx.recommendationMark.createMany({ data: [{ key, status, userId: actor.id }], skipDuplicates: true });
+          // Прежняя строка своё отслужила: при обратном сдвиге медианы она
+          // снова стала бы видна рядом с отметкой сезона.
+          if (updated.count > 0) await tx.recommendationMark.deleteMany({ where: { key: legacy } });
+        }
+      }
+      if (updated.count === 0) throw changed;
+    }
+    await record(actor, {
+      action: 'RECOMMENDATION_MARKED',
+      objectType: 'RecommendationMark',
+      objectId: key,
+      payload: { status },
+    }, tx);
   });
 }
 

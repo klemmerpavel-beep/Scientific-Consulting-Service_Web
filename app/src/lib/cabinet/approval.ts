@@ -321,19 +321,19 @@ export async function autoAcceptExpired(at: Date = new Date()): Promise<number> 
         key: `stage:${stage.id}:auto-accepted-expert:${change.id}`,
         path: `/cabinet/stages/${stage.id}`,
       });
+      // Первая запись журнала без автора: действие совершила система по
+      // правилу оферты, а не человек (Р-239 дополняется). Строка — в
+      // транзакции закрытия: сбой журнала откатывает и его (Ф-15, Р-985).
+      await record(null, {
+        action: 'STAGE_APPROVED',
+        objectType: 'Stage',
+        objectId: stage.id,
+        projectId: stage.projectId,
+        payload: { from: 'IN_APPROVAL', to: 'DONE', via: 'AUTO_ACCEPT' },
+      }, tx);
       return true;
     });
-    if (!done) continue;
-    closed += 1;
-    // Первая запись журнала без автора: действие совершила система по
-    // правилу оферты, а не человек (Р-239 дополняется).
-    await record(null, {
-      action: 'STAGE_APPROVED',
-      objectType: 'Stage',
-      objectId: stage.id,
-      projectId: stage.projectId,
-      payload: { from: 'IN_APPROVAL', to: 'DONE', via: 'AUTO_ACCEPT' },
-    });
+    if (done) closed += 1;
   }
   return closed;
 }

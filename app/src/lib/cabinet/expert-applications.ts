@@ -177,19 +177,23 @@ export async function reviewExpertApplication(
   if (current === null) throw new Error('Анкета не найдена');
   const nextNote = note.length === 0 ? null : note;
   if (current.status === input.status && current.note === nextNote) return;
-  await prisma.expertApplication.update({
-    where: { id },
-    data: {
-      status: input.status,
-      note: nextNote,
-      ...(current.status === input.status ? {} : { statusChangedAt: new Date() }),
-    },
-  });
-  await record(actor, {
-    action: 'EXPERT_APPLICATION_REVIEWED',
-    objectType: 'ExpertApplication',
-    objectId: id,
-    payload: { status: { from: current.status, to: input.status }, note: nextNote !== null },
+  const status = input.status;
+  // Разбор и строка журнала — одной транзакцией (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    await tx.expertApplication.update({
+      where: { id },
+      data: {
+        status,
+        note: nextNote,
+        ...(current.status === status ? {} : { statusChangedAt: new Date() }),
+      },
+    });
+    await record(actor, {
+      action: 'EXPERT_APPLICATION_REVIEWED',
+      objectType: 'ExpertApplication',
+      objectId: id,
+      payload: { status: { from: current.status, to: status }, note: nextNote !== null },
+    }, tx);
   });
 }
 

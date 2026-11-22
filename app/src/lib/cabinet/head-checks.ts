@@ -95,17 +95,20 @@ export async function closeCheck(actor: Actor, checkId: string, note: string): P
   if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'HEAD_CHECK_CLOSE', ref);
   if (!NOTE[check.kind].includes(note)) throw new Error('Неизвестная отметка дела');
-  const closed = await prisma.headCheck.updateMany({
-    where: { id: checkId, closedAt: null },
-    data: { closedAt: new Date(), closedById: actor.id, closeNote: note },
-  });
-  if (closed.count === 0) throw new Error('Дело уже закрыто: обновите страницу');
-  await record(actor, {
-    action: 'HEAD_CHECK_CLOSED',
-    objectType: 'HeadCheck',
-    objectId: checkId,
-    projectId: check.projectId,
-    payload: { kind: check.kind, note },
+  // Отметка дела и строка журнала — одной транзакцией (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    const closed = await tx.headCheck.updateMany({
+      where: { id: checkId, closedAt: null },
+      data: { closedAt: new Date(), closedById: actor.id, closeNote: note },
+    });
+    if (closed.count === 0) throw new Error('Дело уже закрыто: обновите страницу');
+    await record(actor, {
+      action: 'HEAD_CHECK_CLOSED',
+      objectType: 'HeadCheck',
+      objectId: checkId,
+      projectId: check.projectId,
+      payload: { kind: check.kind, note },
+    }, tx);
   });
 }
 
