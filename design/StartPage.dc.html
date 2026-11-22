@@ -103,6 +103,10 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (min-width:769px) and (max-width:1100px){.pd-metrics{grid-template-columns:minmax(0,1fr)!important}.pd-metrics>a{min-height:0!important}}
 @media (min-width:481px) and (max-width:768px){.pd-metrics>a:last-child{grid-column:1/-1}}
 @media (max-width:768px){.pd-roles{justify-content:center!important;gap:40px!important}.pd-bform>div:not([role]){flex:1 1 100%}}
+/* Р-991: «Что входит в сопровождение» — от 1025 px шесть карточек сеткой 3 × 2, на 769—1024 px — 2 × 3, промежуток 16 px, высота ряда — по самой высокой карточке ряда; стрелок и полосы прогресса нет, у сетки нет остановки Tab и подписи «прокрутите стрелками». Под сеткой — кнопка раздела «Оставить заявку» к форме заявки (Р-960). До 768 px — прежняя лента со стрелками, кнопки под ней нет: на телефоне заявку держит полоса (Р-948). */
+@media (min-width:769px){.pd-scope{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible!important;scroll-snap-type:none!important}.pd-scope-nav{display:none!important}}
+@media (min-width:1025px){.pd-scope{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:768px){.pd-scope-cta{display:none!important}}
 </style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
@@ -337,7 +341,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что входит в сопровождение</h2>
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Условия фиксируются до согласования Задания</span>
 </div>
-<div data-carousel="scope" tabindex="0" role="group" aria-label="Что входит в сопровождение — прокрутите стрелками" onScroll="{{ onScopeScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
+<div data-carousel="scope" class="pd-scope" tabindex="{{ scopeTab }}" role="group" aria-label="{{ scopeLabel }}" onScroll="{{ onScopeScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
 <article class="pd-card pd-lift" style="scroll-snap-align:start;flex:0 0 clamp(280px,calc((100% - 48px) / 4),320px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:44px;line-height:1.24;font-weight:600;letter-spacing:-.04em;color:var(--pd-accent);font-variant-numeric:tabular-nums">01</span><img src="./assets/art/pd-3d-degree.webp" alt="" aria-hidden="true" width="72" height="72" decoding="async" loading="lazy" style="width:72px;height:72px;flex:0 0 72px;display:block;margin:-10px -6px -10px 0"></div>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Куратор со степенью по вашей специальности</h3>
@@ -375,7 +379,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <p style="margin:auto 0 0;padding-top:12px;border-top:1px solid var(--pd-divider);font-size:14px;line-height:1.5;color:var(--pd-ink)">Вопросы по этапу разбираем с куратором на созвоне, решения фиксируем письменно.</p>
 </article>
 </div>
-<div style="display:flex;align-items:center;gap:24px;margin-top:24px">
+<div class="pd-scope-nav" style="display:flex;align-items:center;gap:24px;margin-top:24px">
 <div style="flex:1 1 auto;height:4px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
 <div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ scopeScale }}"></div>
 </div>
@@ -384,6 +388,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <button type="button" aria-label="Следующие карточки" onClick="{{ nextScope }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
 </div>
 </div>
+<div class="pd-scope-cta" style="display:flex;margin-top:24px"><a href="#request" style="display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;text-decoration:none;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a></div>
 </section>
 
 <section class="pd-pad" style="position:relative;z-index:1;max-width:1220px;margin:70px auto 0;padding:0 30px">
@@ -535,7 +540,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;leadVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Замечания диссовета&quot;,&quot;Срыв сроков по главам&quot;,&quot;Подготовка к защите&quot;],&quot;default&quot;:&quot;Подготовка к защите&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Текст hero&quot;},&quot;showPortraits&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Текст hero&quot;}}">
 class Component extends DCLogic {
-  state = { inTab: 0, sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, };
+  state = { inTab: 0, sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, scopeWide: false, };
   componentDidMount(){
     this.measure = () => {
       const count = n => {
@@ -552,9 +557,15 @@ class Component extends DCLogic {
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); });
     };
     window.addEventListener('resize', this.onResize);
+    // Р-991: от 769 px «Что входит в сопровождение» — сетка: прокрутки нет, остановка Tab и подпись про стрелки не нужны.
+    this.scopeGrid = window.matchMedia('(min-width:769px)');
+    this.syncScopeGrid = () => this.setState({ scopeWide: this.scopeGrid.matches });
+    this.syncScopeGrid();
+    this.scopeGrid.addEventListener('change', this.syncScopeGrid);
   }
   componentWillUnmount(){
     window.removeEventListener('resize', this.onResize);
+    if (this.scopeGrid) this.scopeGrid.removeEventListener('change', this.syncScopeGrid);
     if (this.raf) cancelAnimationFrame(this.raf);
   }
   track(name, key, fillKey){
@@ -659,6 +670,8 @@ class Component extends DCLogic {
       prevScope: () => this.goTrack('scope', 'scopePage', 'scopePages', -1),
       nextScope: () => this.goTrack('scope', 'scopePage', 'scopePages', 1),
       onScopeScroll: () => this.track('scope', 'scopePage', 'scopeFill'),
+      scopeTab: this.state.scopeWide ? undefined : 0,
+      scopeLabel: this.state.scopeWide ? 'Что входит в сопровождение' : 'Что входит в сопровождение — прокрутите стрелками',
       lead: 'Разбираем методологию, проводим научную экспертизу текста и готовим к защите — автором работы остаётесь вы.',
       showPortraits: this.props.showPortraits ?? true,
       sentTop: this.state.sentTop,
