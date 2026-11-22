@@ -20,7 +20,7 @@ import { stageLink } from './approval.ts';
 import { siteUrl } from '../site-url.ts';
 import { projectRef } from './projects.ts';
 import { CLIENT_TRANCHE_STATUSES } from './finance.ts';
-import { materialKey, openObject, sha256, storage } from './storage.ts';
+import { materialKey, newRowId, openObject, sha256, storage, undoObjectsOnFailure } from './storage.ts';
 
 /**
  * Материалы и их версии.
@@ -74,7 +74,71 @@ export interface UploadInput {
   readonly body: Buffer;
 }
 
+/** Проверенная загрузка: всё, что известно до записи файла (К-6, Р-1006). */
+export interface UploadPlan {
+  readonly input: UploadInput;
+  readonly kind: MaterialKind;
+  readonly title: string;
+  readonly note: string;
+  readonly moderated: boolean;
+  /** ФИО куратора в имени файла или в авторе документа (УК-03, Р-396). */
+  readonly identityHint: boolean;
+  readonly sha256: string;
+  readonly contractId: string | null;
+  readonly trancheId: string | null;
+  /** Материал версии: прежний или новый — идентификатор нового задан заранее. */
+  readonly materialId: string;
+  readonly fresh: boolean;
+}
+
+/** Номер версии и ключ её объекта. */
+export interface VersionSlot {
+  readonly number: number;
+  readonly key: string;
+}
+
+/** Номер версии успела занять другая загрузка того же материала. */
+class VersionNumberTaken extends Error {}
+
+/** Сколько раз загрузка берёт следующий номер, если прежний заняли. */
+const UPLOAD_ATTEMPTS = 3;
+
+/**
+ * Загрузить версию (К-6, решение Р-1006). Порядок создания файла: все
+ * проверки — до записи; объект — первым; затем одна транзакция — строки
+ * версии, письма и строка журнала (`writeVersion`). Отказ транзакции
+ * убирает объект: не остаётся ни версии без файла, ни строки журнала без
+ * версии; сбой уборки оставляет файл без версии — его видит сверка
+ * (Р-986). Прежде строка версии фиксировалась до записи байтов, а журнал,
+ * письма и журнал доступа шли после неё порознь (Р-237, Р-938).
+ *
+ * Номер версии входит в ключ объекта и берётся до транзакции; она его
+ * сверяет. Номер успела занять другая загрузка — объект этой убирается, и
+ * она повторяется со следующим номером: ключ случаен, чужой объект не
+ * затирается.
+ */
 export async function uploadVersion(actor: Actor, input: UploadInput, ip?: string | null) {
+  const plan = await planUpload(actor, input);
+  const store = storage();
+  for (let attempt = 1; ; attempt += 1) {
+    const slot = await nextSlot(plan);
+    await store.put(slot.key, input.body, input.contentType);
+    try {
+      return await undoObjectsOnFailure(store, [slot.key], () =>
+        prisma.$transaction((tx) => writeVersion(tx, actor, plan, slot, ip)),
+      );
+    } catch (error) {
+      if (attempt < UPLOAD_ATTEMPTS && numberTaken(error)) continue;
+      throw error;
+    }
+  }
+}
+
+/**
+ * Проверки загрузки — права, привязка, имя, пояснение, размер, вид файла.
+ * Ничего не пишет: отказ здесь не оставляет ни объекта, ни строки.
+ */
+export async function planUpload(actor: Actor, input: UploadInput): Promise<UploadPlan> {
   const ref = await projectRef(input.projectId);
   if (ref === null) throw new Error('Работа не найдена');
 
@@ -204,103 +268,127 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // модерации ставится вместе с версией, а событие в истории клиента и
   // письмо ему — в момент публикации (требование Т-18, решение Р-294).
   const moderated = actor.role === 'EXPERT' && kind === 'STAGE_MATERIAL';
-
-  // Номер версии вычисляется и занимается в одной транзакции; от гонки
-  // защищает уникальность пары «материал — номер» на стороне базы.
-  const { version, material, fresh, eventId, comment } = await prisma.$transaction(async (tx) => {
-    const current =
-      input.materialId == null
-        ? null
-        : await tx.material.findUnique({ where: { id: input.materialId } });
-
-    const target =
-      current ??
-      (await tx.material.create({
-        data: {
-          projectId: input.projectId,
-          stageId: input.stageId ?? null,
-          kind,
-          contractId,
-          trancheId,
-          title,
-          createdById: actor.id,
-        },
-      }));
-
-    const last = await tx.materialVersion.findFirst({
-      where: { materialId: target.id },
-      orderBy: { number: 'desc' },
-      select: { number: true },
-    });
-    const number = (last?.number ?? 0) + 1;
-
-    const created = await tx.materialVersion.create({
-      data: {
-        materialId: target.id,
-        number,
-        storageKey: materialKey(input.projectId, target.id, number, input.originalName),
-        originalName: input.originalName.slice(0, 300),
-        sizeBytes: BigInt(input.body.byteLength),
-        sha256: sha256(input.body),
-        contentType: input.contentType.slice(0, 128),
-        uploadedById: actor.id,
-      },
-    });
-    if (moderated) {
-      // ФИО куратора в имени файла или в авторе документа — предупреждение
-      // менеджеру перед публикацией (улучшение УК-03, решение Р-396).
-      const curator = await tx.user.findUnique({ where: { id: actor.id }, select: { fullName: true } });
-      const hint = curator !== null && identityHint(input.originalName, input.body, curator.fullName);
-      await tx.versionModeration.create({ data: { versionId: created.id, identityHint: hint } });
-    }
-    // Пояснение — замечанием к этой версии, в той же транзакции; откат
-    // версии при отказе записи байтов удаляет и его (каскад).
-    const remark = note === '' ? null : commentRow(actor, created.id, note);
-    const comment = remark === null ? null : await tx.versionComment.create({ data: remark.data, select: { id: true } });
-
-    const event = moderated
-      ? null
-      : await tx.projectEvent.create({
-          data: {
-            projectId: input.projectId,
-            actorId: actor.id,
-            kind: 'VERSION_UPLOADED',
-            payload: { materialId: target.id, version: number },
-          },
-          select: { id: true },
-        });
-
-    return {
-      version: created,
-      material: target,
-      fresh: current === null,
-      eventId: event?.id ?? null,
-      comment: comment === null || remark === null ? null : { id: comment.id, held: remark.held, contactHint: remark.contactHint },
-    };
-  });
-
-  // Байты пишутся после строки: ключ объекта строится от номера версии,
-  // а номер занимается в транзакции. Отказ записи откатывает строку: прежде
-  // строка оставалась «последней версией» без объекта, каждое скачивание
-  // кончалось ошибкой сервера, а следующая загрузка получала номер через
-  // одну (решение Р-237).
-  try {
-    await storage().put(version.storageKey, input.body, input.contentType);
-  } catch (error) {
-    await prisma.$transaction(async (tx) => {
-      if (eventId !== null) await tx.projectEvent.delete({ where: { id: eventId } });
-      await tx.materialVersion.delete({ where: { id: version.id } });
-      if (fresh) await tx.material.delete({ where: { id: material.id } });
-    });
-    throw error;
+  // ФИО куратора в имени файла или в авторе документа — предупреждение
+  // менеджеру перед публикацией (улучшение УК-03, решение Р-396). Документ
+  // разбирается до транзакции: она не ждёт чтения файла.
+  let hint = false;
+  if (moderated) {
+    const curator = await prisma.user.findUnique({ where: { id: actor.id }, select: { fullName: true } });
+    hint = curator !== null && identityHint(input.originalName, input.body, curator.fullName);
   }
 
-  await prisma.fileAccessLog.create({
+  return {
+    input,
+    kind,
+    title,
+    note,
+    moderated,
+    identityHint: hint,
+    sha256: sha256(input.body),
+    contractId,
+    trancheId,
+    materialId: input.materialId ?? newRowId(),
+    fresh: existing === null,
+  };
+}
+
+/**
+ * Номер и ключ следующей версии — до транзакции: объект пишется раньше
+ * строки, а номер входит в ключ. Транзакция сверяет номер (`writeVersion`).
+ */
+export async function nextSlot(plan: UploadPlan): Promise<VersionSlot> {
+  const last = plan.fresh
+    ? null
+    : await prisma.materialVersion.findFirst({
+        where: { materialId: plan.materialId },
+        orderBy: { number: 'desc' },
+        select: { number: true },
+      });
+  const number = (last?.number ?? 0) + 1;
+  return { number, key: materialKey(plan.input.projectId, plan.materialId, number, plan.input.originalName) };
+}
+
+/** Номер занят: сверка в транзакции или уникальность «материал — номер». */
+function numberTaken(error: unknown): boolean {
+  return error instanceof VersionNumberTaken || (error as { code?: unknown } | null)?.code === 'P2002';
+}
+
+/**
+ * Строки версии — одной транзакцией вызывающего (К-6, Р-1006): материал,
+ * версия, строка модерации, пояснение, событие истории, журнал доступа,
+ * письма второй стороне, строка журнала, дела руководителя об акте и
+ * сигналы пояснения. Объект к этому времени уже записан под `slot.key`.
+ * Сбой любой записи откатывает все, и вызывающий убирает объект.
+ */
+export async function writeVersion(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  plan: UploadPlan,
+  slot: VersionSlot,
+  ip?: string | null,
+) {
+  const { input } = plan;
+  const material = plan.fresh
+    ? await tx.material.create({
+        data: {
+          id: plan.materialId,
+          projectId: input.projectId,
+          stageId: input.stageId ?? null,
+          kind: plan.kind,
+          contractId: plan.contractId,
+          trancheId: plan.trancheId,
+          title: plan.title,
+          createdById: actor.id,
+        },
+      })
+    : await tx.material.findUnique({ where: { id: plan.materialId } });
+  if (material === null) throw new Error('Материал не найден');
+
+  // Номер занимается здесь. Его успела занять другая загрузка — объект
+  // этой убирается, и загрузка повторяется со следующим (`uploadVersion`);
+  // от гонки двух транзакций защищает уникальность пары «материал — номер».
+  const last = await tx.materialVersion.findFirst({
+    where: { materialId: material.id },
+    orderBy: { number: 'desc' },
+    select: { number: true },
+  });
+  if ((last?.number ?? 0) + 1 !== slot.number) throw new VersionNumberTaken('Номер версии занят другой загрузкой');
+
+  const version = await tx.materialVersion.create({
+    data: {
+      materialId: material.id,
+      number: slot.number,
+      storageKey: slot.key,
+      originalName: input.originalName.slice(0, 300),
+      sizeBytes: BigInt(input.body.byteLength),
+      sha256: plan.sha256,
+      contentType: input.contentType.slice(0, 128),
+      uploadedById: actor.id,
+    },
+  });
+  if (plan.moderated) {
+    await tx.versionModeration.create({ data: { versionId: version.id, identityHint: plan.identityHint } });
+  }
+  // Пояснение — замечанием к этой версии, в той же транзакции: при отказе
+  // не сохраняется ни файл, ни пояснение (требование Э-06, решение Р-326).
+  const remark = plan.note === '' ? null : commentRow(actor, version.id, plan.note);
+  const comment = remark === null ? null : await tx.versionComment.create({ data: remark.data, select: { id: true } });
+  if (!plan.moderated) {
+    await tx.projectEvent.create({
+      data: {
+        projectId: input.projectId,
+        actorId: actor.id,
+        kind: 'VERSION_UPLOADED',
+        payload: { materialId: material.id, version: slot.number },
+      },
+    });
+  }
+  await tx.fileAccessLog.create({
     data: { versionId: version.id, userId: actor.id, action: 'UPLOAD', ip: ip ?? null },
   });
 
   // О новой версии узнаёт вторая сторона: загрузивший и так знает, что сделал.
-  const project = await prisma.project.findUnique({
+  const project = await tx.project.findUnique({
     where: { id: input.projectId },
     select: {
       code: true,
@@ -328,8 +416,8 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     const tranche =
       material.trancheId === null
         ? null
-        : await prisma.tranche.findUnique({ where: { id: material.trancheId }, select: { status: true } });
-    const candidates = await prisma.user.findMany({
+        : await tx.tranche.findUnique({ where: { id: material.trancheId }, select: { status: true } });
+    const candidates = await tx.user.findMany({
       where: {
         id: {
           in: [project.client.userId, project.managerId, project.expertId].filter(
@@ -348,7 +436,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     });
     const recipients = candidates
       // Клиент о версии на публикации не узнаёт: она ему не видна (Р-294).
-      .filter((user) => !moderated || user.role !== 'CLIENT')
+      .filter((user) => !plan.moderated || user.role !== 'CLIENT')
       .filter((user) => {
         const who: Actor = {
           id: user.id,
@@ -362,7 +450,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
       .map((user) => ({ id: user.id, role: user.role }));
     for (const recipient of recipients) {
       const userId = recipient.id;
-      await enqueue(prisma, {
+      await enqueue(tx, {
         userId,
         projectId: input.projectId,
         eventKind: 'VERSION_UPLOADED',
@@ -370,7 +458,7 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
         body:
           `${workLine(project, recipient.role === 'CLIENT')}\n` +
           `Приложена версия v${version.number}. Открыть можно в личном кабинете.` +
-          (moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
+          (plan.moderated ? '\nВерсия куратора ждёт публикации: клиент увидит её после вашего решения.' : ''),
         dedupKey: `version:${version.id}:uploaded:${userId}`,
         path: materialPath(project.code, material.stageId, material.kind),
       });
@@ -381,29 +469,27 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
     objectType: 'MaterialVersion',
     objectId: version.id,
     projectId: input.projectId,
-    payload: { material: material.id, version: version.number, ...(moderated ? { moderated: true } : {}) },
+    payload: { material: material.id, version: version.number, ...(plan.moderated ? { moderated: true } : {}) },
     ip,
-  });
+  }, tx);
   // Акт по работе закрывает дела руководителя об акте (РК-12, Р-338).
-  if (input.kind === 'ACT') await closeActChecks(prisma, input.projectId, actor.id);
-  if (comment !== null && project !== null) {
-    // Сигналы и строка журнала о пояснении — одной транзакцией, как у
-    // замечания (Р-985); порядок версии и файла не меняется (К-6).
-    await prisma.$transaction(async (tx) => {
-      await commentAftermath(
-        actor,
-        {
-          projectId: input.projectId,
-          code: project.code,
-          title: project.title,
-          stageId: material.stageId,
-          materialTitle: material.title,
-          versionNumber: version.number,
-        },
-        comment,
-        tx,
-      );
-    });
+  if (input.kind === 'ACT') await closeActChecks(tx, input.projectId, actor.id);
+  if (comment !== null && remark !== null && project !== null) {
+    // Сигналы и строка журнала о пояснении — той же транзакцией, как у
+    // замечания (Р-985).
+    await commentAftermath(
+      actor,
+      {
+        projectId: input.projectId,
+        code: project.code,
+        title: project.title,
+        stageId: material.stageId,
+        materialTitle: material.title,
+        versionNumber: version.number,
+      },
+      { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+      tx,
+    );
   }
 
   return version;
@@ -443,7 +529,8 @@ function commentRow(actor: Actor, versionId: string, text: string) {
  * неразобранное; замечание клиента, опубликованное сразу, — каждое.
  *
  * Только в транзакции вызывающего (Ф-15, Р-985): у замечания — той же,
- * что пишет его строку; сбой журнала откатывает и замечание, и сигналы.
+ * что пишет его строку, у пояснения к загруженной версии — той же, что
+ * пишет версию (Р-1006); сбой журнала откатывает и замечание, и сигналы.
  */
 async function commentAftermath(
   actor: Actor,

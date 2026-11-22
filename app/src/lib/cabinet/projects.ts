@@ -17,7 +17,7 @@ import { enqueue, enqueueToLead, notifyCurator, notifyExpert, pruneCuratorDigest
 import { workTitleLine } from './work-title-line.ts';
 import { assignmentLetter, unassignedLetter } from './curator-letters.ts';
 import { openAcceptCheck, openReopenCheck } from './head-checks.ts';
-import { materialKey, storage } from './storage.ts';
+import { materialKey, newRowId, removeObjects, storage, undoObjectsOnFailure } from './storage.ts';
 import { siteUrl } from '../site-url.ts';
 import { now } from './clock.ts';
 import { moscowToday } from './admin.ts';
@@ -421,6 +421,19 @@ export async function approveLead(actor: Actor, input: ApproveLeadInput) {
  * держать транзакцию открытой на время записи байтов нельзя. Отказ
  * хранилища не отменяет одобрения — файл остаётся при заявке и
  * открывается с её экрана.
+ *
+ * Порядок (К-6, решение Р-1006): копии файлов — первыми, под ключами
+ * материалов, заданными заранее; затем одна транзакция — материалы,
+ * версии, отметки на вложениях и строка журнала; исходные объекты
+ * убираются после её фиксации. Прежде каждый файл шёл своей транзакцией,
+ * отметка и строка журнала — отдельными записями после байтов: обрыв
+ * оставлял перенесённые файлы без строки журнала, а версию — без отметки
+ * на вложении (Р-237, Р-967 класс «г»). Отказ хранилища на файле — он
+ * остаётся при заявке, остальные переносятся; отказ транзакции — все
+ * остаются при заявке, копии убираются; несостоявшаяся уборка копии —
+ * файл без версии, его видит сверка (Р-986); несостоявшееся удаление
+ * исходного объекта повторяет еженедельная чистка по ключам изъятых
+ * вложений (`deploy/retention.sh`).
  */
 async function moveLeadAttachments(actor: Actor, leadId: string, projectId: string) {
   const files = await prisma.leadAttachment.findMany({
@@ -429,73 +442,69 @@ async function moveLeadAttachments(actor: Actor, leadId: string, projectId: stri
   });
   if (files.length === 0) return;
 
-  // Каждый файл переносится отдельно и в таком порядке: строки материала
-  // и версии, байты, отметка на вложении, удаление исходного объекта.
-  // Прежде материал заводился до записи байтов, а исходный объект
-  // удалялся до отметки: отказ хранилища оставлял пустой материал в
-  // работе, а обрыв между удалением и отметкой — вложение, ведущее на
-  // удалённый объект (решение Р-237). Теперь отказ на файле откатывает
-  // его строки, файл остаётся при заявке и открывается с экрана заявки;
-  // остальные файлы переносятся.
   const store = storage();
-  let moved = 0;
+  const copies: { file: (typeof files)[number]; materialId: string; key: string }[] = [];
   for (const file of files) {
-    let created: { materialId: string; versionId: string; key: string } | null = null;
+    const materialId = newRowId();
+    const key = materialKey(projectId, materialId, 1, file.originalName);
     try {
-      const body = await store.get(file.storageKey);
-      created = await prisma.$transaction(async (tx) => {
-        const material = await tx.material.create({
-          data: { projectId, title: file.originalName.slice(0, 300), createdById: actor.id },
-        });
-        const key = materialKey(projectId, material.id, 1, file.originalName);
-        const version = await tx.materialVersion.create({
-          data: {
-            materialId: material.id,
-            number: 1,
-            storageKey: key,
-            originalName: file.originalName,
-            sizeBytes: file.sizeBytes,
-            sha256: file.sha256,
-            contentType: file.contentType,
-            uploadedById: file.uploadedById ?? actor.id,
-          },
-        });
-        return { materialId: material.id, versionId: version.id, key };
-      });
-      await store.put(created.key, body, file.contentType);
-      await prisma.leadAttachment.update({
-        where: { id: file.id },
-        data: { materialId: created.materialId, purgedAt: new Date() },
-      });
-      moved += 1;
+      await store.put(key, await store.get(file.storageKey), file.contentType);
+      copies.push({ file, materialId, key });
     } catch (error) {
       console.error('Вложение заявки не перенесено', file.id, error);
-      if (created !== null) {
-        const { materialId, versionId } = created;
-        await prisma
-          .$transaction([
-            prisma.materialVersion.delete({ where: { id: versionId } }),
-            prisma.material.delete({ where: { id: materialId } }),
-          ])
-          .catch(() => undefined);
-      }
-      continue;
+      // Запись могла оборваться на середине: недописанная копия не остаётся.
+      await removeObjects(store, [key], 'недописанная копия вложения заявки не убрана');
     }
-    // Исходный объект убирается последним: две копии одного файла означали
-    // бы два места, откуда его придётся вычищать по требованию субъекта;
-    // отказ здесь оставляет лишнюю копию, но не ломает ни заявку, ни работу.
-    await store.remove(file.storageKey).catch((error: unknown) => {
-      console.error('Исходный объект вложения не удалён', file.id, error);
-    });
   }
 
-  await record(actor, {
-    action: 'LEAD_FILES_MOVED',
-    objectType: 'Lead',
-    objectId: leadId,
-    projectId,
-    payload: { count: moved, failed: files.length - moved },
-  });
+  const movedAt = new Date();
+  try {
+    await undoObjectsOnFailure(store, copies.map((copy) => copy.key), async () => {
+      await prisma.$transaction(async (tx) => {
+        for (const { file, materialId, key } of copies) {
+          await tx.material.create({
+            data: { id: materialId, projectId, title: file.originalName.slice(0, 300), createdById: actor.id },
+          });
+          await tx.materialVersion.create({
+            data: {
+              materialId,
+              number: 1,
+              storageKey: key,
+              originalName: file.originalName,
+              sizeBytes: file.sizeBytes,
+              sha256: file.sha256,
+              contentType: file.contentType,
+              uploadedById: file.uploadedById ?? actor.id,
+            },
+          });
+          // Отметка — по условию: вложение, изъятое или перенесённое за это
+          // время, переносом не перезаписывается, и откатывается всё.
+          const marked = await tx.leadAttachment.updateMany({
+            where: { id: file.id, materialId: null, purgedAt: null },
+            data: { materialId, purgedAt: movedAt },
+          });
+          if (marked.count !== 1) throw new Error('Вложение заявки уже перенесено или изъято');
+        }
+        await record(actor, {
+          action: 'LEAD_FILES_MOVED',
+          objectType: 'Lead',
+          objectId: leadId,
+          projectId,
+          payload: { count: copies.length, failed: files.length - copies.length },
+        }, tx);
+      });
+    });
+  } catch (error) {
+    // Одобрение уже зафиксировано своей транзакцией и строкой журнала;
+    // вложения остаются при заявке и открываются с её экрана.
+    console.error('Вложения заявки не перенесены', leadId, error);
+    return;
+  }
+
+  // Исходный объект убирается последним: две копии одного файла означали
+  // бы два места, откуда его придётся вычищать по требованию субъекта;
+  // отказ здесь оставляет лишнюю копию, но не ломает ни заявку, ни работу.
+  await removeObjects(store, copies.map((copy) => copy.file.storageKey), 'исходный объект вложения заявки не удалён');
 }
 
 /**
@@ -1536,28 +1545,48 @@ export async function rescheduleStage(
   return saved;
 }
 
+/** Правка карточки работы: что пришло с формы или из документа. */
+export interface ProjectEditInput {
+  readonly projectId: string;
+  readonly title: string;
+  readonly topic?: string | null;
+  readonly summary?: string | null;
+  readonly dueOn?: Date | null;
+  /** Срок согласования этапа, рабочих дней; не передан — не меняется. */
+  readonly approvalDays?: number;
+  /**
+   * Причина смены срока работы: обязательна, если срок уже был и
+   * меняется или снимается (улучшение УМ-12, решение Р-391).
+   */
+  readonly reason?: string | null;
+}
+
+/** Проверенная правка карточки: всё, что известно до записи. */
+export interface ProjectEditPlan {
+  readonly input: ProjectEditInput;
+  readonly title: string;
+  readonly before: { readonly dueOn: Date | null; readonly approvalDays: number; readonly status: ProjectStatusKey };
+  readonly nextDue: Date | null;
+  readonly shifted: boolean;
+  readonly why: string;
+}
+
 /**
  * Правка карточки работы менеджером: название, тема, короткое описание,
  * срок. Прежде карточка заполнялась один раз при одобрении заявки и
  * больше не менялась ничем (решение Р-190).
  */
-export async function editProject(
-  actor: Actor,
-  input: {
-    readonly projectId: string;
-    readonly title: string;
-    readonly topic?: string | null;
-    readonly summary?: string | null;
-    readonly dueOn?: Date | null;
-    /** Срок согласования этапа, рабочих дней; не передан — не меняется. */
-    readonly approvalDays?: number;
-    /**
-     * Причина смены срока работы: обязательна, если срок уже был и
-     * меняется или снимается (улучшение УМ-12, решение Р-391).
-     */
-    readonly reason?: string | null;
-  },
-) {
+export async function editProject(actor: Actor, input: ProjectEditInput) {
+  const plan = await planProjectEdit(actor, input);
+  return prisma.$transaction((tx) => writeProjectEdit(tx, actor, plan));
+}
+
+/**
+ * Проверки правки карточки — права, пределы, закрытая работа, причина
+ * переноса срока. Ничего не пишет: правку из документа (Р-561) вызывающий
+ * пишет одной транзакцией с остальным (К-6, решение Р-1006).
+ */
+export async function planProjectEdit(actor: Actor, input: ProjectEditInput): Promise<ProjectEditPlan> {
   const ref = await projectRef(input.projectId);
   if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'PROJECT_EDIT', ref);
@@ -1600,40 +1629,43 @@ export async function editProject(
     if (why === '') throw new Error('Срок работы переносится с причиной: её получит клиент — без неё перенос читается как срыв');
     if (why.length > 1000) throw new Error('Причина переноса — не длиннее 1000 знаков');
   }
-  const saved = await prisma.$transaction(async (tx) => {
-    // Правка захватывает работу с прочитанным сроком и состоянием: две
-    // одновременные правки не дают клиенту двух писем о переносе с
-    // неверным «было», а форма, открытая до чужого переноса, не
-    // возвращает прежний срок молча (решение Р-467).
-    const { count } = await tx.project.updateMany({
-      where: { id: input.projectId, dueOn: before.dueOn, status: before.status },
-      data: {
-        title,
-        topic: input.topic?.trim() || null,
-        summary: input.summary?.trim() || null,
-        dueOn: nextDue,
-        ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
-      },
-    });
-    if (count === 0) throw new Error('Срок или состояние работы уже изменили: обновите страницу');
-    const updated = await tx.project.findUniqueOrThrow({ where: { id: input.projectId } });
-    if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
-    await record(actor, {
-      action: 'PROJECT_EDITED',
-      objectType: 'Project',
-      objectId: input.projectId,
-      projectId: input.projectId,
-      payload: {
-        title,
-        ...dueChange(before.dueOn, updated.dueOn),
-        ...(before.approvalDays === updated.approvalDays
-          ? {}
-          : { approvalDaysFrom: before.approvalDays, approvalDaysTo: updated.approvalDays }),
-      },
-    }, tx);
-    return updated;
+  return { input, title, before, nextDue, shifted, why };
+}
+
+/** Запись правки карточки, письмо о переносе срока и строка журнала — транзакцией вызывающего. */
+export async function writeProjectEdit(tx: Prisma.TransactionClient, actor: Actor, plan: ProjectEditPlan) {
+  const { input, title, before, nextDue, shifted, why } = plan;
+  // Правка захватывает работу с прочитанным сроком и состоянием: две
+  // одновременные правки не дают клиенту двух писем о переносе с
+  // неверным «было», а форма, открытая до чужого переноса, не
+  // возвращает прежний срок молча (решение Р-467).
+  const { count } = await tx.project.updateMany({
+    where: { id: input.projectId, dueOn: before.dueOn, status: before.status },
+    data: {
+      title,
+      topic: input.topic?.trim() || null,
+      summary: input.summary?.trim() || null,
+      dueOn: nextDue,
+      ...(input.approvalDays === undefined ? {} : { approvalDays: input.approvalDays }),
+    },
   });
-  return saved;
+  if (count === 0) throw new Error('Срок или состояние работы уже изменили: обновите страницу');
+  const updated = await tx.project.findUniqueOrThrow({ where: { id: input.projectId } });
+  if (shifted) await announceWorkDueChange(tx, actor, input.projectId, before.dueOn, nextDue, why);
+  await record(actor, {
+    action: 'PROJECT_EDITED',
+    objectType: 'Project',
+    objectId: input.projectId,
+    projectId: input.projectId,
+    payload: {
+      title,
+      ...dueChange(before.dueOn, updated.dueOn),
+      ...(before.approvalDays === updated.approvalDays
+        ? {}
+        : { approvalDaysFrom: before.approvalDays, approvalDaysTo: updated.approvalDays }),
+    },
+  }, tx);
+  return updated;
 }
 
 /** Письмо клиенту о смене состояния работы (требование Т-21, решение Р-299). */

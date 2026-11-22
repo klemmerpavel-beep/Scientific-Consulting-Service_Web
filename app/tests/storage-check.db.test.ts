@@ -104,7 +104,7 @@ describe('сверка версий материалов с хранилищем
     put(keys.orphan, 5);
     keys.lost = `projects/${ids.work}/materials/c${stamp}gone/v1/${stamp}.pdf`;
     put(keys.lost, 7);
-    // Файлы не материалов — вне сверки.
+    // Шаблоны — вне сверки; вложение без записи — в разделе вложений (Р-1007).
     put(`leads/${stamp}/a.pdf`, 3);
     put(`templates/${stamp}.docx`, 3);
   });
@@ -146,8 +146,15 @@ describe('сверка версий материалов с хранилищем
     assert.equal(gaps.find((gap) => gap.kind === 'MISSING')?.at?.toISOString(), '2026-11-01T00:00:00.000Z', 'дата приёма версии');
     assert.equal(gaps.find((gap) => gap.kind === 'PURGED_KEPT')?.at?.toISOString(), '2026-11-20T00:00:00.000Z', 'дата изъятия');
     assert.ok(orphans.every((gap) => gap.at instanceof Date), 'дата записи файла');
-    // Вложения заявок и шаблоны практики сиротами не считаются.
-    assert.ok(!(await checkStorage(prisma, store)).gaps.some((gap) => /^(?:leads|templates)\//u.test(gap.key)));
+    // Шаблоны практики вне сверки; файл вложения без записи — сирота в своём
+    // разделе, а не среди версий (Р-1007: прежде вложения были вне сверки).
+    const all = (await checkStorage(prisma, store)).gaps;
+    assert.ok(!all.some((gap) => gap.key.startsWith('templates/')));
+    assert.deepEqual(
+      all.filter((gap) => gap.key.startsWith(`leads/${stamp}/`)).map((gap) => [gap.section, gap.kind, gap.lead]),
+      [['LEADS', 'ORPHAN', null]],
+    );
+    assert.ok(gaps.every((gap) => gap.section === 'MATERIALS'));
   });
 
   it('сверка только читает: строки версий и файлы остаются как были', async () => {

@@ -16,7 +16,7 @@ import {
 import { ensure, type Actor } from './access.ts';
 import { record } from './audit.ts';
 import { fileRefusal } from './file-guard.ts';
-import { openObject, sha256, storage, type OpenedObject } from './storage.ts';
+import { openObject, removeObjects, sha256, storage, type OpenedObject } from './storage.ts';
 
 /**
  * Анкеты экспертов (замечание владельца 13.10.2026, решение Р-580):
@@ -200,22 +200,34 @@ export async function reviewExpertApplication(
 /**
  * Удаление анкеты с файлами — по просьбе человека (ст. 21 152-ФЗ) или когда
  * она больше не нужна. В журнал — факт удаления и число файлов, без имени.
+ *
+ * Порядок (К-6, решение Р-1006): строки анкеты и её файлов удаляются
+ * одной транзакцией со строкой журнала; объекты хранилища — после её
+ * фиксации. Прежде объекты удалялись первыми, а строка и журнал шли
+ * следом порознь: сбой между ними оставлял анкету с файлами, которых
+ * больше нет, и удалённые файлы без строки журнала. Несостоявшееся
+ * удаление объекта действие не откатывает: ключ — в журнале сервера.
  */
 export async function deleteExpertApplication(actor: Actor, id: string): Promise<void> {
   ensure(actor, 'EXPERT_APPLICATION_REVIEW');
-  const row = await prisma.expertApplication.findUnique({
-    where: { id },
-    select: { id: true, files: { select: { storageKey: true } } },
+  const keys = await prisma.$transaction(async (tx) => {
+    const row = await tx.expertApplication.findUnique({
+      where: { id },
+      select: { id: true, files: { select: { storageKey: true } } },
+    });
+    if (row === null) throw new Error('Анкета не найдена');
+    // Вторая одновременная попытка ждёт первую и не находит анкеты.
+    const gone = await tx.expertApplication.deleteMany({ where: { id } });
+    if (gone.count !== 1) throw new Error('Анкета не найдена');
+    await record(actor, {
+      action: 'EXPERT_APPLICATION_DELETED',
+      objectType: 'ExpertApplication',
+      objectId: id,
+      payload: { files: row.files.length },
+    }, tx);
+    return row.files.map((file) => file.storageKey);
   });
-  if (row === null) throw new Error('Анкета не найдена');
-  for (const file of row.files) await storage().remove(file.storageKey);
-  await prisma.expertApplication.delete({ where: { id } });
-  await record(actor, {
-    action: 'EXPERT_APPLICATION_DELETED',
-    objectType: 'ExpertApplication',
-    objectId: id,
-    payload: { files: row.files.length },
-  });
+  await removeObjects(storage(), keys, 'файл удалённой анкеты не убран из хранилища');
 }
 
 /**

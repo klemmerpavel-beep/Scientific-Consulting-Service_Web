@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -85,6 +85,52 @@ export function leadAttachmentKey(leadId: string, originalName: string): string 
 
 export function sha256(body: Buffer): string {
   return createHash('sha256').update(body).digest('hex');
+}
+
+/**
+ * Идентификатор строки, заданный до её записи: ключ объекта строится от
+ * идентификатора материала, а файл пишется раньше строки (К-6, решение
+ * Р-1006). Вид — как у `cuid` базы: «c» и строчная латиница с цифрами,
+ * его узнают подписи журнала (Р-821).
+ */
+export function newRowId(): string {
+  const random = [...randomBytes(16)].map((byte) => (byte % 36).toString(36)).join('');
+  return `c${Date.now().toString(36).padStart(9, '0')}${random}`;
+}
+
+/**
+ * Создание файла (К-6, решение Р-1006): объекты уже записаны, `write` —
+ * одна транзакция со строками базы и строкой журнала. Отказ транзакции
+ * убирает записанные объекты; сбой уборки — в журнал сервера с ключом
+ * (ключ персональных данных не несёт, Р-191), а сирота видна сверке
+ * (Р-986).
+ */
+export async function undoObjectsOnFailure<T>(store: Storage, keys: readonly string[], write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    await removeObjects(store, keys, 'объект не убран после отказа записи');
+    throw error;
+  }
+}
+
+/**
+ * Удаление файлов после фиксации (К-6, решение Р-1006): строки базы и
+ * строка журнала уже записаны одной транзакцией. Сбой удаления действие
+ * не откатывает — он уходит в журнал сервера с ключом; возвращается
+ * число неудалённых объектов.
+ */
+export async function removeObjects(store: Storage, keys: readonly string[], what: string): Promise<number> {
+  let failed = 0;
+  for (const key of keys) {
+    try {
+      await store.remove(key);
+    } catch (error) {
+      failed += 1;
+      console.error(`[storage] ${what}`, key, error);
+    }
+  }
+  return failed;
 }
 
 export class LocalStorage implements Storage {

@@ -42,17 +42,15 @@ const MOVED: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Что в этих файлах остаётся вне транзакции: класс «а» (журнал —
- * единственная запись: выдача файла, выгрузка) навсегда и класс «г» с
- * файлом в хранилище — К-6 выпуска 4 (перечень с классами — в тесте Р-967).
+ * единственная запись: выдача файла, выгрузка) навсегда. Класс «г» с
+ * файлом в хранилище переведён решением Р-1006 (К-6 выпуска 4; перечень
+ * с классами — в тесте Р-967).
  */
 const STAYS_OUTSIDE = [
-  'expert-applications.ts deleteExpertApplication EXPERT_APPLICATION_DELETED',
   'expert-applications.ts expertsWorkbook EXPERT_APPLICATIONS_EXPORTED',
   'expert-applications.ts openExpertFile EXPERT_FILE_DOWNLOADED',
   'feedback.ts feedbackWorkbook FEEDBACK_EXPORTED',
   'feedback.ts list FEEDBACK_EXPORTED',
-  'materials.ts uploadVersion VERSION_UPLOADED',
-  'projects.ts moveLeadAttachments LEAD_FILES_MOVED',
   'queries.ts readLeadAttachment LEAD_FILE_DOWNLOADED',
 ];
 
@@ -193,7 +191,7 @@ describe('строка журнала — в транзакции действи
     assert.equal(total, 29);
   });
 
-  it('в переведённых файлах вне транзакции — только выдача и выгрузка («а») и действия с файлами («г»)', () => {
+  it('в переведённых файлах вне транзакции — только выдача и выгрузка («а»)', () => {
     const outside = Object.keys(MOVED)
       .flatMap((file) => calls(file).filter((call) => !call.inTx).map((call) => `${file} ${call.fn} ${call.action}`))
       .sort();

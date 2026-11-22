@@ -19,8 +19,8 @@ import { randomUUID } from 'node:crypto';
 
 import { ensure, type Action, type Actor } from '../access.ts';
 import { fileRefusal } from '../file-guard.ts';
-import { uploadVersion } from '../materials.ts';
-import { storage } from '../storage.ts';
+import { uploadVersion, type UploadInput } from '../materials.ts';
+import { removeObjects, storage } from '../storage.ts';
 import { parseBrief, type ParsedBrief } from './parse.ts';
 import { BriefError, readBrief, type BriefFormat } from './read.ts';
 
@@ -73,28 +73,27 @@ export async function loadBrief(actor: Actor, action: Action, ref: string): Prom
 }
 
 /**
- * Перенести документ в материалы работы и убрать временный объект.
- * Отказ хранилища заказ не отменяет: документ остаётся у менеджера, а
- * причина уходит в журнал сервера (порядок вложений заявки, Р-237).
+ * Временный документ сотрудника как загрузка версии в материалы работы:
+ * вход `uploadVersion` и ключ временного объекта. Чужой, удалённый или
+ * неразборчивый ключ — `null`.
  */
-export async function attachBrief(
+export async function stagedBrief(
   actor: Actor,
   ref: string,
   target: { projectId: string; stageId?: string | null; title: string },
-  ip?: string | null,
-): Promise<boolean> {
+): Promise<{ upload: UploadInput; key: string } | null> {
   const parts = split(ref);
-  if (parts === null) return false;
+  if (parts === null) return null;
   const key = briefKey(actor, parts.id, parts.format);
   let bytes: Buffer;
   try {
     bytes = await storage().get(key);
   } catch {
-    return false;
+    return null;
   }
-  await uploadVersion(
-    actor,
-    {
+  return {
+    key,
+    upload: {
       projectId: target.projectId,
       stageId: target.stageId ?? null,
       title: target.title,
@@ -102,9 +101,26 @@ export async function attachBrief(
       contentType: TYPES[parts.format],
       body: bytes,
     },
-    ip,
-  );
-  await storage().remove(key).catch(() => undefined);
+  };
+}
+
+/**
+ * Перенести документ в материалы работы и убрать временный объект.
+ * Отказ хранилища заказ не отменяет: документ остаётся у менеджера, а
+ * причина уходит в журнал сервера (порядок вложений заявки, Р-237).
+ * Временный объект убирается после фиксации версии; не убранный удаляет
+ * еженедельная чистка — старше суток (К-6, решение Р-1006).
+ */
+export async function attachBrief(
+  actor: Actor,
+  ref: string,
+  target: { projectId: string; stageId?: string | null; title: string },
+  ip?: string | null,
+): Promise<boolean> {
+  const doc = await stagedBrief(actor, ref, target);
+  if (doc === null) return false;
+  await uploadVersion(actor, doc.upload, ip);
+  await removeObjects(storage(), [doc.key], 'временный объект документа не убран');
   return true;
 }
 

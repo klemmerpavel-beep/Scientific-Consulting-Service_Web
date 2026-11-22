@@ -40,9 +40,9 @@ describe('строка журнала — в транзакции действи
 
   it('работы и этапы: вне транзакции — только действия без неё (Р-938)', () => {
     // Смена одной роли куратора и принятие замечаний переведены решением
-    // Р-985; перенос вложений заявки — с файлами, К-6.
+    // Р-985; перенос вложений заявки, с файлами, — решением Р-1006 (К-6).
     const outside = calls('projects.ts').filter((call) => !call.inTx).map((call) => call.fn);
-    assert.deepEqual(outside, ['moveLeadAttachments']);
+    assert.deepEqual(outside, []);
     const inside = calls('projects.ts').filter((call) => call.inTx).map((call) => call.action);
     for (const action of [
       'LEAD_APPROVED',
