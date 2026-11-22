@@ -11,7 +11,9 @@
  * `16px 22px 20px` и мерой 70ch. До Р-1003 у «Студентам» и «Компаниям» были
  * белая карточка, тень уровня 1, поля `16px 20px`, промежуток 10 px.
  * `scroll-margin-top` — только у карточек, на которые ведут ссылки страницы
- * («Студентам», «Экспертам»), и в сравнение не входит.
+ * («Студентам», «Экспертам»), и в сравнение не входит. Знаки «+» и «−» входят
+ * в исполнение: перекладины «+» — на 8 px по шагу 2 px (Р-99); у «Экспертам»
+ * до приёмки 22.11.2026 были 7 px.
  */
 
 import assert from 'node:assert/strict';
@@ -36,6 +38,9 @@ export function faqCard(html: string) {
     head: pick(/<button type="button" onClick="\{\{ f\.toggle \}\}" aria-expanded="true" (style="[^"]*" style-hover="[^"]*" style-active="[^"]*")>/u),
     answer: pick(/<p style="([^"]*)">\{\{ f\.a \}\}<\/p>/u),
     closed: pick(/<button(?: id="\{\{ f\.id \}\}")? class="pd-lift" type="button"(?: id="\{\{ f\.id \}\}")? onClick="\{\{ f\.toggle \}\}" aria-expanded="false" (style="[^"]*"(?: style-[a-z]+="[^"]*")*)>/u),
+    // Знак «+» закрытой карточки и «−» раскрытой (доработка Р-1003: перекладины на 8 px, шаг 2 px, Р-99).
+    plus: pick(/<span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px">(<span[^>]*><\/span><span[^>]*><\/span>)<\/span>/u),
+    minus: pick(/<\/span>\n(<span aria-hidden="true" style="width:16px;height:2px;[^"]*"><\/span>)\n<\/button>/u),
   };
 }
 
@@ -49,6 +54,7 @@ describe('карточка вопросов — исполнение «Эксп�
     assert.match(etalon.open!, /^background:rgba\(255,255,255,\.92\);border:1px solid var\(--pd-accent-edge\);border-radius:14px;overflow:hidden;box-shadow:0 6px 14px/u);
     assert.match(etalon.head!, /padding:18px 22px;/u);
     assert.match(etalon.answer!, /padding:16px 22px 20px;/u);
+    assert.match(etalon.plus!, /^<span style="position:absolute;left:0;top:8px;width:16px;height:2px;[^"]*"><\/span><span style="position:absolute;left:8px;top:0;width:2px;height:16px;[^"]*"><\/span>$/u, 'перекладины знака «+» не на 8 px');
   });
 
   for (const [page, component] of PAGES) {
