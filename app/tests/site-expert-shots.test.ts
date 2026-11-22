@@ -60,7 +60,7 @@ describe('«Экспертам»: снимки кабинета куратора
     assert.deepEqual(TABS.map((t) => t.name), ['ex-tab-stage', 'ex-tab-materials', 'ex-tab-checklist', 'ex-tab-works', 'ex-tab-payout']);
     for (const t of TABS) {
       assert.deepEqual(webpSize(bothFolders(t.name)), declared, `размер ${t.name}.webp не совпадает с разметкой`);
-      const tail = t.name === 'ex-tab-payout' ? /Суммы на снимке размыты\.$/u : /Данные вымышленные\.$/u;
+      const tail = t.name === 'ex-tab-payout' ? /Суммы на\u00a0снимке размыты\.$/u : /Данные вымышленные\.$/u;
       assert.match(t.alt, tail, `подпись ${t.name}: ${t.alt}`);
     }
   });

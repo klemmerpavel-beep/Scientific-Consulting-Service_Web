@@ -68,7 +68,7 @@ describe('посадочная: «Что входит в сопровожден�
   it('в сетке у ленты нет остановки Tab и подписи «прокрутите стрелками»', () => {
     assert.match(html, /this\.scopeGrid = window\.matchMedia\('\(min-width:769px\)'\)/u);
     assert.match(html, /scopeTab: this\.state\.scopeWide \? undefined : 0,/u);
-    assert.match(html, /scopeLabel: this\.state\.scopeWide \? 'Что входит в сопровождение' : 'Что входит в сопровождение — прокрутите стрелками',/u);
+    assert.match(html, /scopeLabel: this\.state\.scopeWide \? 'Что входит в\u00a0сопровождение' : 'Что входит в\u00a0сопровождение — прокрутите стрелками',/u);
   });
 
   it('шесть карточек с прежними заголовками', () => {

@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { unbind } from './helpers/short-words.ts';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(path.join(ROOT, ...parts), 'utf8');
@@ -117,7 +118,7 @@ describe('Р-796: «Диагностика» на «Аспирантам»', () 
       // Абзац «…а главы — другую.» снят с картой «точка остановки → что делает
       // разбор» (Р-809, указание владельца З-1): тире карты — в метке «Требования
       // совета»; метка «Доклад — за неделю…» снята с картой из шести точек (Р-836).
-      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `этапы${NB}— с приёмкой`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+      for (const phrase of [`Требования совета${NB}— в${NB}последний месяц`, `этапы${NB}— с${NB}приёмкой`, `ждут от${NB}вас,${NB}— на${NB}одной карточке. Рядом${NB}— переписка`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
@@ -390,7 +391,7 @@ describe('Р-802: «Условия, закреплённые договором 
 
   it('тире не начинает строку: перед тире — неразрывный пробел', () => {
     for (const [where, source] of both('BusinessPage')) {
-      for (const phrase of [`Предмет договора${NB}— соответствие требованиям`, `ждут от вас,${NB}— на одной карточке. Рядом${NB}— переписка`]) {
+      for (const phrase of [`Предмет договора${NB}— соответствие требованиям`, `ждут от${NB}вас,${NB}— на${NB}одной карточке. Рядом${NB}— переписка`]) {
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
@@ -478,7 +479,7 @@ describe('Р-813: раздел «Шесть задач компании» сня
     const next = html.indexOf('<section', html.indexOf('</section>', trl));
     assert.ok(trl > 0 && html.startsWith('<section id="packs"', next), 'за #trl не «Пять пакетов»');
     for (const [where, source] of both('BusinessPage')) {
-      assert.ok(source.includes('Повышающий коэффициент к расходам на НИОКР из перечня, п. 7 ст. 262 НК РФ.'), `${where}: на шкале УГТ пропало «из перечня»`);
+      assert.ok(source.includes(`Повышающий коэффициент к${NB}расходам на${NB}НИОКР из${NB}перечня, п. 7 ст. 262 НК РФ.`), `${where}: на шкале УГТ пропало «из перечня»`);
     }
   });
 });
@@ -548,14 +549,15 @@ describe('Р-814: «Права и конфиденциальность» на «
       ['Служебные результаты', 'Помогаем оформить положение о служебных результатах, уведомления авторов и приказы внутри вашей компании.', 'pd-team'],
     ];
     for (const [where, source] of both('BusinessPage')) {
-      const rows = [...data(source, 'const rights = [').matchAll(/\['([^']*)', '([^']*)', '([^']*)'\]/gu)].map((m) => [m[1], m[2], m[3]]);
+      // Р-1005: после предлогов и союзов в одну-две буквы — неразрывный пробел; слова прежние.
+      const rows = [...data(source, 'const rights = [').matchAll(/\['([^']*)', '([^']*)', '([^']*)'\]/gu)].map((m) => [unbind(m[1]), unbind(m[2]), m[3]]);
       assert.deepEqual(rows, accepted, `${where}: тексты, значки или порядок пунктов изменились`);
       assert.ok(source.includes("label, text, num: '0' + (i + 1),"), `${where}: номера 01—06`);
       assert.ok(source.includes('return { rightsLead: rights[0], rightsRest: rights.slice(1) };'), `${where}: первая плитка — не первый пункт`);
     }
     const head = visibleText(section(design('BusinessPage'))).map((t) => t.trim()).filter(Boolean);
     // Заголовок — в редакции Р-976 (указание владельца 22.11.2026, до 52 знаков); метка и подпись прежние.
-    assert.deepEqual(head, ['Права и конфиденциальность', `Права на${NB}результат и${NB}материалы после проекта`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
+    assert.deepEqual(head, [`Права и${NB}конфиденциальность`, `Права на${NB}результат и${NB}материалы после проекта`, `Права на${NB}результат остаются у${NB}вашей компании`], 'шапка раздела изменилась');
   });
 });
 
@@ -596,7 +598,7 @@ describe('Р-878: «Пять пакетов» на «Компаниям» — к
   it('колонка «Документы на выходе» в карточке уровня #trl не тронута', () => {
     for (const [where, source] of both('BusinessPage')) {
       const at = source.indexOf('id="trl"');
-      assert.ok(at > 0 && source.slice(at, source.indexOf('id="packs"')).includes('Документы на выходе'), `${where}: в #trl нет «Документов на выходе»`);
+      assert.ok(at > 0 && source.slice(at, source.indexOf('id="packs"')).includes(`Документы на${NB}выходе`), `${where}: в #trl нет «Документов на выходе»`);
     }
   });
 });

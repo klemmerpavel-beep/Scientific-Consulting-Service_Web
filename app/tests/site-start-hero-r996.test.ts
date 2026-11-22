@@ -91,7 +91,7 @@ describe('посадочная: первый экран по варианту А
     assert.ok(art.includes('Куратор проекта — кандидат наук вашего направления'));
     assert.ok(art.includes('Менеджер проекта — сроки, документы, оплаты'));
     const plates = [...art.matchAll(/<a class="pd-lift" href="([^"]+)" style="([^"]*)"[^>]*>\n<span style="([^"]*)">([^<]+)<\/span>/gu)].map((m) => [m[1], m[2], m[3], m[4]]);
-    assert.deepEqual(plates.map(([href, , , num]) => [href, num]), [['./business.html#catalog', '52 позиции'], ['./main.html#process', '6 шагов'], ['./main.html#team', 'с 2016']]);
+    assert.deepEqual(plates.map(([href, , , num]) => [href, num]), [['./business.html#catalog', '52 позиции'], ['./main.html#process', '6 шагов'], ['./main.html#team', 'с\u00a02016']]); // Р-1005: «с» не отрывается от года
     for (const [href, style, num] of plates) {
       assert.match(style, /^display:grid;grid-template-columns:132px minmax\(0,1fr\);align-items:center;column-gap:16px;row-gap:6px;/u, `${href}: плашка не строкой`);
       assert.match(num, /^grid-row:1 \/ span 2;/u, `${href}: число не слева на две строки`);

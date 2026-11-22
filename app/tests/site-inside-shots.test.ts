@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(path.join(ROOT, ...parts), 'utf8');
@@ -115,14 +116,15 @@ describe('Снимки кабинета клиента и куратора (Р-8
         const files = [path.join(ROOT, 'design', 'assets', 'art', name), path.join(ROOT, 'app', 'public', 'assets', 'art', name)];
         assert.ok(readFileSync(files[0]!).equals(readFileSync(files[1]!)), `${name} в папках ассетов различается`);
         assert.deepEqual(webpSize(files[0]!), { width: 1440, height: 900 }, `${name}: не 1440 × 900`);
-        assert.match(t.alt, /(?:Данные вымышленные|Суммы на снимке размыты)\.$/u, `${name}: подпись без оговорки о данных`);
+        assert.match(t.alt, /(?:Данные вымышленные|Суммы на\u00a0снимке размыты)\.$/u, `${name}: подпись без оговорки о данных`);
       }
     });
   }
 
   it('«Экспертам», «Назначенные работы»: поиск — по названию работы или клиенту, как в поле кабинета', () => {
     const html = read('design', 'ExpertsPage.dc.html');
-    assert.ok(html.includes("'Поиск по названию работы или клиенту'"));
+    // Слова — как в поле кабинета; предлоги и союз набраны с неразрывным пробелом (Р-1005).
+    assert.ok(html.includes(bind("'Поиск по названию работы или клиенту'")));
     assert.ok(!html.includes("'Поиск по названию работы']"));
   });
 });
@@ -154,8 +156,8 @@ describe('Снимки кабинета на сайте (Р-958): дата, до
       const materials = tabs.find((t) => /-tab-materials\.webp$/u.test(t.img));
       assert.ok(materials, 'нет снимка материалов');
       assert.match(materials.alt, p.page === 'BusinessPage'
-        ? /версии отчёта о НИР, замечания куратора и загрузка новой версии\./u
-        : /редакция главы[^.]*, замечания куратора и загрузка новой версии\./u);
+        ? /версии отчёта о\u00a0НИР, замечания куратора и\u00a0загрузка новой версии\./u
+        : /редакция главы[^.]*, замечания куратора и\u00a0загрузка новой версии\./u);
       assert.doesNotMatch(materials.alt, /версии главы/u);
     });
   }
@@ -176,16 +178,16 @@ describe('«Компаниям»: свои снимки кабинета на р
   it('четыре вкладки — снимки bp-tab-* по порядку, подписи вкладок и строки о вымышленных данных прежние', () => {
     const tabs = tabsOf(business);
     assert.deepEqual(tabs.map((t) => t.img), ['card', 'stage', 'materials', 'payments'].map((n) => `./assets/art/bp-tab-${n}.webp`));
-    assert.deepEqual(tabs.map((t) => t.label), ['Карточка работы', 'Согласование этапа', 'Материалы и версии', 'Оплаты и документы']);
+    assert.deepEqual(tabs.map((t) => t.label), ['Карточка работы', 'Согласование этапа', 'Материалы и версии', 'Оплаты и документы'].map(bind));
     assert.deepEqual(tabs.map((t) => t.caption), [
       'Карточка работы. На снимке вымышленные данные.',
       'Этап на согласовании. На снимке вымышленные данные.',
       'Материалы работы. На снимке вымышленные данные.',
       'Оплаты и документы. Суммы на снимке скрыты: смета считается для каждой работы.',
-    ]);
+    ].map(bind));
     for (const t of tabs) assert.doesNotMatch(t.alt, /глав|диссертац/u, `${t.img}: подпись о диссертации`);
     assert.match(tabs[0]!.alt, /^Карточка работы НИОКР /u);
-    assert.match(tabs[1]!.alt, /этапа «Программа и методика испытаний»/u);
+    assert.ok(tabs[1]!.alt.includes(bind('этапа «Программа и методика испытаний»')), tabs[1]!.alt);
   });
 
   it('снимки «Компаниям» — свои: не совпадают с общими cl-tab-*; посадочная и «Аспирантам» остаются на cl-tab-*', () => {
@@ -242,7 +244,7 @@ describe('«Компаниям», «Как это выглядит внутри�
 
   it('логика: «Экран N из 4» и переход к следующей вкладке по кругу, как на «Студентам»', () => {
     for (const line of [
-      "inStep: 'Экран ' + (this.state.inTab + 1) + ' из ' + IN_TABS.length,",
+      "inStep: 'Экран ' + (this.state.inTab + 1) + ' из\u00a0' + IN_TABS.length,",
       "inNextLabel: 'Следующий: ' + IN_TABS[(this.state.inTab + 1) % IN_TABS.length].label,",
       'inNext: () => this.setState(s => ({ inTab: (s.inTab + 1) % IN_TABS.length })),',
     ]) {

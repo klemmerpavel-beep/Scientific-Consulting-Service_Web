@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(path.join(ROOT, ...parts), 'utf8');
@@ -38,7 +39,7 @@ describe('«Аспирантам», «Услуги»: полный список 
   it('перечень — 20 позиций в прежнем порядке, все раскрываются вместе; на виду без нажатия ни одной', () => {
     const at = html.indexOf('const offerAll = [');
     const all = [...html.slice(at, html.indexOf('];', at)).matchAll(/'([^']+)'/gu)].map((m) => m[1]);
-    assert.deepEqual(all, LIST);
+    assert.deepEqual(all, LIST.map(bind)); // Р-1005: предлоги и союзы — с неразрывным пробелом
     assert.match(html, /const offerRest = offerAll\.map\(title => \(\{ title \}\)\);/u, 'перечень снова урезан до части позиций');
     const section = services(html);
     const list = section.indexOf('<div id="mp-offer-list">');

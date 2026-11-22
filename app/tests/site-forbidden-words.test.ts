@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 const DESIGN = path.join(import.meta.dirname, '../../design');
 const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'ToolsPage', 'NotFoundPage'];
@@ -36,7 +37,7 @@ describe('запрещённые слова — во всём макете, вк
   }
 
   it('«Аспирантам»: в перечне услуг — «Научная экспертиза текста» без «вычитки»', () => {
-    assert.ok(source('MainPage').includes("'Научная экспертиза текста', 'Проверка на заимствования"));
+    assert.ok(source('MainPage').includes(bind("'Научная экспертиза текста', 'Проверка на заимствования")));
   });
 
   // Р-992: ленты «Обязательства и документы» больше нет — шесть пунктов стоят

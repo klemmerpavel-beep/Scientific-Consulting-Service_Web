@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 /** Свойства встроенного стиля: `style="a:b;…"` макета или `style={{ a: "b", … }}` компонента (как в site-cta-look-r960). */
 function styleOf(tag: string): Map<string, string> {
@@ -53,8 +54,8 @@ const tailButton = (part: string, after: string) => {
 
 describe('«Экспертам»: две кнопки «Заполнить анкету» в разделах (Р-981)', () => {
   for (const [where, source, strip, steps] of [
-    ['макет', read('design', 'ExpertsPage.dc.html'), 'Писать работу за клиента куратор не берётся.</span></p>', '</li>\n</ol>'],
-    ['компонент', read('app', 'src', 'components', 'pages', 'ExpertsPage.tsx'), 'Писать работу за клиента куратор не берётся.</span></p>', '</li></ol>'],
+    ['макет', read('design', 'ExpertsPage.dc.html'), bind('Писать работу за клиента куратор не берётся.</span></p>'), '</li>\n</ol>'],
+    ['компонент', read('app', 'src', 'components', 'pages', 'ExpertsPage.tsx'), bind('Писать работу за клиента куратор не берётся.</span></p>'), '</li></ol>'],
   ] as const) {
     it(`${where}: под полосой «Автором работы всегда остаётся клиент…» в «Кураторах» и под «Тремя шагами»`, () => {
       const who = section(source, /<section (?:className="[^"]*" )?id="who"/u);
