@@ -593,109 +593,115 @@ export async function previewBook(actor: Actor, input: PreviewInput): Promise<Pr
     };
   });
 
-  const batch = await prisma.importBatch.create({
-    data: {
-      fileName: input.fileName,
-      sha256,
-      uploadedById: actor.id,
-      state: 'PREVIEWED',
-      stats: {
-        sheet: book.sheet,
-        rows: book.rows.length,
-        cost: book.totals.cost.toString(),
-        paid: book.totals.paid.toString(),
-        issueCounts: book.issueCounts,
-        conflicts: book.conflicts.length,
-      },
-      rows: {
-        create: book.rows.map((row, index) => {
-          const match = matches[index]!;
-          const preview = rows[index]!;
-          // Строка стёртого заказчика хранится надгробием: ФИО и тема из
-          // книги в базу снова не попадают, суммы — не персональные данные.
-          if (match.kind === 'ERASED') {
+  // Отчёт считается до записи: число строк по действиям уходит в журнал.
+  const report = await assemble(rows);
+
+  // Загрузка и строка журнала — одной транзакцией (Ф-15, Р-985). Срок —
+  // как у фиксации: строки книги пишутся одной вставкой, и большая книга
+  // не укладывается в пять секунд транзакции по умолчанию.
+  const batch = await prisma.$transaction(async (tx) => {
+    const created = await tx.importBatch.create({
+      data: {
+        fileName: input.fileName,
+        sha256,
+        uploadedById: actor.id,
+        state: 'PREVIEWED',
+        stats: {
+          sheet: book.sheet,
+          rows: book.rows.length,
+          cost: book.totals.cost.toString(),
+          paid: book.totals.paid.toString(),
+          issueCounts: book.issueCounts,
+          conflicts: book.conflicts.length,
+        },
+        rows: {
+          create: book.rows.map((row, index) => {
+            const match = matches[index]!;
+            const preview = rows[index]!;
+            // Строка стёртого заказчика хранится надгробием: ФИО и тема из
+            // книги в базу снова не попадают, суммы — не персональные данные.
+            if (match.kind === 'ERASED') {
+              return {
+                rowNumber: row.rowNumber,
+                signature: preview.signature,
+                raw: { erased: true },
+                parsed: {
+                  erased: true,
+                  cost: row.cost.toString(),
+                  paid: row.paid.toString(),
+                  ...twinField(erasedTwin(row.orderDate, row.cost)),
+                },
+                severity: preview.severity,
+                errors: [],
+                action: preview.action,
+              };
+            }
+            // Строка, похожая на стёртую работу, — тоже без ячеек и без
+            // подписи: подпись несёт ФИО, а свёртка её основы стала бы новым
+            // надгробием и навсегда заперла бы строку, которая может быть
+            // живой работой (решение Р-506).
+            if (match.kind === 'UNCLEAR' && match.erased === true) {
+              return {
+                rowNumber: row.rowNumber,
+                signature: null,
+                raw: { erased: true },
+                parsed: {
+                  erased: true,
+                  unclear: true,
+                  cost: row.cost.toString(),
+                  paid: row.paid.toString(),
+                  ...twinField(erasedTwin(row.orderDate, row.cost)),
+                },
+                severity: preview.severity,
+                errors: preview.issues,
+                action: preview.action,
+              };
+            }
             return {
               rowNumber: row.rowNumber,
-              signature: preview.signature,
-              raw: { erased: true },
-              parsed: {
-                erased: true,
+              signature: row.signature,
+              // Исходные значения ячеек вместе с кодом заливки: разбор остаётся
+              // воспроизводимым и оспоримым без обращения к самому файлу.
+              raw: {
+                customer: row.customer,
+                type: row.rawType,
+                description: row.topic,
+                deadline: row.rawDeadline,
                 cost: row.cost.toString(),
                 paid: row.paid.toString(),
-                ...twinField(erasedTwin(row.orderDate, row.cost)),
+                status: row.rawStatus,
+                fill: row.fill,
               },
-              severity: preview.severity,
-              errors: [],
-              action: preview.action,
-            };
-          }
-          // Строка, похожая на стёртую работу, — тоже без ячеек и без
-          // подписи: подпись несёт ФИО, а свёртка её основы стала бы новым
-          // надгробием и навсегда заперла бы строку, которая может быть
-          // живой работой (решение Р-506).
-          if (match.kind === 'UNCLEAR' && match.erased === true) {
-            return {
-              rowNumber: row.rowNumber,
-              signature: null,
-              raw: { erased: true },
               parsed: {
-                erased: true,
-                unclear: true,
+                typeCode: row.typeCode,
+                orderDate: row.orderDate?.toISOString() ?? null,
+                deadline: row.deadline?.toISOString() ?? null,
                 cost: row.cost.toString(),
                 paid: row.paid.toString(),
-                ...twinField(erasedTwin(row.orderDate, row.cost)),
+                status: row.status,
+                normalizedName: row.normalizedName,
               },
               severity: preview.severity,
+              // Строка, уже перенесённая раньше, помнит свою работу: без этого
+              // «обновление» при фиксации проходило как новая строка и заводило
+              // вторую работу с договором и оплатой (решение Р-233).
+              projectId: match.kind === 'KNOWN' ? match.projectId : null,
               errors: preview.issues,
               action: preview.action,
             };
-          }
-          return {
-            rowNumber: row.rowNumber,
-            signature: row.signature,
-            // Исходные значения ячеек вместе с кодом заливки: разбор остаётся
-            // воспроизводимым и оспоримым без обращения к самому файлу.
-            raw: {
-              customer: row.customer,
-              type: row.rawType,
-              description: row.topic,
-              deadline: row.rawDeadline,
-              cost: row.cost.toString(),
-              paid: row.paid.toString(),
-              status: row.rawStatus,
-              fill: row.fill,
-            },
-            parsed: {
-              typeCode: row.typeCode,
-              orderDate: row.orderDate?.toISOString() ?? null,
-              deadline: row.deadline?.toISOString() ?? null,
-              cost: row.cost.toString(),
-              paid: row.paid.toString(),
-              status: row.status,
-              normalizedName: row.normalizedName,
-            },
-            severity: preview.severity,
-            // Строка, уже перенесённая раньше, помнит свою работу: без этого
-            // «обновление» при фиксации проходило как новая строка и заводило
-            // вторую работу с договором и оплатой (решение Р-233).
-            projectId: match.kind === 'KNOWN' ? match.projectId : null,
-            errors: preview.issues,
-            action: preview.action,
-          };
-        }),
+          }),
+        },
       },
-    },
-    select: { id: true },
-  });
-
-  const report = await assemble(rows);
-
-  await record(actor, {
-    action: 'IMPORT_PREVIEWED',
-    objectType: 'ImportBatch',
-    objectId: batch.id,
-    payload: { fileName: input.fileName, rows: rows.length, counts: report.counts },
-  });
+      select: { id: true },
+    });
+    await record(actor, {
+      action: 'IMPORT_PREVIEWED',
+      objectType: 'ImportBatch',
+      objectId: created.id,
+      payload: { fileName: input.fileName, rows: rows.length, counts: report.counts },
+    }, tx);
+    return created;
+  }, { timeout: 120_000, maxWait: 20_000 });
 
   return {
     batchId: batch.id,
@@ -1469,16 +1475,18 @@ export async function applyBatch(
           },
         },
       });
+
+      // Строка журнала — в транзакции фиксации: сбой журнала откатывает
+      // загрузку целиком, с работами и договорами (Ф-15, Р-985).
+      await record(actor, {
+        action: 'IMPORT_APPLIED',
+        objectType: 'ImportBatch',
+        objectId: batchId,
+        payload: { fileName: batch.fileName, created, updated, skipped, rejected: rejected.length },
+      }, tx);
     },
     { timeout: 120_000, maxWait: 20_000 },
   );
-
-  await record(actor, {
-    action: 'IMPORT_APPLIED',
-    objectType: 'ImportBatch',
-    objectId: batchId,
-    payload: { fileName: batch.fileName, created, updated, skipped, rejected: rejected.length },
-  });
 
   return {
     batchId,
@@ -1539,14 +1547,14 @@ export async function mergeClients(
       where: { id: sourceId },
       data: { mergedIntoId: targetId },
     });
+    // Строка журнала — в транзакции сведения (Ф-15, Р-985).
+    await record(actor, {
+      action: 'CLIENT_MERGED',
+      objectType: 'ClientProfile',
+      objectId: sourceId,
+      payload: { into: targetId, projects: count },
+    }, tx);
     return count;
-  });
-
-  await record(actor, {
-    action: 'CLIENT_MERGED',
-    objectType: 'ClientProfile',
-    objectId: sourceId,
-    payload: { into: targetId, projects: moved },
   });
   return { moved };
 }

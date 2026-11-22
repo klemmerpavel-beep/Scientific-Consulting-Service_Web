@@ -127,27 +127,32 @@ export async function createAssignment(actor: Actor, input: AssignmentInput): Pr
     projectCode = project.code;
   }
   const by = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: { fullName: true } });
-  const created = await prisma.assignment.create({
-    data: { assigneeId: assignee.id, text, dueOn: input.dueOn, projectId, createdById: actor.id },
-    select: { id: true },
+  const dueOn = input.dueOn;
+  // Поручение, письмо исполнителю и строка журнала — одной транзакцией:
+  // сбой журнала не оставляет ни поручения, ни письма о нём (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.assignment.create({
+      data: { assigneeId: assignee.id, text, dueOn, projectId, createdById: actor.id },
+      select: { id: true },
+    });
+    await enqueue(tx, {
+      userId: assignee.id,
+      projectId,
+      eventKind: 'ASSIGNMENT_CREATED',
+      subject: `Поручение руководителя до ${formatDay(dueOn)}`,
+      body: `${by.fullName} поставил поручение до ${formatDay(dueOn)}:\n${text}\nОтметить «в работе» и «сделано» можно в кабинете.`,
+      dedupKey: `assignment:${created.id}:created`,
+      path: '/cabinet/assignments',
+    });
+    await record(actor, {
+      action: 'ASSIGNMENT_CREATED',
+      objectType: 'Assignment',
+      objectId: created.id,
+      projectId,
+      payload: { assigneeId: assignee.id, dueOn: dayKey(dueOn), project: projectCode },
+    }, tx);
+    return created;
   });
-  await enqueue(prisma, {
-    userId: assignee.id,
-    projectId,
-    eventKind: 'ASSIGNMENT_CREATED',
-    subject: `Поручение руководителя до ${formatDay(input.dueOn)}`,
-    body: `${by.fullName} поставил поручение до ${formatDay(input.dueOn)}:\n${text}\nОтметить «в работе» и «сделано» можно в кабинете.`,
-    dedupKey: `assignment:${created.id}:created`,
-    path: '/cabinet/assignments',
-  });
-  await record(actor, {
-    action: 'ASSIGNMENT_CREATED',
-    objectType: 'Assignment',
-    objectId: created.id,
-    projectId,
-    payload: { assigneeId: assignee.id, dueOn: dayKey(input.dueOn), project: projectCode },
-  });
-  return created;
 }
 
 const NEXT: Record<AssignmentStatus, readonly AssignmentStatus[]> = {
@@ -171,28 +176,32 @@ export async function setAssignmentStatus(actor: Actor, id: string, status: Assi
   const withdraw = status === 'WITHDRAWN';
   if (withdraw ? !can(actor, 'ASSIGNMENT_CREATE') : !own) throw new Error('Действие не разрешено');
   if (!NEXT[row.status].includes(status)) throw new Error('Поручение уже переведено: обновите страницу');
-  const moved = await prisma.assignment.updateMany({
-    where: { id, status: row.status },
-    data: { status, ...(status === 'DONE' ? { doneAt: clockNow() } : {}) },
-  });
-  if (moved.count === 0) throw new Error('Поручение уже переведено: обновите страницу');
-  if (status === 'DONE' && row.createdById !== null) {
-    await enqueue(prisma, {
-      userId: row.createdById,
-      projectId: row.projectId,
-      eventKind: 'ASSIGNMENT_DONE',
-      subject: `Поручение выполнено: ${row.assignee.fullName}`,
-      body: `${row.assignee.fullName} отметил поручение выполненным:\n${row.text}`,
-      dedupKey: `assignment:${id}:done`,
-      path: '/cabinet/manage/assignments',
+  // Перевод, письмо поставившему и строка журнала — одной транзакцией
+  // (Ф-15, Р-985); отказ захвата её откатывает и ничего не оставляет.
+  await prisma.$transaction(async (tx) => {
+    const moved = await tx.assignment.updateMany({
+      where: { id, status: row.status },
+      data: { status, ...(status === 'DONE' ? { doneAt: clockNow() } : {}) },
     });
-  }
-  await record(actor, {
-    action: 'ASSIGNMENT_STATUS',
-    objectType: 'Assignment',
-    objectId: id,
-    projectId: row.projectId,
-    payload: { from: row.status, to: status },
+    if (moved.count === 0) throw new Error('Поручение уже переведено: обновите страницу');
+    if (status === 'DONE' && row.createdById !== null) {
+      await enqueue(tx, {
+        userId: row.createdById,
+        projectId: row.projectId,
+        eventKind: 'ASSIGNMENT_DONE',
+        subject: `Поручение выполнено: ${row.assignee.fullName}`,
+        body: `${row.assignee.fullName} отметил поручение выполненным:\n${row.text}`,
+        dedupKey: `assignment:${id}:done`,
+        path: '/cabinet/manage/assignments',
+      });
+    }
+    await record(actor, {
+      action: 'ASSIGNMENT_STATUS',
+      objectType: 'Assignment',
+      objectId: id,
+      projectId: row.projectId,
+      payload: { from: row.status, to: status },
+    }, tx);
   });
 }
 

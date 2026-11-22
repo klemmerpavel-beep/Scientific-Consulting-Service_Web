@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../db.ts';
 import { workLine } from './work-line.ts';
 import { closeActChecks } from './head-checks.ts';
@@ -386,18 +387,23 @@ export async function uploadVersion(actor: Actor, input: UploadInput, ip?: strin
   // Акт по работе закрывает дела руководителя об акте (РК-12, Р-338).
   if (input.kind === 'ACT') await closeActChecks(prisma, input.projectId, actor.id);
   if (comment !== null && project !== null) {
-    await commentAftermath(
-      actor,
-      {
-        projectId: input.projectId,
-        code: project.code,
-        title: project.title,
-        stageId: material.stageId,
-        materialTitle: material.title,
-        versionNumber: version.number,
-      },
-      comment,
-    );
+    // Сигналы и строка журнала о пояснении — одной транзакцией, как у
+    // замечания (Р-985); порядок версии и файла не меняется (К-6).
+    await prisma.$transaction(async (tx) => {
+      await commentAftermath(
+        actor,
+        {
+          projectId: input.projectId,
+          code: project.code,
+          title: project.title,
+          stageId: material.stageId,
+          materialTitle: material.title,
+          versionNumber: version.number,
+        },
+        comment,
+        tx,
+      );
+    });
   }
 
   return version;
@@ -435,6 +441,9 @@ function commentRow(actor: Actor, versionId: string, text: string) {
  * загруженной версии. Менеджеру — сигнал без текста (требование М-07,
  * решение Р-300): замечание на модерации — одно письмо, пока в работе есть
  * неразобранное; замечание клиента, опубликованное сразу, — каждое.
+ *
+ * Только в транзакции вызывающего (Ф-15, Р-985): у замечания — той же,
+ * что пишет его строку; сбой журнала откатывает и замечание, и сигналы.
  */
 async function commentAftermath(
   actor: Actor,
@@ -447,23 +456,22 @@ async function commentAftermath(
     readonly versionNumber: number;
   },
   comment: { readonly id: string; readonly held: boolean; readonly contactHint: boolean },
+  tx: Prisma.TransactionClient,
 ): Promise<void> {
   const where = ctx.stageId === null ? materialsLink(ctx.code) : stageLink(ctx.stageId);
   if (comment.held) {
-    const [otherComments, versions] = await Promise.all([
-      prisma.versionComment.count({
-        where: {
-          id: { not: comment.id },
-          moderationStatus: 'PENDING',
-          version: { material: { projectId: ctx.projectId, deletedAt: null } },
-        },
-      }),
-      prisma.versionModeration.count({
-        where: { status: 'PENDING', version: { material: { projectId: ctx.projectId, deletedAt: null } } },
-      }),
-    ]);
+    const otherComments = await tx.versionComment.count({
+      where: {
+        id: { not: comment.id },
+        moderationStatus: 'PENDING',
+        version: { material: { projectId: ctx.projectId, deletedAt: null } },
+      },
+    });
+    const versions = await tx.versionModeration.count({
+      where: { status: 'PENDING', version: { material: { projectId: ctx.projectId, deletedAt: null } } },
+    });
     if (otherComments + versions === 0) {
-      await notifyCurator(prisma, {
+      await notifyCurator(tx, {
         projectId: ctx.projectId,
         actorId: actor.id,
         eventKind: 'MODERATION_PENDING',
@@ -477,7 +485,7 @@ async function commentAftermath(
       });
     }
   } else if (actor.role === 'CLIENT') {
-    await notifyCurator(prisma, {
+    await notifyCurator(tx, {
       projectId: ctx.projectId,
       actorId: actor.id,
       eventKind: 'CLIENT_COMMENT',
@@ -497,7 +505,7 @@ async function commentAftermath(
     objectId: comment.id,
     projectId: ctx.projectId,
     payload: { held: comment.held, contactHint: comment.contactHint },
-  });
+  }, tx);
 }
 
 /**
@@ -795,21 +803,25 @@ export async function addComment(actor: Actor, versionId: string, body: string) 
   }
 
   const remark = commentRow(actor, versionId, text);
-  const comment = await prisma.versionComment.create({ data: remark.data });
   const project = version.material.project;
-  await commentAftermath(
-    actor,
-    {
-      projectId: project.id,
-      code: project.code,
-      title: project.title,
-      stageId: version.material.stageId,
-      materialTitle: version.material.title,
-      versionNumber: version.number,
-    },
-    { id: comment.id, held: remark.held, contactHint: remark.contactHint },
-  );
-  return comment;
+  // Замечание, сигналы и строка журнала — одной транзакцией (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const comment = await tx.versionComment.create({ data: remark.data });
+    await commentAftermath(
+      actor,
+      {
+        projectId: project.id,
+        code: project.code,
+        title: project.title,
+        stageId: version.material.stageId,
+        materialTitle: version.material.title,
+        versionNumber: version.number,
+      },
+      { id: comment.id, held: remark.held, contactHint: remark.contactHint },
+      tx,
+    );
+    return comment;
+  });
 }
 
 /** Предел длины замечания: больше — уже документ, а не замечание. */
@@ -872,89 +884,93 @@ export async function moderateComment(
   if (decision === 'REJECTED' && target.author.role === 'EXPERT' && reason === null) {
     throw new Error('Не публиковать замечание куратора можно только с причиной: куратор получит её письмом');
   }
-  const { count } = await prisma.versionComment.updateMany({
-    where: { id: commentId, moderationStatus: 'PENDING' },
-    data: {
-      moderationStatus: decision,
-      moderatedById: actor.id,
-      moderatedAt: now,
-      moderationNote: decision === 'REJECTED' ? reason : null,
-      publishedAt: decision === 'PUBLISHED' ? now : null,
-    },
-  });
-  if (count === 0) throw new Error('Замечание уже разобрано');
-  const comment = await prisma.versionComment.findUniqueOrThrow({ where: { id: commentId } });
-  await record(actor, {
-    action: decision === 'PUBLISHED' ? 'COMMENT_PUBLISHED' : 'COMMENT_REJECTED',
-    objectType: 'VersionComment',
-    objectId: commentId,
-  });
-  // Эксперт узнаёт решение по своему замечанию (М-08, Р-301), пока он на
-  // работе и с договором поручения (Р-455).
-  if (
-    target.author.role === 'EXPERT' &&
-    (await curatorOnWork(prisma, target.version.material.project.id, target.authorId))
-  ) {
-    const { material } = target.version;
-    await enqueue(prisma, {
-      userId: target.authorId,
-      projectId: material.project.id,
-      eventKind: 'EXPERT_DECISION',
-      subject:
-        decision === 'PUBLISHED'
-          ? `Ваше замечание опубликовано: ${material.title}`
-          : `Ваше замечание не опубликовано: ${material.title}`,
-      body:
-        `${workLine(material.project, false)}\n` +
-        (decision === 'PUBLISHED'
-          ? `Менеджер опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
-          : `Менеджер не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
-      // Своё пространство ключей: письма клиенту о замечании начинаются с
-      // `comment:<id>` (решение Р-242).
-      dedupKey: `expert-decision:comment:${commentId}`,
-      path: materialPath(material.project.code, material.stageId),
+  // Разбор, письма о нём и строка журнала — одной транзакцией: прежде
+  // строка шла следом за отметкой, а письма — после неё (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const { count } = await tx.versionComment.updateMany({
+      where: { id: commentId, moderationStatus: 'PENDING' },
+      data: {
+        moderationStatus: decision,
+        moderatedById: actor.id,
+        moderatedAt: now,
+        moderationNote: decision === 'REJECTED' ? reason : null,
+        publishedAt: decision === 'PUBLISHED' ? now : null,
+      },
     });
-  }
+    if (count === 0) throw new Error('Замечание уже разобрано');
+    const comment = await tx.versionComment.findUniqueOrThrow({ where: { id: commentId } });
+    await record(actor, {
+      action: decision === 'PUBLISHED' ? 'COMMENT_PUBLISHED' : 'COMMENT_REJECTED',
+      objectType: 'VersionComment',
+      objectId: commentId,
+    }, tx);
+    // Эксперт узнаёт решение по своему замечанию (М-08, Р-301), пока он на
+    // работе и с договором поручения (Р-455).
+    if (
+      target.author.role === 'EXPERT' &&
+      (await curatorOnWork(tx, target.version.material.project.id, target.authorId))
+    ) {
+      const { material } = target.version;
+      await enqueue(tx, {
+        userId: target.authorId,
+        projectId: material.project.id,
+        eventKind: 'EXPERT_DECISION',
+        subject:
+          decision === 'PUBLISHED'
+            ? `Ваше замечание опубликовано: ${material.title}`
+            : `Ваше замечание не опубликовано: ${material.title}`,
+        body:
+          `${workLine(material.project, false)}\n` +
+          (decision === 'PUBLISHED'
+            ? `Менеджер опубликовал клиенту ваше замечание к версии v${target.version.number} материала «${material.title}».`
+            : `Менеджер не опубликовал ваше замечание к версии v${target.version.number} материала «${material.title}».\nПричина: ${reason}`),
+        // Своё пространство ключей: письма клиенту о замечании начинаются с
+        // `comment:<id>` (решение Р-242).
+        dedupKey: `expert-decision:comment:${commentId}`,
+        path: materialPath(material.project.code, material.stageId),
+      });
+    }
 
-  // Письмо «эксперт оставил замечание» уходит клиенту, только если автор —
-  // эксперт: своё же замечание клиенту пересылать незачем (решение Р-242).
-  if (decision === 'PUBLISHED' && target.author.role === 'EXPERT') {
-    const context = await prisma.versionComment.findUnique({
-      where: { id: commentId },
-      select: {
-        version: {
-          select: {
-            material: {
-              select: {
-                title: true,
-                stageId: true,
-                project: {
-                  select: { id: true, code: true, title: true, client: { select: { userId: true } } },
+    // Письмо «эксперт оставил замечание» уходит клиенту, только если автор —
+    // эксперт: своё же замечание клиенту пересылать незачем (решение Р-242).
+    if (decision === 'PUBLISHED' && target.author.role === 'EXPERT') {
+      const context = await tx.versionComment.findUnique({
+        where: { id: commentId },
+        select: {
+          version: {
+            select: {
+              material: {
+                select: {
+                  title: true,
+                  stageId: true,
+                  project: {
+                    select: { id: true, code: true, title: true, client: { select: { userId: true } } },
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
-    const project = context?.version.material.project;
-    const userId = project?.client.userId ?? null;
-    if (project !== undefined && userId !== null) {
-      await enqueue(prisma, {
-        userId,
-        projectId: project.id,
-        eventKind: 'EXPERT_COMMENT_PUBLISHED',
-        subject: 'Куратор оставил замечание по материалу',
-        body:
-          `${workLine(project, true)}\n` +
-          `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
-        dedupKey: `comment:${commentId}:published`,
-        path: materialPath(project.code, context?.version.material.stageId ?? null),
       });
+      const project = context?.version.material.project;
+      const userId = project?.client.userId ?? null;
+      if (project !== undefined && userId !== null) {
+        await enqueue(tx, {
+          userId,
+          projectId: project.id,
+          eventKind: 'EXPERT_COMMENT_PUBLISHED',
+          subject: 'Куратор оставил замечание по материалу',
+          body:
+            `${workLine(project, true)}\n` +
+            `Материал «${context?.version.material.title}». Замечание видно в кабинете.`,
+          dedupKey: `comment:${commentId}:published`,
+          path: materialPath(project.code, context?.version.material.stageId ?? null),
+        });
+      }
     }
-  }
 
-  return comment;
+    return comment;
+  });
 }
 
 /** Комментарии, видимые этой роли. Сужение выборки, а не скрытие в разметке. */

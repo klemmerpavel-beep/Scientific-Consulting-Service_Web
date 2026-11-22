@@ -1193,20 +1193,26 @@ export async function retryLeadLetter(actor: Actor, leadId: string, ip?: string 
     throw new Error('Письмо уже отправлено заново: повторить можно через десять минут');
   }
   // Захват по состоянию: второе нажатие в соседнем окне строку не тронет.
-  const claimed = await prisma.notificationOutbox.updateMany({
-    where: { id: row.id, state: 'FAILED' },
-    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+  // Возврат в очередь и строка журнала — одной транзакцией: пауза повтора
+  // считается по журналу, и повтор без строки её бы обходил (Ф-15, Р-985,
+  // как приглашение куратору в Р-967). Строку уже вернули — строки нет.
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.notificationOutbox.updateMany({
+      where: { id: row.id, state: 'FAILED' },
+      data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+    });
+    if (claimed.count > 0) {
+      await record(actor, {
+        action: 'OUTBOX_RETRY',
+        objectType: 'NotificationOutbox',
+        objectId: row.id,
+        projectId: row.projectId,
+        payload: { eventKind: row.eventKind, leadId: lead.id },
+        ip,
+      }, tx);
+    }
+    return claimed.count > 0;
   });
-  if (claimed.count === 0) return false;
-  await record(actor, {
-    action: 'OUTBOX_RETRY',
-    objectType: 'NotificationOutbox',
-    objectId: row.id,
-    projectId: row.projectId,
-    payload: { eventKind: row.eventKind, leadId: lead.id },
-    ip,
-  });
-  return true;
 }
 
 /**
@@ -1234,18 +1240,22 @@ export async function retryFailed(actor: Actor, id: string, ip?: string | null):
 
   // Повтор захватывает строку в состоянии «не доставлено»: два нажатия
   // «Повторить» не возвращают в очередь письмо, которое рассылка между
-  // ними уже отправила (решение Р-466).
-  const { count } = await prisma.notificationOutbox.updateMany({
-    where: { id: row.id, state: 'FAILED' },
-    data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
-  });
-  if (count === 0) return;
-  await record(actor, {
-    action: 'OUTBOX_RETRY',
-    objectType: 'NotificationOutbox',
-    objectId: row.id,
-    projectId: row.projectId,
-    payload: { eventKind: row.eventKind },
-    ip,
+  // ними уже отправила (решение Р-466). Возврат и строка журнала — одной
+  // транзакцией (Ф-15, Р-985); строку уже вернули — строки журнала нет.
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.notificationOutbox.updateMany({
+      where: { id: row.id, state: 'FAILED' },
+      data: { state: 'PENDING', failure: null, attempts: 0, lastError: null, scheduledAt: new Date() },
+    });
+    if (count > 0) {
+      await record(actor, {
+        action: 'OUTBOX_RETRY',
+        objectType: 'NotificationOutbox',
+        objectId: row.id,
+        projectId: row.projectId,
+        payload: { eventKind: row.eventKind },
+        ip,
+      }, tx);
+    }
   });
 }

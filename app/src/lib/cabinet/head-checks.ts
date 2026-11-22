@@ -23,6 +23,7 @@ import { APPROVAL_VIA_LABEL } from './code-labels.ts';
 import { enqueue } from './outbox.ts';
 import { projectRef } from './projects.ts';
 import { moscowToday, now as clockNow } from './clock.ts';
+import { checkStorage, STORAGE_GAP_LABEL, type StorageGapKind } from './storage-check.ts';
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -95,17 +96,20 @@ export async function closeCheck(actor: Actor, checkId: string, note: string): P
   if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'HEAD_CHECK_CLOSE', ref);
   if (!NOTE[check.kind].includes(note)) throw new Error('Неизвестная отметка дела');
-  const closed = await prisma.headCheck.updateMany({
-    where: { id: checkId, closedAt: null },
-    data: { closedAt: new Date(), closedById: actor.id, closeNote: note },
-  });
-  if (closed.count === 0) throw new Error('Дело уже закрыто: обновите страницу');
-  await record(actor, {
-    action: 'HEAD_CHECK_CLOSED',
-    objectType: 'HeadCheck',
-    objectId: checkId,
-    projectId: check.projectId,
-    payload: { kind: check.kind, note },
+  // Отметка дела и строка журнала — одной транзакцией (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    const closed = await tx.headCheck.updateMany({
+      where: { id: checkId, closedAt: null },
+      data: { closedAt: new Date(), closedById: actor.id, closeNote: note },
+    });
+    if (closed.count === 0) throw new Error('Дело уже закрыто: обновите страницу');
+    await record(actor, {
+      action: 'HEAD_CHECK_CLOSED',
+      objectType: 'HeadCheck',
+      objectId: checkId,
+      projectId: check.projectId,
+      payload: { kind: check.kind, note },
+    }, tx);
   });
 }
 
@@ -188,4 +192,47 @@ export async function calendarGaps(actor: Actor, at: Date = clockNow()): Promise
     if (listed === 0) gaps.push({ year });
   }
   return gaps;
+}
+
+/** Строка перечня «Сверка файлов с хранилищем» — без ключа объекта. */
+export interface StorageGapRow {
+  readonly kind: StorageGapKind;
+  readonly label: string;
+  readonly material: string | null;
+  readonly work: { readonly code: string; readonly title: string } | null;
+  readonly version: number | null;
+  readonly at: Date | null;
+}
+
+/** Перечень расхождений для «Сводки»: строки либо отказ сверки. */
+export type StorageGapsView = { readonly failed: false; readonly rows: readonly StorageGapRow[] } | { readonly failed: true };
+
+/**
+ * Расхождения версий материалов с хранилищем — проверка руководителя на
+ * «Сводке» (план доработки 19.11.2026, К-5; решение Р-986). Только
+ * руководителю: клиенту, куратору и менеджеру — `null`, сверка для них не
+ * выполняется вовсе, и ни строки, ни числа до экрана не доходят. Только
+ * чтение: удалять и исправлять отсюда нечем. Отказ хранилища экран
+ * «Сводки» не роняет — перечень говорит, что сверка не выполнена.
+ */
+export async function storageGaps(actor: Actor): Promise<StorageGapsView | null> {
+  if (actor.role !== 'HEAD' || actor.status !== 'ACTIVE') return null;
+  ensure(actor, 'AUDIT_VIEW');
+  try {
+    const check = await checkStorage();
+    return {
+      failed: false,
+      rows: check.gaps.map((gap) => ({
+        kind: gap.kind,
+        label: STORAGE_GAP_LABEL[gap.kind],
+        material: gap.material,
+        work: gap.work,
+        version: gap.version,
+        at: gap.at,
+      })),
+    };
+  } catch (error) {
+    console.error('[storage-check] сверка версий с хранилищем не выполнена', error);
+    return { failed: true };
+  }
 }

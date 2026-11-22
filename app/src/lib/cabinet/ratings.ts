@@ -44,27 +44,31 @@ export async function rateWork(
   const text = input.text.trim();
   if (text.length > RATING_TEXT_MAX) throw new RatingError(`Отзыв — не длиннее ${RATING_TEXT_MAX} знаков.`);
   try {
-    const saved = await prisma.workRating.create({
-      data: {
+    // Оценка и строка журнала — одной транзакцией (Ф-15, Р-985): оценку
+    // изменить нельзя, и оставшаяся без строки так и стояла бы без неё.
+    await prisma.$transaction(async (tx) => {
+      const saved = await tx.workRating.create({
+        data: {
+          projectId: project.id,
+          score,
+          text: text === '' ? null : text,
+          // Разрешение без текста ничего не публикует и не хранится.
+          publishAllowed: text !== '' && input.publishAllowed,
+          managerId: project.managerId,
+          expertId: project.expertId,
+        },
+        select: { id: true },
+      });
+      // В журнал — оценка, без текста отзыва: журнал хранится дольше и
+      // затиранию по требованию субъекта не подлежит.
+      await record(actor, {
+        action: 'WORK_RATED',
+        objectType: 'WorkRating',
+        objectId: saved.id,
         projectId: project.id,
-        score,
-        text: text === '' ? null : text,
-        // Разрешение без текста ничего не публикует и не хранится.
-        publishAllowed: text !== '' && input.publishAllowed,
-        managerId: project.managerId,
-        expertId: project.expertId,
-      },
-      select: { id: true },
-    });
-    // В журнал — оценка, без текста отзыва: журнал хранится дольше и
-    // затиранию по требованию субъекта не подлежит.
-    await record(actor, {
-      action: 'WORK_RATED',
-      objectType: 'WorkRating',
-      objectId: saved.id,
-      projectId: project.id,
-      ip,
-      payload: { score, withText: text !== '', publishAllowed: text !== '' && input.publishAllowed, ...(actor.viaStaffLink === true ? { staffLink: true } : {}) },
+        ip,
+        payload: { score, withText: text !== '', publishAllowed: text !== '' && input.publishAllowed, ...(actor.viaStaffLink === true ? { staffLink: true } : {}) },
+      }, tx);
     });
   } catch (error) {
     if ((error as { code?: unknown } | null)?.code === 'P2002') throw new RatingError('Оценка этой работы уже поставлена.');

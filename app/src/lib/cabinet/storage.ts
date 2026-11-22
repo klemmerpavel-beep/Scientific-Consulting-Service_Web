@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -29,6 +29,16 @@ export interface StoredObject {
   readonly sha256: string;
 }
 
+/**
+ * Объект в перечне хранилища: ключ, размер и время записи. Перечень нужен
+ * только сверке с базой (решение Р-986): выдача по-прежнему идёт по ключу.
+ */
+export interface ListedObject {
+  readonly key: string;
+  readonly sizeBytes: number;
+  readonly modifiedAt: Date;
+}
+
 /** Объект, открытый на чтение потоком: байты не собираются в память целиком. */
 export interface OpenedObject {
   readonly stream: ReadableStream<Uint8Array>;
@@ -43,6 +53,10 @@ export interface Storage {
   remove(key: string): Promise<void>;
   /** Ссылка ограниченного срока действия либо `null`, если выдача только потоком. */
   signedUrl(key: string, ttlSeconds: number): Promise<string | null>;
+  /** Объекты под префиксом ключа. Необязательно: без него сверка не выполняется (Р-986). */
+  list?(prefix: string): Promise<ListedObject[]>;
+  /** Размер и время объекта либо `null`, если объекта нет. Необязательно. */
+  stat?(key: string): Promise<Omit<ListedObject, 'key'> | null>;
 }
 
 export function materialKey(
@@ -112,6 +126,39 @@ export class LocalStorage implements Storage {
 
   async remove(key: string): Promise<void> {
     await rm(this.resolve(key), { force: true });
+  }
+
+  /**
+   * Файлы под префиксом — ключами от корня хранилища. Каталога нет — нет и
+   * файлов: хранилище, куда ещё ничего не клали, не сбой (Р-986).
+   */
+  async list(prefix: string): Promise<ListedObject[]> {
+    const root = path.resolve(this.root);
+    let entries;
+    try {
+      entries = await readdir(this.resolve(prefix), { recursive: true, withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') return [];
+      throw error;
+    }
+    const out: ListedObject[] = [];
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const full = path.join(entry.parentPath, entry.name);
+      const { size, mtime } = await stat(full);
+      out.push({ key: path.relative(root, full).split(path.sep).join('/'), sizeBytes: size, modifiedAt: mtime });
+    }
+    return out.sort((a, b) => a.key.localeCompare(b.key));
+  }
+
+  async stat(key: string): Promise<Omit<ListedObject, 'key'> | null> {
+    try {
+      const { size, mtime } = await stat(this.resolve(key));
+      return { sizeBytes: size, modifiedAt: mtime };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException | null)?.code === 'ENOENT') return null;
+      throw error;
+    }
   }
 
   async signedUrl(): Promise<string | null> {

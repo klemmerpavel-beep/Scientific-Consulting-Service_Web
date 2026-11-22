@@ -22,12 +22,14 @@
 # всегда 0.
 #
 # Для проверки на стенде без docker: CHAIN_PSQL — команда psql, читающая
-# запрос со стандартного ввода; CHAIN_HEALTH — адрес проверки здоровья.
+# запрос со стандартного ввода; CHAIN_HEALTH — адрес проверки здоровья;
+# CHAIN_STORAGE_CHECK — адрес сверки файлов работ с хранилищем.
 
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE="docker compose --env-file $DIR/.env -f $DIR/docker-compose.yml"
 HEALTH="${CHAIN_HEALTH:-http://127.0.0.1:3000/api/health}"
+STORAGE_CHECK="${CHAIN_STORAGE_CHECK:-http://127.0.0.1:3000/cabinet/api/storage-check}"
 
 read_env() {
   sed -n "s/^$1=//p" "$DIR/.env" 2>/dev/null | head -n 1 | tr -d '\r' \
@@ -206,6 +208,29 @@ for name in CABINET_CRON_SECRET TELEGRAM_WEBHOOK_SECRET FEEDBACK_EXPORT_TOKEN; d
     bad "секрет $name короче 32 знаков — заменить на openssl rand -hex 32 (DEPLOY.md)"
   fi
 done
+
+# Сверка версий материалов с хранилищем (план доработки 19.11.2026, К-5;
+# решение Р-986). Сверяет само приложение — тем же кодом, что перечень
+# руководителя на «Сводке»; маршрут закрыт секретом рассылки, заголовок
+# идёт curl через ввод, как в outbox.sh (Р-454). Только чтение: ничего не
+# удаляется и не исправляется. В отчёт — числа расхождений по видам, без
+# ключей объектов, названий материалов и числа версий. Сбой сверки — [!],
+# выкат от него не падает.
+if [ -z "$(read_env CABINET_CRON_SECRET)" ]; then
+  off "файлы работ: сверка с хранилищем не включена (CABINET_CRON_SECRET)"
+else
+  answer=$(printf 'x-cabinet-cron: %s\n' "$(read_env CABINET_CRON_SECRET)" | curl -fsS --noproxy '*' -m 60 -H @- "$STORAGE_CHECK" 2>/dev/null || true)
+  num() { printf '%s' "$answer" | sed -n "s/.*\"$1\":\([0-9][0-9]*\).*/\1/p" | head -n 1; }
+  missing=$(num missing); size=$(num size); kept=$(num purgedKept); orphans=$(num orphans)
+  case "$answer" in *'"ok":true'*) checked=1 ;; *) checked=0 ;; esac
+  if [ "$checked" != 1 ] || [ -z "$missing" ] || [ -z "$size" ] || [ -z "$kept" ] || [ -z "$orphans" ]; then
+    bad "файлы работ: сверка с хранилищем не выполнена — приложение не ответило (журнал сервера: [storage-check])"
+  elif [ $((missing + size + kept + orphans)) -gt 0 ]; then
+    bad "файлы работ: версий без файла — $missing, размер расходится — $size, изъятых с файлом — $kept, файлов без версии — $orphans (кабинет → «Сводка» руководителя)"
+  else
+    ok "файлы работ: версии материалов и хранилище сходятся"
+  fi
+fi
 
 # ── 5. Зеркало на Яндекс Диске ──────────────────────────────────────────────
 BASE=$(read_env YANDEX_DISK_WEBDAV); BASE=${BASE:-https://webdav.yandex.ru}; BASE=${BASE%/}
