@@ -107,6 +107,11 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 @media (min-width:769px){.pd-scope{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible!important;scroll-snap-type:none!important}.pd-scope-nav{display:none!important}}
 @media (min-width:1025px){.pd-scope{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:768px){.pd-scope-cta{display:none!important}}
+/* Р-992: «Обязательства и документы» — карточка-список: от 769 px две колонки по три пункта (порядок — по строкам), промежуток 32 px; линия --pd-border над каждым пунктом, кроме первой строки; до 768 px — одна колонка, до 480 px поля карточки 20 px. */
+.pd-obl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:32px}
+.pd-obl>li+li+li{border-top:1px solid var(--pd-border)}
+@media (max-width:768px){.pd-obl{grid-template-columns:minmax(0,1fr)}.pd-obl>li+li{border-top:1px solid var(--pd-border)}}
+@media (max-width:480px){.pd-obl{padding-left:20px!important;padding-right:20px!important}}
 </style>
 </helmet>
 <div style="position:relative;min-height:100vh;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip;min-height:0">
@@ -396,47 +401,57 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Обязательства и документы</h2>
 <span class="pd-sub" style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Все документы доступны до оплаты</span>
 </div>
-<div data-carousel="grt" tabindex="0" role="group" aria-label="Обязательства и документы — прокрутите стрелками" onScroll="{{ onGrtScroll }}" style="display:flex;gap:16px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;align-items:stretch;padding:8px 2px;margin:-8px -2px">
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat;mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Договор об оказании услуг</span></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Объём, сроки и порядок приёмки зафиксированы письменно</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">В Задании зафиксированы этапы, состав работ, требования к результату и календарный план. Изменение объёма оформляется дополнительным соглашением к Заданию.</p>
-</article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat;mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Возврат по заявлению</span></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Этап не сдан в срок — оплата за него возвращается</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета мы не гарантируем и в договор не выносим. Сумму вы видите в Задании, до оплаты.</p>
-</article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat;mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Соглашение о неразглашении</span></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Материалы не выходят за пределы проектной команды</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">NDA подписывают все участники проекта. Тема, текст и данные не передаются третьим лицам и не используются в других работах.</p>
-</article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat;mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Смета</span></span>
+<!-- Р-992: шесть обязательств — одна белая карточка-список (DESIGN-SYSTEM §7, «Карточка-список»; образец — «Студентам», Р-798, Р-799): от 769 px две колонки, промежуток 32 px, до 768 px — одна; между пунктами линия --pd-border, кромок снизу нет. Лента со стрелками снята вместе с её доступными именами (Р-957). -->
+<ul class="pd-obl" style="list-style:none;margin:0;padding:4px 24px;box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)">
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat;mask:url('./assets/icons/pd-contract.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Договор об оказании услуг</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Объём, сроки и порядок приёмки зафиксированы письменно</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">В Задании зафиксированы этапы, состав работ, требования к результату и календарный план. Изменение объёма оформляется дополнительным соглашением к Заданию.</p>
+</span>
+</li>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat;mask:url('./assets/icons/pd-refund.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Возврат по заявлению</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Этап не сдан в срок — оплата за него возвращается</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Возврат касается конкретного этапа и оформляется заявлением. Решение диссовета мы не гарантируем и в договор не выносим. Сумму вы видите в Задании, до оплаты.</p>
+</span>
+</li>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat;mask:url('./assets/icons/pd-nda.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Соглашение о неразглашении</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Материалы не выходят за пределы проектной команды</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">NDA подписывают все участники проекта. Тема, текст и данные не передаются третьим лицам и не используются в других работах.</p>
+</span>
+</li>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat;mask:url('./assets/icons/pd-estimate.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Смета</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Смета считается после разбора материала</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Стоимость зависит от объёма, стадии и срока работы. Смета фиксируется в Задании.</p>
-</article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-accent),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat;mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Оплата по этапам</span></span>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Стоимость зависит от объёма, стадии и срока работы. Смета фиксируется в Задании.</p>
+</span>
+</li>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat;mask:url('./assets/icons/pd-stagepay.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Оплата по этапам</span>
 <h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Следующий этап оплачивается после приёмки предыдущего</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Каждый этап оплачивается отдельно. Пока результат этапа не принят, работа по следующему не начинается.</p>
-</article>
-<article class="pd-card" style="scroll-snap-align:start;flex:0 0 clamp(300px,calc((100% - 32px) / 3),400px);box-sizing:border-box;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 -3px 0 var(--pd-edge-neutral),0 1px 2px rgba(20,22,28,.05)">
-<span style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:22px;height:22px;flex:0 0 22px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-revision.svg') center/contain no-repeat;mask:url('./assets/icons/pd-revision.svg') center/contain no-repeat"></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Регламент правок</span></span>
-<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Правки в рамках этапа входят в стоимость</h3>
-<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Замечания по сданному этапу отрабатываем без доплаты в рамках согласованного объёма. Срок ответа на правку — в договоре.</p>
-</article>
-</div>
-<div style="display:flex;align-items:center;gap:24px;margin-top:24px">
-<div style="flex:1 1 auto;height:4px;border-radius:999px;background:var(--pd-divider);overflow:hidden">
-<div style="height:100%;border-radius:999px;background:var(--pd-accent);transform-origin:left center;transition:transform 220ms cubic-bezier(.2,0,.2,1);transform:{{ grtScale }}"></div>
-</div>
-<div style="display:flex;gap:10px;flex:0 0 auto">
-<button type="button" aria-label="Предыдущие карточки" onClick="{{ prevGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-left.svg') center/contain no-repeat"></span></button>
-<button type="button" aria-label="Следующие карточки" onClick="{{ nextGrt }}" style="appearance:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);display:flex;align-items:center;justify-content:center;transition:border-color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent)" style-active="transform:scale(.97)"><span aria-hidden="true" style="width:16px;height:16px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></button>
-</div>
-</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Каждый этап оплачивается отдельно. Пока результат этапа не принят, работа по следующему не начинается.</p>
+</span>
+</li>
+<li style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:16px 0;min-width:0">
+<span aria-hidden="true" style="width:22px;height:22px;margin-top:-2px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-revision.svg') center/contain no-repeat;mask:url('./assets/icons/pd-revision.svg') center/contain no-repeat"></span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-accent)">Регламент правок</span>
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:17px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Правки в рамках этапа входят в стоимость</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Замечания по сданному этапу отрабатываем без доплаты в рамках согласованного объёма. Срок ответа на правку — в договоре.</p>
+</span>
+</li>
+</ul>
 </section>
 
 <section id="request" class="pd-pad" style="max-width:1220px;margin:0 auto;padding:122px 30px 0;position:relative;z-index:1;scroll-margin-top:24px">
@@ -540,18 +555,17 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;leadVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Замечания диссовета&quot;,&quot;Срыв сроков по главам&quot;,&quot;Подготовка к защите&quot;],&quot;default&quot;:&quot;Подготовка к защите&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Текст hero&quot;},&quot;showPortraits&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Текст hero&quot;}}">
 class Component extends DCLogic {
-  state = { inTab: 0, sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, grtPage: 0, scopePages: 1, grtPages: 1, scopeFill: 1, grtFill: 1, scopeWide: false, };
+  state = { inTab: 0, sentTop: false, sentBottom: false, contactTop: 0, contactBottom: 0, direction: 'Научная степень', scopePage: 0, scopePages: 1, scopeFill: 1, scopeWide: false, };
   componentDidMount(){
     this.measure = () => {
       const count = n => {
         const t = document.querySelector('[data-carousel="' + n + '"]');
         return t ? Math.max(1, Math.round(t.scrollWidth / Math.max(t.clientWidth, 1))) : 1;
       };
-      this.setState({ scopePages: count('scope'), grtPages: count('grt') });
+      this.setState({ scopePages: count('scope') });
     };
     this.measure();
     this.track('scope', 'scopePage', 'scopeFill');
-    this.track('grt', 'grtPage', 'grtFill');
     this.onResize = () => {
       if (this.raf) return;
       this.raf = requestAnimationFrame(() => { this.raf = 0; this.measure(); });
@@ -586,7 +600,7 @@ class Component extends DCLogic {
     const p = Math.min(pages - 1, Math.max(0, this.state[key] + dir));
     t.scrollLeft = p * t.clientWidth;
     this.setState({ [key]: p, [pagesKey]: pages });
-    this.track(name, key, name === 'grt' ? 'grtFill' : 'scopeFill');
+    this.track(name, key, name + 'Fill');
   }
   renderVals(){
     const tabs = (which, sel) => ['E-mail', 'Телефон'].map((label, i) => ({
@@ -663,10 +677,6 @@ class Component extends DCLogic {
         window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
       },
       scopeScale: 'scaleX(' + this.state.scopeFill + ')',
-      grtScale: 'scaleX(' + this.state.grtFill + ')',
-      prevGrt: () => this.goTrack('grt', 'grtPage', 'grtPages', -1),
-      nextGrt: () => this.goTrack('grt', 'grtPage', 'grtPages', 1),
-      onGrtScroll: () => this.track('grt', 'grtPage', 'grtFill'),
       prevScope: () => this.goTrack('scope', 'scopePage', 'scopePages', -1),
       nextScope: () => this.goTrack('scope', 'scopePage', 'scopePages', 1),
       onScopeScroll: () => this.track('scope', 'scopePage', 'scopeFill'),
