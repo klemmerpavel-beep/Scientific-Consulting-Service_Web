@@ -1469,51 +1469,57 @@ export async function createCabinetRequest(
   if (!accepted && !(draft.consent === true && draft.terms === true)) {
     throw new Error('Нужны согласие на обработку персональных данных и принятие оферты');
   }
-  if (!accepted) {
-    await prisma.user.update({
-      where: { id: actor.id },
-      data: { consentAcceptedAt: new Date(), consentVersion },
-    });
-  }
+  // Согласие, заявка и строка журнала о сессии по ссылке сотрудника — одной
+  // транзакцией (Ф-15, Р-985). Вложения и письма — после неё, как прежде:
+  // ключ объекта строится от идентификатора заявки (Р-191).
+  const lead = await prisma.$transaction(async (tx) => {
+    if (!accepted) {
+      await tx.user.update({
+        where: { id: actor.id },
+        data: { consentAcceptedAt: new Date(), consentVersion },
+      });
+    }
 
-  const lead = await prisma.lead.create({
-    data: {
-      source: 'cabinet',
-      form: 'request',
-      name: draft.applicantName?.trim() || user.fullName,
-      contactKind: 'email',
-      contact: user.email,
-      topic: draft.topic,
-      need: draft.need,
-      deadline: draft.deadline,
-      message: draft.message,
-      supervisorName: draft.supervisorName?.trim() || null,
-      organization: draft.organization?.trim() || null,
-      speciality: draft.speciality?.trim() || null,
-      phone: draft.phone?.trim() || null,
-      // Согласие записано в учётной записи — ранее или только что; его
-      // редакция хранится вместе с заявкой, как у обращений с сайта.
-      consentGiven: true,
-      consentVersion: accepted ? (user.consentVersion ?? consentVersion) : consentVersion,
-      termsAccepted: true,
-      ip: draft.ip,
-    },
+    const created = await tx.lead.create({
+      data: {
+        source: 'cabinet',
+        form: 'request',
+        name: draft.applicantName?.trim() || user.fullName,
+        contactKind: 'email',
+        contact: user.email,
+        topic: draft.topic,
+        need: draft.need,
+        deadline: draft.deadline,
+        message: draft.message,
+        supervisorName: draft.supervisorName?.trim() || null,
+        organization: draft.organization?.trim() || null,
+        speciality: draft.speciality?.trim() || null,
+        phone: draft.phone?.trim() || null,
+        // Согласие записано в учётной записи — ранее или только что; его
+        // редакция хранится вместе с заявкой, как у обращений с сайта.
+        consentGiven: true,
+        consentVersion: accepted ? (user.consentVersion ?? consentVersion) : consentVersion,
+        termsAccepted: true,
+        ip: draft.ip,
+      },
+    });
+
+    // Сессия по ссылке, которую выдал сотрудник: отметки в ней мог поставить
+    // и он сам. Отказ сломал бы вход клиента, получившего ссылку от
+    // менеджера, поэтому заявка принимается, а журнал помечает, что она — и
+    // согласие с акцептом, если они даны в ней, — пришли из такой сессии.
+    // Тот же порядок, что у согласования этапа (ОМ-3, Р-292; решение Р-514).
+    if (actor.viaStaffLink === true) {
+      await record(actor, {
+        action: 'REQUEST_VIA_STAFF_LINK',
+        objectType: 'Lead',
+        objectId: created.id,
+        ip: draft.ip,
+        payload: { consentGiven: !accepted, staffLink: true },
+      }, tx);
+    }
+    return created;
   });
-
-  // Сессия по ссылке, которую выдал сотрудник: отметки в ней мог поставить
-  // и он сам. Отказ сломал бы вход клиента, получившего ссылку от
-  // менеджера, поэтому заявка принимается, а журнал помечает, что она — и
-  // согласие с акцептом, если они даны в ней, — пришли из такой сессии.
-  // Тот же порядок, что у согласования этапа (ОМ-3, Р-292; решение Р-514).
-  if (actor.viaStaffLink === true) {
-    await record(actor, {
-      action: 'REQUEST_VIA_STAFF_LINK',
-      objectType: 'Lead',
-      objectId: lead.id,
-      ip: draft.ip,
-      payload: { consentGiven: !accepted, staffLink: true },
-    });
-  }
 
   // Вложения кладутся после заявки: ключ объекта строится от её
   // идентификатора, а заявка без файлов остаётся действительной — отказ

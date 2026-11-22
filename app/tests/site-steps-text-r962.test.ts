@@ -42,7 +42,8 @@ describe('«Шесть шагов» «Аспирантам»: строки ша�
   ] as const) {
     it(`${where}: заголовки прежние, тексты — дословно`, () => {
       const rows = stepRows(source);
-      assert.deepEqual(rows.map((r) => [r.title, plain(r.text)]), APPROVED.map(([t, x]) => [t, x]));
+      // Р-1005: в заголовках шагов предлоги и союзы тоже с неразрывным пробелом — слова сверяются без него.
+      assert.deepEqual(rows.map((r) => [plain(r.title), plain(r.text)]), APPROVED.map(([t, x]) => [t, x]));
     });
 
     it(`${where}: после предлогов и союзов в одну-две буквы и перед тире — неразрывный пробел`, () => {

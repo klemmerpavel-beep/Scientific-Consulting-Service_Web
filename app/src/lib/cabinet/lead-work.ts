@@ -61,20 +61,24 @@ export async function setLeadStatus(actor: Actor, leadId: string, status: string
   // и разобранная заново, первого ответа не переписывает. Захват по
   // состоянию гарантирует, что смена была именно из «Новой».
   const at = new Date();
-  const { count } = await prisma.lead.updateMany({
-    where: { id: lead.id, projectId: null, status: lead.status },
-    data: {
-      status,
-      statusChangedAt: at,
-      ...(lead.status === 'NEW' && lead.firstResponseAt === null ? { firstResponseAt: at } : {}),
-    },
-  });
-  if (count === 0) throw new LeadWorkError('Состояние заявки уже изменилось: обновите страницу');
-  await record(actor, {
-    action: 'LEAD_STATUS_CHANGED',
-    objectType: 'Lead',
-    objectId: lead.id,
-    payload: { from: lead.status, to: status },
+  // Смена и строка журнала — одной транзакцией (Ф-15, Р-985): первый
+  // ответ на заявку без строки о нём не остаётся.
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.lead.updateMany({
+      where: { id: lead.id, projectId: null, status: lead.status },
+      data: {
+        status,
+        statusChangedAt: at,
+        ...(lead.status === 'NEW' && lead.firstResponseAt === null ? { firstResponseAt: at } : {}),
+      },
+    });
+    if (count === 0) throw new LeadWorkError('Состояние заявки уже изменилось: обновите страницу');
+    await record(actor, {
+      action: 'LEAD_STATUS_CHANGED',
+      objectType: 'Lead',
+      objectId: lead.id,
+      payload: { from: lead.status, to: status },
+    }, tx);
   });
 }
 
@@ -142,15 +146,18 @@ export async function editLead(
   // иначе не получал писем, а почта, исправленная на телефон, уводила
   // письма в никуда (улучшение УМ-04, решение Р-374).
   const kind = typeof data.contact === 'string' ? contactKindOf(data.contact) : null;
-  await prisma.lead.update({
-    where: { id: lead.id },
-    data: { ...(data as Record<string, string | null>), ...(kind === null ? {} : { contactKind: kind }) } as never,
-  });
-  await record(actor, {
-    action: 'LEAD_EDITED',
-    objectType: 'Lead',
-    objectId: lead.id,
-    payload: { fields: changed },
+  // Правка и строка журнала — одной транзакцией (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    await tx.lead.update({
+      where: { id: lead.id },
+      data: { ...(data as Record<string, string | null>), ...(kind === null ? {} : { contactKind: kind }) } as never,
+    });
+    await record(actor, {
+      action: 'LEAD_EDITED',
+      objectType: 'Lead',
+      objectId: lead.id,
+      payload: { fields: changed },
+    }, tx);
   });
 }
 
@@ -168,14 +175,17 @@ export async function addLeadComment(actor: Actor, leadId: string, body: string)
   const text = body.trim();
   if (text.length === 0) throw new LeadWorkError('Комментарий пуст');
   if (text.length > 4000) throw new LeadWorkError('Комментарий длиннее 4000 знаков');
-  const comment = await prisma.leadComment.create({
-    data: { leadId: lead.id, authorId: actor.id, body: text },
-    select: { id: true },
-  });
-  await record(actor, {
-    action: 'LEAD_COMMENTED',
-    objectType: 'Lead',
-    objectId: lead.id,
-    payload: { commentId: comment.id },
+  // Комментарий и строка журнала — одной транзакцией (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    const comment = await tx.leadComment.create({
+      data: { leadId: lead.id, authorId: actor.id, body: text },
+      select: { id: true },
+    });
+    await record(actor, {
+      action: 'LEAD_COMMENTED',
+      objectType: 'Lead',
+      objectId: lead.id,
+      payload: { commentId: comment.id },
+    }, tx);
   });
 }

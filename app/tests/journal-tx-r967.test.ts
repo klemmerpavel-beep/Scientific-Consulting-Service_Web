@@ -9,9 +9,10 @@
  * аргументом которого не стоит соединение транзакции `tx`, пишет строку
  * журнала отдельной записью. Такие вызовы перечислены ниже поимённо, с
  * классом: «а» — журнал единственная запись действия (выгрузка,
- * скачивание), транзакция не нужна; «б», «в», «г» — следующими выпусками.
- * Новый вызов вне транзакции роняет проверку: его либо переводят в
- * транзакцию, либо вносят в перечень с классом.
+ * скачивание), транзакция не нужна. Классы «б», «в» переведены решением
+ * Р-985, «г» — решением Р-1006 (К-6): опись закрыта, перечень отложенных
+ * пуст. Новый вызов вне транзакции роняет проверку: его либо переводят в
+ * транзакцию, либо, если он класса «а», вносят в перечень с объяснением.
  */
 
 import assert from 'node:assert/strict';
@@ -27,6 +28,11 @@ const MOVED = ['admin.ts', 'channels.ts', 'practice-settings.ts', 'finance-years
 /**
  * Класс «а»: журнал — единственная запись действия (выгрузка, скачивание
  * файла). Транзакции не нужно: откатывать нечего. Остаются вне неё навсегда.
+ * Строка пишется после выдачи: выгрузка собрана, объект открыт — тогда и
+ * записано, что его выдали; отказ хранилища (нет файла) строки не даёт
+ * (Р-907). Сбой самой строки отказывает выдаче — без строки байты не
+ * уходят; обратного случая — строки без выдачи — порядок не допускает,
+ * кроме обрыва ответа после строки: выдача начата, строка о ней есть.
  */
 const ONLY_JOURNAL = [
   'expert-applications.ts openExpertFile EXPERT_FILE_DOWNLOADED',
@@ -39,44 +45,11 @@ const ONLY_JOURNAL = [
 /**
  * Следующими выпусками (Р-967, «Чего решение не закрывает»): «б» — одна
  * запись и строка журнала; «в» — несколько записей или транзакция, после
- * которой идёт строка; «г» — с файлом в хранилище, порядок важен.
+ * которой идёт строка; «г» — с файлом в хранилище, порядок важен. Классы
+ * «б» и «в» переведены решением Р-985, «г» — решением Р-1006 (К-6):
+ * перечень пуст и задан явно.
  */
-const LATER: Readonly<Record<string, 'б' | 'в' | 'г'>> = {
-  'approval.ts autoAcceptExpired STAGE_APPROVED': 'в',
-  'assignments.ts createAssignment ASSIGNMENT_CREATED': 'в',
-  'assignments.ts setAssignmentStatus ASSIGNMENT_STATUS': 'в',
-  'auth.ts bindTelegram TELEGRAM_BOUND': 'в',
-  'auth.ts unbindTelegram TELEGRAM_UNBOUND': 'б',
-  'erasure.ts executeErasure ERASURE_EXECUTED': 'г',
-  'expert-applications.ts reviewExpertApplication EXPERT_APPLICATION_REVIEWED': 'б',
-  'expert-applications.ts deleteExpertApplication EXPERT_APPLICATION_DELETED': 'г',
-  'feedback.ts applyReview FEEDBACK_REVIEWED': 'б',
-  'handover.ts handOverStage STAGE_HANDED_OVER': 'в',
-  'handover.ts recallHandover STAGE_HANDOVER_RECALLED': 'в',
-  'handover.ts handBackStage STAGE_HANDED_BACK': 'в',
-  'head-checks.ts closeCheck HEAD_CHECK_CLOSED': 'б',
-  'lead-work.ts setLeadStatus LEAD_STATUS_CHANGED': 'б',
-  'lead-work.ts editLead LEAD_EDITED': 'б',
-  'lead-work.ts addLeadComment LEAD_COMMENTED': 'б',
-  'materials.ts uploadVersion VERSION_UPLOADED': 'г',
-  'materials.ts commentAftermath COMMENT_CREATED': 'в',
-  'materials.ts moderateComment COMMENT_PUBLISHED': 'в',
-  'messages.ts sendInternal MESSAGE_SENT': 'в',
-  'messages.ts sendCurator MESSAGE_SENT': 'в',
-  'messages.ts sendStaff MESSAGE_SENT': 'в',
-  'outbox.ts retryLeadLetter OUTBOX_RETRY': 'б',
-  'outbox.ts retryFailed OUTBOX_RETRY': 'б',
-  'projects.ts moveLeadAttachments LEAD_FILES_MOVED': 'г',
-  'projects.ts assignExpert PROJECT_EDITED': 'б',
-  'projects.ts acknowledgeReturn STAGE_RETURN_ACKNOWLEDGED': 'б',
-  'queries.ts createCabinetRequest REQUEST_VIA_STAFF_LINK': 'в',
-  'ratings.ts rateWork WORK_RATED': 'б',
-  'recommendations.ts markRecommendation RECOMMENDATION_MARKED': 'в',
-  'brief/work-apply.ts applyWorkBrief BRIEF_APPLIED': 'г',
-  'import/apply.ts previewBook IMPORT_PREVIEWED': 'б',
-  'import/apply.ts applyBatch IMPORT_APPLIED': 'в',
-  'import/apply.ts mergeClients CLIENT_MERGED': 'в',
-};
+const LATER: Readonly<Record<string, 'б' | 'в' | 'г'>> = {};
 
 /** Действия Р-967: строка журнала — в транзакции. */
 const NOW_IN_TX: Readonly<Record<(typeof MOVED)[number], readonly string[]>> = {
@@ -249,7 +222,10 @@ describe('строка журнала — в транзакции действи
     assert.deepEqual(found, listed);
     // Классы — только «б», «в», «г»; «а» перечислен отдельно.
     for (const [entry, kind] of Object.entries(LATER)) assert.match(kind, /^[бвг]$/u, entry);
-    assert.equal(ONLY_JOURNAL.length + Object.keys(LATER).length, 39);
+    // 39 по описи Р-967; 29 вызовов «б» и «в» переведены решением Р-985,
+    // пять «г» — решением Р-1006: вне транзакции — только «а».
+    assert.deepEqual(LATER, {});
+    assert.equal(ONLY_JOURNAL.length + Object.keys(LATER).length, 5);
   });
 
   it('до записи журнала транзакция не выходит: ранний выход оставил бы действие без строки', () => {

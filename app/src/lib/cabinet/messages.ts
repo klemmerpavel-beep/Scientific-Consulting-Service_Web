@@ -447,13 +447,16 @@ function threadWhere(thread: InternalThread, target: string) {
       : { thread: 'HEAD_STAFF' as const, staffId: target };
 }
 
-/** Непрочитанное участником: чужие сообщения ветки новее его курсора. */
-async function unreadFor(userId: string, thread: InternalThread, target: string): Promise<number> {
-  const cursor = await prisma.messageThreadRead.findUnique({
+/**
+ * Непрочитанное участником: чужие сообщения ветки новее его курсора.
+ * `db` — транзакция отправки: новое сообщение видно только в ней (Р-985).
+ */
+async function unreadFor(userId: string, thread: InternalThread, target: string, db: Tx = prisma): Promise<number> {
+  const cursor = await db.messageThreadRead.findUnique({
     where: { userId_threadKey: { userId, threadKey: threadKey(thread, target) } },
     select: { readAt: true },
   });
-  return prisma.message.count({
+  return db.message.count({
     where: {
       ...threadWhere(thread, target),
       authorId: { not: userId },
@@ -472,11 +475,12 @@ async function signalThread(
   target: string,
   messageId: string,
   letter: { eventKind: 'INTERNAL_MESSAGE' | 'STAFF_QUESTION' | 'HEAD_REPLY' | 'CURATOR_MESSAGE'; subject: string; body: string; path: string; projectId: string | null },
+  tx: Tx,
 ): Promise<void> {
   for (const userId of recipients) {
     // Новое сообщение уже лежит в ветке: «есть ещё непрочитанное» — больше одного.
-    if ((await unreadFor(userId, thread, target)) > 1) continue;
-    await enqueue(prisma, {
+    if ((await unreadFor(userId, thread, target, tx)) > 1) continue;
+    await enqueue(tx, {
       userId,
       projectId: letter.projectId,
       eventKind: letter.eventKind,
@@ -489,10 +493,10 @@ async function signalThread(
 }
 
 /** Отметить ветку прочитанной смотрящим — открытие ветки и есть прочтение. */
-async function markThread(actor: Actor, thread: InternalThread, target: string): Promise<void> {
+async function markThread(actor: Actor, thread: InternalThread, target: string, db: Tx = prisma): Promise<void> {
   const key = threadKey(thread, target);
   const now = new Date();
-  await prisma.messageThreadRead.upsert({
+  await db.messageThreadRead.upsert({
     where: { userId_threadKey: { userId: actor.id, threadKey: key } },
     create: { userId: actor.id, threadKey: key, readAt: now },
     update: { readAt: now },
@@ -563,34 +567,38 @@ export async function sendInternal(actor: Actor, projectId: string, body: string
   if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'INTERNAL_MESSAGE', ref);
   const text = cleanBody(body);
-  const message = await prisma.message.create({
-    data: { projectId, thread: 'WORK_INTERNAL', authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
+  // Сообщение, курсор прочтения, сигналы и строка журнала — одной
+  // транзакцией, как в переписке с клиентом (Р-938; Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
+      data: { projectId, thread: 'WORK_INTERNAL', authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
+    });
+    await markThread(actor, 'WORK_INTERNAL', projectId, tx);
+    const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
+    const heads = await tx.user.findMany({
+      where: { role: 'HEAD', status: 'ACTIVE', id: { not: actor.id } },
+      select: { id: true },
+    });
+    const recipients =
+      actor.id === ref.managerId
+        ? heads.map((head) => head.id)
+        : (await practiceSide(tx, ref.managerId)).filter((id) => id !== actor.id);
+    await signalThread(recipients, 'WORK_INTERNAL', projectId, message.id, {
+      eventKind: 'INTERNAL_MESSAGE',
+      subject: `Внутренняя переписка по работе ${project.code}`,
+      body: 'Во внутренней переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+      path: `/cabinet/projects/${project.code}/messages?tab=internal`,
+      projectId,
+    }, tx);
+    await record(actor, {
+      action: 'MESSAGE_SENT',
+      objectType: 'Message',
+      objectId: message.id,
+      projectId,
+      payload: { thread: 'WORK_INTERNAL' },
+    }, tx);
+    return message;
   });
-  await markThread(actor, 'WORK_INTERNAL', projectId);
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
-  const heads = await prisma.user.findMany({
-    where: { role: 'HEAD', status: 'ACTIVE', id: { not: actor.id } },
-    select: { id: true },
-  });
-  const recipients =
-    actor.id === ref.managerId
-      ? heads.map((head) => head.id)
-      : (await practiceSide(prisma, ref.managerId)).filter((id) => id !== actor.id);
-  await signalThread(recipients, 'WORK_INTERNAL', projectId, message.id, {
-    eventKind: 'INTERNAL_MESSAGE',
-    subject: `Внутренняя переписка по работе ${project.code}`,
-    body: 'Во внутренней переписке по работе новое сообщение. Прочитать и ответить можно в кабинете.',
-    path: `/cabinet/projects/${project.code}/messages?tab=internal`,
-    projectId,
-  });
-  await record(actor, {
-    action: 'MESSAGE_SENT',
-    objectType: 'Message',
-    objectId: message.id,
-    projectId,
-    payload: { thread: 'WORK_INTERNAL' },
-  });
-  return message;
 }
 
 /** Сотрудник ветки «руководитель — сотрудник» — действующий менеджер. */
@@ -640,48 +648,53 @@ export async function sendCurator(actor: Actor, projectId: string, body: string)
   if (ref === null) throw new Error('Работа не найдена');
   ensure(actor, 'CURATOR_MESSAGE', ref);
   if (ref.expertId === null) throw new Error(NO_CURATOR);
+  const expertId = ref.expertId;
   const text = cleanBody(body);
-  const message = await prisma.message.create({
-    data: { projectId, thread: 'WORK_CURATOR', authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
-  });
-  await markThread(actor, 'WORK_CURATOR', projectId);
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
-  const fromCurator = actor.id === ref.expertId;
-  let recipients: string[];
-  if (fromCurator) {
-    recipients = await practiceSide(prisma, ref.managerId);
-  } else {
-    const curator = await prisma.user.findUnique({
-      where: { id: ref.expertId },
-      select: { status: true, expertProfile: { select: { ndaSignedAt: true } } },
+  // Сообщение, курсор, сигнал и строка журнала — одной транзакцией (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
+      data: { projectId, thread: 'WORK_CURATOR', authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
     });
-    // Куратору без договора поручения работа закрыта — и письмо не уходит.
-    recipients =
-      curator !== null && curator.status === 'ACTIVE' && (curator.expertProfile?.ndaSignedAt ?? null) !== null
-        ? [ref.expertId]
-        : [];
-  }
-  await signalThread(
-    recipients.filter((id) => id !== actor.id),
-    'WORK_CURATOR',
-    projectId,
-    message.id,
-    {
-      eventKind: 'CURATOR_MESSAGE',
-      subject: fromCurator ? `Вопрос куратора по работе ${project.code}` : `Сообщение менеджера по работе ${project.code}`,
-      body: 'В переписке куратора и менеджера по работе новое сообщение. Прочитать и ответить можно в кабинете.',
-      path: `/cabinet/projects/${project.code}/messages?tab=curator`,
+    await markThread(actor, 'WORK_CURATOR', projectId, tx);
+    const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { code: true } });
+    const fromCurator = actor.id === expertId;
+    let recipients: string[];
+    if (fromCurator) {
+      recipients = await practiceSide(tx, ref.managerId);
+    } else {
+      const curator = await tx.user.findUnique({
+        where: { id: expertId },
+        select: { status: true, expertProfile: { select: { ndaSignedAt: true } } },
+      });
+      // Куратору без договора поручения работа закрыта — и письмо не уходит.
+      recipients =
+        curator !== null && curator.status === 'ACTIVE' && (curator.expertProfile?.ndaSignedAt ?? null) !== null
+          ? [expertId]
+          : [];
+    }
+    await signalThread(
+      recipients.filter((id) => id !== actor.id),
+      'WORK_CURATOR',
       projectId,
-    },
-  );
-  await record(actor, {
-    action: 'MESSAGE_SENT',
-    objectType: 'Message',
-    objectId: message.id,
-    projectId,
-    payload: { thread: 'WORK_CURATOR' },
+      message.id,
+      {
+        eventKind: 'CURATOR_MESSAGE',
+        subject: fromCurator ? `Вопрос куратора по работе ${project.code}` : `Сообщение менеджера по работе ${project.code}`,
+        body: 'В переписке куратора и менеджера по работе новое сообщение. Прочитать и ответить можно в кабинете.',
+        path: `/cabinet/projects/${project.code}/messages?tab=curator`,
+        projectId,
+      },
+      tx,
+    );
+    await record(actor, {
+      action: 'MESSAGE_SENT',
+      objectType: 'Message',
+      objectId: message.id,
+      projectId,
+      payload: { thread: 'WORK_CURATOR' },
+    }, tx);
+    return message;
   });
-  return message;
 }
 
 async function staffOf(staffId: string) {
@@ -722,35 +735,38 @@ export async function sendStaff(actor: Actor, staffId: string, body: string) {
   if (!staffThreadAllowed(actor, staffId)) throw new Error('Действие не разрешено');
   const staff = await staffOf(staffId);
   const text = cleanBody(body);
-  const message = await prisma.message.create({
-    data: { thread: 'HEAD_STAFF', staffId, authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
-  });
-  await markThread(actor, 'HEAD_STAFF', staffId);
-  if (actor.id === staffId) {
-    const heads = await prisma.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
-    await signalThread(heads.map((head) => head.id), 'HEAD_STAFF', staffId, message.id, {
-      eventKind: 'STAFF_QUESTION',
-      subject: `Вопрос от менеджера: ${staff.fullName}`,
-      body: 'Менеджер написал вам в кабинете. Прочитать и ответить — «Управление → Команда».',
-      path: `/cabinet/manage/team/${staffId}`,
-      projectId: null,
+  // Сообщение, курсор, сигналы и строка журнала — одной транзакцией (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
+      data: { thread: 'HEAD_STAFF', staffId, authorId: actor.id, body: text, containsContactHint: hasContacts(text) },
     });
-  } else {
-    await signalThread([staffId], 'HEAD_STAFF', staffId, message.id, {
-      eventKind: 'HEAD_REPLY',
-      subject: 'Руководитель ответил в кабинете',
-      body: 'В переписке с руководителем новое сообщение. Прочитать можно в кабинете.',
-      path: '/cabinet/head',
-      projectId: null,
-    });
-  }
-  await record(actor, {
-    action: 'MESSAGE_SENT',
-    objectType: 'Message',
-    objectId: message.id,
-    payload: { thread: 'HEAD_STAFF' },
+    await markThread(actor, 'HEAD_STAFF', staffId, tx);
+    if (actor.id === staffId) {
+      const heads = await tx.user.findMany({ where: { role: 'HEAD', status: 'ACTIVE' }, select: { id: true } });
+      await signalThread(heads.map((head) => head.id), 'HEAD_STAFF', staffId, message.id, {
+        eventKind: 'STAFF_QUESTION',
+        subject: `Вопрос от менеджера: ${staff.fullName}`,
+        body: 'Менеджер написал вам в кабинете. Прочитать и ответить — «Управление → Команда».',
+        path: `/cabinet/manage/team/${staffId}`,
+        projectId: null,
+      }, tx);
+    } else {
+      await signalThread([staffId], 'HEAD_STAFF', staffId, message.id, {
+        eventKind: 'HEAD_REPLY',
+        subject: 'Руководитель ответил в кабинете',
+        body: 'В переписке с руководителем новое сообщение. Прочитать можно в кабинете.',
+        path: '/cabinet/head',
+        projectId: null,
+      }, tx);
+    }
+    await record(actor, {
+      action: 'MESSAGE_SENT',
+      objectType: 'Message',
+      objectId: message.id,
+      payload: { thread: 'HEAD_STAFF' },
+    }, tx);
+    return message;
   });
-  return message;
 }
 
 /**

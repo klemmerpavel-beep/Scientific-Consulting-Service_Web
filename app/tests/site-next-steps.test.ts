@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 const DESIGN = path.join(import.meta.dirname, '..', '..', 'design');
 // Тексты сверяются по словам: перед тире на «Аспирантам», «Студентам» и
@@ -104,24 +105,27 @@ describe('обещание о профиле куратора — одной ф�
   };
 
   it('главная, карточка «Куратор со степенью по вашей специальности»', () => {
-    assert.ok(read('StartPage').includes(`>П${FULL}</p>`));
+    assert.ok(read('StartPage').includes(bind(`>П${FULL}</p>`)));
   });
 
   it('«Аспирантам»: ответ на «Кто будет вести мою работу?» и карточка — короткая формулировка', () => {
     const main = read('MainPage');
     assert.equal(
       row(main, "['Кто будет вести мою работу?'"),
-      `['Кто будет вести мою работу?', 'Куратор с учёной степенью в вашей области. П${FULL}'`,
+      bind(`['Кто будет вести мою работу?', 'Куратор с учёной степенью в вашей области. П${FULL}'`),
     );
     // С Р-810 (З-2) короткая формулировка — строка «Как проверить до
     // согласования Задания»; строка «Где это видно» снята (Р-825), и
     // формулировка — последнее поле карточки.
-    assert.ok(row(main, "['pd-degree', 'Куратор со степенью по вашей специальности'").endsWith(`, ${SHORT}`));
+    assert.ok(row(main, bind("['pd-degree', 'Куратор со степенью по вашей специальности'")).endsWith(bind(`, ${SHORT}`)));
   });
 
   it('«Компаниям», пункт 04 «Чем закреплено»', () => {
-    const business = read('BusinessPage');
-    assert.ok(row(business, "['04', 'Работу ведёт отраслевой эксперт со степенью'").endsWith(`, 'п${FULL}'`));
+    // С Р-974 строка «Чем закреплено» видна сразу, и предлоги в ней связаны
+    // неразрывным пробелом: формула Р-762 сверяется без оглядки на вёрстку.
+    const business = read('BusinessPage').replace(/\u00a0/gu, ' ');
+    // Заголовок условия — «куратор по отрасли» (Р-979); формула Р-762 прежняя.
+    assert.ok(row(business, "['04', 'Работу ведёт куратор по отрасли со степенью'").endsWith(`, 'п${FULL}'`));
   });
 
   it('прежних обещаний нет: «список его публикаций», «его публикации», профиль «до договора»', () => {
@@ -160,7 +164,8 @@ describe('«до согласования Задания» вместо «до �
 
   for (const [page, place, text] of PLACES) {
     it(`${page}: ${place}`, () => {
-      assert.equal(read(page).split(text).length - 1, 1, 'фраза не на месте или повторена');
+      // Р-1005: предлоги и союзы в одну-две буквы набраны с неразрывным пробелом — фраза сверяется в этом наборе.
+      assert.equal(read(page).split(bind(text)).length - 1, 1, 'фраза не на месте или повторена');
     });
   }
 
@@ -168,7 +173,7 @@ describe('«до согласования Задания» вместо «до �
     // Р-767, подтверждено владельцем 02.11.2026: шесть фраз «Экспертам» говорят о
     // гражданско-правовом договоре с куратором, а не об оферте клиента.
     const experts = read('ExpertsPage');
-    assert.equal(experts.split('до заключения договора').length - 1, 6);
+    assert.equal(experts.split(bind('до заключения договора')).length - 1, 6);
     assert.doesNotMatch(experts, /Задани[яе]/u);
   });
 
@@ -183,7 +188,7 @@ describe('«до согласования Задания» вместо «до �
     const at = main.indexOf('const stepData = [');
     assert.ok(at > 0, 'нет stepData');
     const titles = [...main.slice(at, main.indexOf('];', at)).matchAll(/\['0\d', '([^']+)'/gu)].map((m) => m[1]);
-    assert.deepEqual(titles.slice(0, 3), ['Заявка и ответ менеджера', 'Личный кабинет', 'Куратор и созвон знакомства']);
+    assert.deepEqual(titles.slice(0, 3), ['Заявка и ответ менеджера', 'Личный кабинет', 'Куратор и созвон знакомства'].map(bind));
     assert.doesNotMatch(main, /Подбор эксперта/u);
   });
 });

@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { bind } from './helpers/short-words.ts';
 
 const DESIGN = path.join(import.meta.dirname, '../../design');
 const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'ToolsPage', 'NotFoundPage'];
@@ -36,12 +37,16 @@ describe('запрещённые слова — во всём макете, вк
   }
 
   it('«Аспирантам»: в перечне услуг — «Научная экспертиза текста» без «вычитки»', () => {
-    assert.ok(source('MainPage').includes("'Научная экспертиза текста', 'Проверка на заимствования"));
+    assert.ok(source('MainPage').includes(bind("'Научная экспертиза текста', 'Проверка на заимствования")));
   });
 
-  it('посадочная: лента «Обязательства и документы» названа без «гарантий»', () => {
+  // Р-992: ленты «Обязательства и документы» больше нет — шесть пунктов стоят
+  // карточкой-списком, и её доступные имена ушли вместе с ней. У оставшейся ленты
+  // «Что входит в сопровождение» имена стрелок прежние, без «гарантий».
+  it('посадочная: ленты «Обязательства и документы» нет, стрелки ленты «Что входит» названы без «гарантий»', () => {
     const start = source('StartPage');
-    for (const label of ['Обязательства и документы — прокрутите стрелками', 'Предыдущие карточки', 'Следующие карточки']) {
+    assert.doesNotMatch(start, /data-carousel="grt"|aria-label="Обязательства и документы/u);
+    for (const label of ['Предыдущие карточки', 'Следующие карточки']) {
       assert.ok(start.includes(`aria-label="${label}"`), label);
     }
   });

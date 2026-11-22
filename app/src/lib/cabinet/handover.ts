@@ -100,12 +100,13 @@ export async function handOverStage(actor: Actor, stageId: string, note: string)
       key: `stage:${stageId}:handed-over:${now.toISOString()}`,
       path: `/cabinet/stages/${stageId}`,
     });
-  });
-  await record(actor, {
-    action: 'STAGE_HANDED_OVER',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
+    // Строка журнала — в транзакции сдачи (Ф-15, Р-985).
+    await record(actor, {
+      action: 'STAGE_HANDED_OVER',
+      objectType: 'Stage',
+      objectId: stageId,
+      projectId: stage.projectId,
+    }, tx);
   });
 }
 
@@ -114,26 +115,30 @@ export async function recallHandover(actor: Actor, stageId: string) {
   const stage = await loadStage(stageId);
   ensure(actor, 'STAGE_HAND_OVER', stage.project);
   ensureContributionOpen(actor, stage.project.status, stage.state);
-  const claimed = await prisma.stage.updateMany({
-    where: { id: stageId, state: 'IN_PROGRESS', handedOverAt: { not: null } },
-    data: { handedOverAt: null },
-  });
-  if (claimed.count === 0) {
-    throw new Error('Отозвать нечего: менеджер уже принял решение по этапу');
-  }
-  await prisma.projectEvent.create({
-    data: {
+  // Отзыв, событие в истории и строка журнала — одной транзакцией: прежде
+  // три записи шли порознь (Ф-15, Р-985).
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.stage.updateMany({
+      where: { id: stageId, state: 'IN_PROGRESS', handedOverAt: { not: null } },
+      data: { handedOverAt: null },
+    });
+    if (claimed.count === 0) {
+      throw new Error('Отозвать нечего: менеджер уже принял решение по этапу');
+    }
+    await tx.projectEvent.create({
+      data: {
+        projectId: stage.projectId,
+        actorId: actor.id,
+        kind: 'STAGE_HANDOVER_RECALLED',
+        payload: { stageId, position: stage.position },
+      },
+    });
+    await record(actor, {
+      action: 'STAGE_HANDOVER_RECALLED',
+      objectType: 'Stage',
+      objectId: stageId,
       projectId: stage.projectId,
-      actorId: actor.id,
-      kind: 'STAGE_HANDOVER_RECALLED',
-      payload: { stageId, position: stage.position },
-    },
-  });
-  await record(actor, {
-    action: 'STAGE_HANDOVER_RECALLED',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
+    }, tx);
   });
 }
 
@@ -177,11 +182,12 @@ export async function handBackStage(actor: Actor, stageId: string, reason: strin
       key: `stage:${stageId}:handed-back:${now.toISOString()}`,
       path: `/cabinet/stages/${stageId}`,
     });
-  });
-  await record(actor, {
-    action: 'STAGE_HANDED_BACK',
-    objectType: 'Stage',
-    objectId: stageId,
-    projectId: stage.projectId,
+    // Строка журнала — в транзакции возврата (Ф-15, Р-985).
+    await record(actor, {
+      action: 'STAGE_HANDED_BACK',
+      objectType: 'Stage',
+      objectId: stageId,
+      projectId: stage.projectId,
+    }, tx);
   });
 }

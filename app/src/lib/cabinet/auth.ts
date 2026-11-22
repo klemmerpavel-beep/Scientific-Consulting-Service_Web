@@ -557,39 +557,45 @@ export async function bindTelegram(value: string, chatId: string): Promise<boole
   if (token.expiresAt.getTime() < Date.now()) return false;
   if (!sameDigest(token.verifierHash, digest(parsed.verifier))) return false;
 
-  const consumed = await prisma.loginToken.updateMany({
-    where: { id: token.id, usedAt: null },
-    data: { usedAt: new Date() },
-  });
-  if (consumed.count !== 1) return false;
+  // Погашение метки, привязка и строка журнала — одной транзакцией: сбой
+  // журнала не оставляет ни привязки без строки, ни погашенной впустую
+  // метки — человек отправляет /start ещё раз (Ф-15, Р-985).
+  return prisma.$transaction(async (tx) => {
+    const consumed = await tx.loginToken.updateMany({
+      where: { id: token.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (consumed.count !== 1) return false;
 
-  // Один аккаунт Telegram — одна учётная запись: привязка у прежнего
-  // владельца снимается, иначе уведомления уходили бы двоим.
-  const [, bound] = await prisma.$transaction([
-    prisma.user.updateMany({
+    // Один аккаунт Telegram — одна учётная запись: привязка у прежнего
+    // владельца снимается, иначе уведомления уходили бы двоим.
+    await tx.user.updateMany({
       where: { telegramChatId: chatId, id: { not: token.userId } },
       data: { telegramChatId: null, notifyTelegram: false },
-    }),
-    prisma.user.update({
+    });
+    const bound = await tx.user.update({
       where: { id: token.userId },
       data: { telegramChatId: chatId, notifyTelegram: true },
       select: { id: true, role: true, status: true },
-    }),
-  ]);
-  // Привязка — новый адрес доставки уведомлений о работе; в журнал идёт
-  // факт без номера чата (решение Р-242).
-  await record(
-    { id: bound.id, role: bound.role, status: bound.status, clientProfileId: null, expertNdaSignedAt: null },
-    { action: 'TELEGRAM_BOUND', objectType: 'User', objectId: bound.id },
-  );
-  return true;
+    });
+    // Привязка — новый адрес доставки уведомлений о работе; в журнал идёт
+    // факт без номера чата (решение Р-242).
+    await record(
+      { id: bound.id, role: bound.role, status: bound.status, clientProfileId: null, expertNdaSignedAt: null },
+      { action: 'TELEGRAM_BOUND', objectType: 'User', objectId: bound.id },
+      tx,
+    );
+    return true;
+  });
 }
 
 /** Снять привязку по требованию пользователя. */
 export async function unbindTelegram(actor: Actor): Promise<void> {
-  await prisma.user.update({
-    where: { id: actor.id },
-    data: { telegramChatId: null, notifyTelegram: false },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: actor.id },
+      data: { telegramChatId: null, notifyTelegram: false },
+    });
+    await record(actor, { action: 'TELEGRAM_UNBOUND', objectType: 'User', objectId: actor.id }, tx);
   });
-  await record(actor, { action: 'TELEGRAM_UNBOUND', objectType: 'User', objectId: actor.id });
 }

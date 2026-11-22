@@ -22,6 +22,7 @@ import path from 'node:path';
 
 import { prisma } from '../src/lib/db.ts';
 import { createRawToken, digest } from '../src/lib/cabinet/token.ts';
+import { storage } from '../src/lib/cabinet/storage.ts';
 import { previewBook } from '../src/lib/cabinet/import/apply.ts';
 import type { Actor } from '../src/lib/cabinet/access.ts';
 import { excelSerial, makeWorkbook, type TestRow } from '../tests/helpers/make-workbook.ts';
@@ -730,6 +731,15 @@ async function main() {
       },
       update: {},
     });
+  }
+  // Файлы версий — в хранилище снимков, если оно задано: иначе «Сверка
+  // файлов с хранилищем» на «Сводке» руководителя числила бы их пропавшими
+  // (решение Р-986). Содержимое — нули объявленного размера: облик от него
+  // не зависит, размер сверка сравнивает.
+  if (process.env.CABINET_STORAGE_DIR) {
+    for (const row of await prisma.materialVersion.findMany({ where: { materialId: material.id }, select: { storageKey: true, sizeBytes: true, contentType: true } })) {
+      await storage().put(row.storageKey, Buffer.alloc(Number(row.sizeBytes)), row.contentType);
+    }
   }
   const pendingVersion = await prisma.materialVersion.findFirstOrThrow({
     where: { materialId: material.id, number: 3 },
