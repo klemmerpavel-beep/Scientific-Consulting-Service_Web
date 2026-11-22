@@ -344,8 +344,9 @@ describe('Р-835: блок заявки «Компаниям» без пусто
 
 describe('Р-834: шесть карточек условий на «Компаниям» одной высоты', () => {
   // Владелец 07.11.2026: «все блоки сделать одинакового размера». Общая
-  // высота закрытых карточек — по самой высокой, от 769 px; раскрытие растит
-  // только свою карточку (сетка остаётся align-items: start, Р-802).
+  // высота карточек — по самой высокой, от 769 px (сетка остаётся
+  // align-items: start, Р-802). С Р-974 раскрытия нет: «Чем закреплено» —
+  // строка-факт, и высота считается по карточке целиком.
   it('у карточки min-height из --bp-mech-h, подвал — нижняя строка, лишнее — в строку текста', () => {
     for (const [where, source] of both('BusinessPage')) {
       assert.ok(source.includes('row-gap:8px;min-height:var(--bp-mech-h,auto)}'), `${where}: у карточки нет общей высоты`);
@@ -353,13 +354,15 @@ describe('Р-834: шесть карточек условий на «Компан
     }
   });
 
-  it('fitMech: по самой высокой закрытой карточке, только от 769 px, после шрифтов и при смене ширины окна', () => {
+  it('fitMech: по самой высокой карточке, только от 769 px, после шрифтов и при смене ширины окна', () => {
     for (const [where, source] of both('BusinessPage')) {
       const at = source.indexOf('this.fitMech = () => {');
       assert.ok(at > 0, `${where}: нет расчёта общей высоты`);
       const body = source.slice(at, source.indexOf('};', source.indexOf("grid.style.setProperty('--bp-mech-h'", at)));
       assert.match(body, /grid\.style\.removeProperty\('--bp-mech-h'\);\s*if \(!window\.matchMedia\('\(min-width:769px\)'\)\.matches\) return;/u, `${where}: до 768 px общая высота не снимается`);
-      assert.match(body, /c\.offsetHeight - \(p \? p\.offsetHeight \+ 18 : 0\)/u, `${where}: раскрытое пояснение входит в общую высоту`);
+      // Р-974: пояснение всегда на виду — вычитать нечего.
+      assert.match(body, /Math\.max\(\.\.\.cards\.map\(c => c\.offsetHeight\)\)/u, `${where}: высота — не по карточке целиком`);
+      assert.doesNotMatch(body, /bp-proof/u, `${where}: в расчёте осталось раскрытое пояснение`);
       assert.match(body, /Math\.max\(/u, `${where}: высота — не по самой высокой карточке`);
       assert.match(source, /this\.onMechResize = \(\) => \{ if \(window\.innerWidth !== this\.mechWidth\) \{ this\.mechWidth = window\.innerWidth; this\.fitMech\(\); \} \};/u, `${where}: пересчёт не по смене ширины`);
       assert.match(source, /document\.fonts\.ready\.then\(\(\) => this\.fitMech\(\)\)/u, `${where}: нет пересчёта после шрифтов`);
@@ -383,10 +386,7 @@ describe('Р-802: «Условия, закреплённые договором 
     }
   });
 
-  it('у кнопки «Чем закреплено» внутренний отступ: кольцо фокуса не касается буквы', () => {
-    const button = design('BusinessPage').match(/<button type="button" class="bp-mechbtn"[^>]*>/u)?.[0] ?? '';
-    assert.match(button, /padding:0 8px;margin:0 -8px;width:calc\(100% \+ 16px\);box-sizing:border-box/u);
-  });
+  // Р-974 сняло кнопку «Чем закреплено» (её отступ проверяла прежняя проба Р-802): строку-факт проверяет блок ниже.
 
   it('тире не начинает строку: перед тире — неразрывный пробел', () => {
     for (const [where, source] of both('BusinessPage')) {
@@ -394,6 +394,64 @@ describe('Р-802: «Условия, закреплённые договором 
         assert.ok(source.includes(phrase), `${where}: нет неразрывного пробела в «${phrase.replace(/ /gu, '·')}»`);
       }
     }
+  });
+});
+
+describe('Р-974: «Чем закреплено» на «Компаниям» — строка-факт под разделителем, как «Нужен опыт:» и «Срок:»', () => {
+  // Указание владельца 22.11.2026 (С-6.2): раскрывающийся подвал «Чем
+  // закреплено +» заменён строкой-фактом; тексты proof прежние (п. 04 —
+  // формула Р-762); карточки от 769 px одной высоты (Р-834); условие 03 не
+  // меняется.
+  const PROOFS = [
+    ['01', 'чек-лист требований получателя прикладывается к техническому заданию и к акту сдачи этапа.'],
+    ['02', 'отчёт о патентном поиске — отдельный первый этап с собственным актом.'],
+    ['03', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.'],
+    ['04', 'профиль куратора — степень, специальность, стаж и публикации по категориям журналов — вы видите до согласования Задания.'],
+    ['05', 'календарный план с датами, акт по каждому этапу, порядок возврата в договоре.'],
+    ['06', 'формулировка предмета договора и чек-лист требований получателя.'],
+  ] as const;
+  const plainNb = (x: string) => x.replace(/\u00a0|&nbsp;/gu, ' ');
+
+  it('макет: подвал карточки — абзац «Чем закреплено:» под линией --pd-divider, без кнопки, состояния и раскрытия', () => {
+    const html = design('BusinessPage');
+    const at = html.indexOf('<sc-for list="{{ reasons }}"');
+    const card = html.slice(at, html.indexOf('</sc-for>', at));
+    assert.match(card, /<p class="bp-mechfoot" style="margin:4px 0 0;padding-top:12px;border-top:1px solid var\(--pd-divider\);font-size:13px;line-height:1\.5;color:var\(--pd-ink-secondary\)"><span style="font-weight:600;color:var\(--pd-ink\)">Чем закреплено:<\/span> \{\{ r\.proof \}\}<\/p>/u);
+    assert.doesNotMatch(card, /<button|sc-if|aria-expanded/u, 'в карточке осталось раскрытие');
+    for (const gone of ['bp-mechbtn', 'bp-mechplus', 'bp-proof', 'proofToggle', 'proofOpen', 'proofAria', 'mech: {}', 'this.state.mech']) {
+      assert.ok(!html.includes(gone), `осталось ${gone}`);
+    }
+  });
+
+  it('компонент: та же строка, без кнопки «Чем закреплено»', () => {
+    const tsx = read('app', 'src', 'components', 'pages', 'BusinessPage.tsx');
+    assert.match(tsx, /<p className="bp-mechfoot" style=\{\{ margin: "4px 0 0", paddingTop: "12px", borderTop: "1px solid var\(--pd-divider\)", fontSize: "13px", lineHeight: "1\.5", color: "var\(--pd-ink-secondary\)" \}\}><span style=\{\{ fontWeight: "600", color: "var\(--pd-ink\)" \}\}>Чем закреплено:<\/span> \{r\.proof\}<\/p>/u);
+    assert.ok(!tsx.includes('bp-mechbtn') && !tsx.includes('proofToggle'), 'в компоненте осталась кнопка раскрытия');
+  });
+
+  it('тексты proof прежние, в п. 04 — формула Р-762; условие 03 не меняется', () => {
+    const html = plainNb(design('BusinessPage'));
+    for (const [num, proof] of PROOFS) {
+      const at = html.indexOf(`['${num}', '`, html.indexOf('reasons: ['));
+      const row = html.slice(at, html.indexOf(']', at));
+      assert.ok(row.endsWith(`, '${proof}'`), `п. ${num}: текст «Чем закреплено» изменился`);
+    }
+    assert.ok(html.includes("['03', 'Исключительные права принадлежат заказчику', 'Всё, что создано в проекте, переходит вам.', 'пункт договора об отчуждении прав, NDA с каждым исполнителем, акт передачи материалов.']"), 'условие 03 изменилось');
+    // Строка видна сразу: предлоги и союзы в одну-две буквы не висят в конце строки.
+    const raw = design('BusinessPage');
+    for (const [num] of PROOFS) {
+      const at = raw.indexOf(`['${num}', '`, raw.indexOf('reasons: ['));
+      const proof = raw.slice(at, raw.indexOf(']', at)).split("', '").at(-1)!;
+      assert.doesNotMatch(proof, /(?<![\p{L}-])(?:к|и|с|в|о|по|до|об|на) /u, `п. ${num}: короткий предлог без неразрывного пробела`);
+    }
+  });
+
+  it('карточка: поля 20 px снизу (до 480 px — 20 px), подвал — нижняя строка сетки', () => {
+    for (const [where, source] of both('BusinessPage')) {
+      assert.ok(source.includes('.bp-mechfoot{grid-area:foot}'), `${where}: подвал не в нижней строке сетки`);
+      assert.ok(source.includes('padding:18px 20px 20px!important}'), `${where}: до 480 px у карточки нет нижнего поля`);
+    }
+    assert.match(design('BusinessPage'), /<article class="bp-mechcard pd-lift" style="[^"]*padding:20px 22px 20px;/u);
   });
 });
 
@@ -496,7 +554,8 @@ describe('Р-814: «Права и конфиденциальность» на «
       assert.ok(source.includes('return { rightsLead: rights[0], rightsRest: rights.slice(1) };'), `${where}: первая плитка — не первый пункт`);
     }
     const head = visibleText(section(design('BusinessPage'))).map((t) => t.trim()).filter(Boolean);
-    assert.deepEqual(head, ['Права и конфиденциальность', `Кому принадлежит результат и${NB}что происходит с${NB}материалами`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
+    // Заголовок — в редакции Р-976 (указание владельца 22.11.2026, до 52 знаков); метка и подпись прежние.
+    assert.deepEqual(head, ['Права и конфиденциальность', `Права на${NB}результат и${NB}материалы после проекта`, 'Права на результат остаются у вашей компании'], 'шапка раздела изменилась');
   });
 });
 
