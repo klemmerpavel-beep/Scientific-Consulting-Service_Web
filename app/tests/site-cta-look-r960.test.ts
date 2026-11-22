@@ -108,7 +108,7 @@ const PAGES = [
   ['MainPage', 'PostgradPage', { section: 4, submit: 3 }],
   ['StudentsPage', 'StudentsPage', { section: 4, submit: 3 }],
   ['BusinessPage', 'BusinessPage', { section: 4, submit: 3 }],
-  ['ExpertsPage', 'ExpertsPage', { section: 2, submit: 1 }],
+  ['ExpertsPage', 'ExpertsPage', { section: 4, submit: 1 }],
   ['ToolsPage', 'ToolsPage', { section: 1, submit: 1 }],
 ] as const;
 
