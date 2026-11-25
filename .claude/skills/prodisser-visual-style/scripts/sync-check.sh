@@ -61,6 +61,15 @@ if [ $CHECK -eq 1 ]; then
   fi
 fi
 
+# Данные для поиска, выведенные из макетов (Р-1010): дата правки
+# страницы для sitemap.xml и вопросы раздела «Вопросы» для разметки FAQPage.
+# После переноса — обновить; при сверке — убедиться, что обновлены.
+if [ $CHECK -eq 1 ]; then
+  node tools/seo-sync.mjs --check || status=1
+else
+  node tools/seo-sync.mjs || status=1
+fi
+
 # Ассеты: всё из design/assets должно лежать в app/public/assets байт в байт.
 # Обратное не требуется: в public есть файлы, которых нет в макетах.
 assets=$(diff -rq design/assets app/public/assets 2>&1 | grep -v '^Only in app/public/assets' || true)

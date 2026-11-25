@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { siteUrl } from '../lib/site-url';
+import { PAGE_DATES } from '../../content/page-dates.generated';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +28,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // sitemap.xml недействительным целиком. Пустая карта честнее битой.
   if (!base) return [];
 
-  // Дата изменения не указывается: прежде стояло «сейчас» на каждый
+  // Дата изменения — дата последней правки макета страницы (Р-1010). До
+  // того поле не выводилось (Р-254): прежде стояло «сейчас» на каждый
   // запрос, и поисковик, видя постоянно новую дату при неизменной странице,
-  // перестаёт доверять полю по всему сайту. Честной даты правки у страниц
-  // нет — макеты правятся в репозитории, а не в базе (решение Р-254).
+  // перестаёт доверять полю по всему сайту, а честной даты у страниц не
+  // было. Теперь она есть: `content/page-dates.generated.ts` хранит свёртку
+  // макета и дату, которая меняется только вместе со свёрткой. Страница без
+  // записи выходит без даты — как прежде.
   return PAGES.map(({ path, priority }) => ({
     url: `${base}${path === '/' ? '/' : path}`,
+    ...(PAGE_DATES[path] ? { lastModified: PAGE_DATES[path].date } : {}),
     changeFrequency: priority === 1 ? 'weekly' : 'monthly',
     priority,
   }));
