@@ -21,12 +21,12 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/business": {
     "layout": "BusinessPage",
-    "sha256": "4da676d745e6199cf4b66e9bfe9497b5d709abc0414e91394191e937be413d05",
+    "sha256": "8aa2e00e9fededc12ecc9985f091e725ae4cee37b512f93f82fb58a072574c83",
     "date": "2026-11-25"
   },
   "/kandidatskaya-dissertaciya": {
     "layout": "CandidatePage",
-    "sha256": "82aa768dc9fa2e5c69367f33ba4813cad531fd0154bbef9c1119173373323fd4",
+    "sha256": "08464d12a4d28802c7730b7e09a95c4009b5efe482fd385e471467d2fdab5f61",
     "date": "2026-11-25"
   },
   "/niokr": {
@@ -36,12 +36,12 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/magisterskaya-dissertaciya": {
     "layout": "MasterPage",
-    "sha256": "d0fdf387641dc0d91919e533e3bab999532afb4a118c3c2e2e301c6c8a835cc9",
+    "sha256": "7a228be4e174e52404aa211d85a6b53232059bb2d2ffbf807236c9103907a3f5",
     "date": "2026-11-25"
   },
   "/statya-vak": {
     "layout": "ArticlePage",
-    "sha256": "6f07bcab5caf5c56a1ae47f98550e030ef95e87d9c65f19add010fd6222505a9",
+    "sha256": "15f3fd9679be496fc6d8055d736565babfaaf9ba06a07915e3792b561f7ed716",
     "date": "2026-11-25"
   },
   "/normokontrol": {

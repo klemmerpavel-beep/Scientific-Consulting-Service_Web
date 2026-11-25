@@ -167,6 +167,68 @@ for (const c of CLUSTERS) {
   });
 }
 
+describe('цены «от» на трёх посадочных — нижняя граница договоров по виду работ (Р-1021)', () => {
+  // Источник чисел — свод книги заказов: marketing/research/01-экономика-и-сезонность.md,
+  // таблица «Виды работ», столбец «Диапазон». Ответ владельца на квиз
+  // 25.11.2026: «Взять из книги заказов».
+  const economy = read('marketing', 'research', '01-экономика-и-сезонность.md');
+  const lower = (row: string): number => {
+    const m = new RegExp(`^\\| ${row} \\|[^\\n]*\\| ([\\d\\u00a0 ]+)–[\\d\\u00a0 ]+ \\|`, 'mu').exec(economy);
+    assert.ok(m, `в своде нет строки «${row}»`);
+    return Number(m[1]!.replace(/\D/gu, ''));
+  };
+  const PRICED = [
+    { design: 'CandidatePage', row: 'Сопровождение диссертации', amount: 125000, what: 'сопровождение кандидатской диссертации' },
+    { design: 'MasterPage', row: 'Сопровождение ВКР', amount: 25000, what: 'сопровождение ВКР и магистерской диссертации' },
+    { design: 'ArticlePage', row: 'Научные публикации', amount: 20000, what: 'сопровождение научной статьи' },
+  ] as const;
+  const rub = (n: number) => `${String(n).replace(/\B(?=(\d{3})+$)/gu, ' ')} ₽`;
+
+  for (const c of PRICED) {
+    const design = read('design', `${c.design}.dc.html`);
+
+    it(`${c.design}: «от ${rub(c.amount)}» — нижняя граница диапазона «${c.row}»`, () => {
+      assert.equal(lower(c.row), c.amount);
+      const line = /<p class="sv-price"[^>]*><span[^>]*>([^<]+)<\/span><span[^>]*>([^<]+)<\/span><\/p>/u.exec(design);
+      assert.ok(line, 'нет строки цены');
+      assert.equal(plain(line[1]!), `от ${rub(c.amount)}`);
+      assert.equal(plain(line[2]!), `${c.what}. Смета фиксируется в Задании после разбора материала.`);
+      // Сумма не рвётся по разрядам и не отрывается от знака рубля.
+      assert.ok(line[1]!.includes(`от ${rub(c.amount).replace(/ /gu, ' ')}`));
+    });
+
+    it(`${c.design}: цена стоит на первом экране перед кнопкой и повторена в ответе о стоимости`, () => {
+      assert.ok(design.indexOf('class="sv-price"') > design.indexOf('<h1'));
+      assert.ok(design.indexOf('class="sv-price"') < design.indexOf('>Оставить заявку<'));
+      const faq = FAQ[`/${CLUSTERS.find((x) => x.design === c.design)!.route}`]!;
+      const about = faq.filter(({ a }) => plain(a).includes(rub(c.amount)));
+      assert.equal(about.length, 1, 'цена в ответах — ровно один раз');
+      // Других сумм на странице нет.
+      const sums = [...plain(design.replace(/<!--[\s\S]*?-->/gu, '')).matchAll(/([\d ]+) ₽/gu)].map((m) => Number(m[1]!.replace(/\D/gu, '')));
+      assert.deepEqual([...new Set(sums)], [c.amount]);
+    });
+  }
+
+  it('у посадочных без данных о договорах цены нет: НИОКР, нормоконтроль, патент, грант', () => {
+    for (const design of ['NiokrPage', 'NormPage', 'PatentPage', 'GrantPage']) {
+      assert.doesNotMatch(read('design', `${design}.dc.html`), /₽|class="sv-price"/u, design);
+    }
+  });
+
+  it('разводящие страницы и главная цен не показывают: разделы «без цен» прежние (Р-886)', () => {
+    for (const design of ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage']) {
+      assert.doesNotMatch(read('design', `${design}.dc.html`).replace(/<!--[\s\S]*?-->/gu, ''), /\d[\d  ]*₽/u, design);
+    }
+  });
+
+  it('фраза «цен на сайте нет» снята с «Компаниям»: она перестала быть верной', () => {
+    for (const source of [read('design', 'BusinessPage.dc.html'), read('app', 'src', 'components', 'pages', 'BusinessPage.tsx'), read('app', 'content', 'faq.generated.ts')]) {
+      assert.doesNotMatch(plain(source), /цен на сайте нет/u);
+    }
+    assert.match(plain(read('design', 'BusinessPage.dc.html')), /поэтому считается после разбора материалов\. Оплата идёт по этапам/u);
+  });
+});
+
 describe('главная ведёт на каждую посадочную одним переходом (Р-1020)', () => {
   const start = read('design', 'StartPage.dc.html');
   const section = start.slice(start.lastIndexOf('<section', start.indexOf('Три направления работы')), start.indexOf('</section>', start.indexOf('Три направления работы')));
