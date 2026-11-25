@@ -255,3 +255,18 @@ describe('строки заголовка разделены пробелом и
     assert.match(read('design', 'BusinessPage.dc.html'), />Пять пакетов: от техзадания<\/span> <span /u);
   });
 });
+
+describe('значок сайта отдаётся и по адресу /favicon.ico (Р-1012)', () => {
+  it('файл — контейнер ICO с тремя размерами', () => {
+    const ico = readFileSync(path.join(ROOT, 'app', 'public', 'favicon.ico'));
+    // Заголовок ICO: 0, тип 1 (значок), число изображений.
+    assert.deepEqual([ico.readUInt16LE(0), ico.readUInt16LE(2), ico.readUInt16LE(4)], [0, 1, 3]);
+    assert.deepEqual([ico.readUInt8(6), ico.readUInt8(22), ico.readUInt8(38)], [16, 32, 48]);
+    assert.ok(ico.length < 10_000, `значок ${ico.length} байт`);
+  });
+
+  it('значок в разметке страниц остаётся векторным: файла app/favicon.ico нет', () => {
+    assert.throws(() => readFileSync(path.join(ROOT, 'app', 'src', 'app', 'favicon.ico')));
+    assert.ok(readFileSync(path.join(ROOT, 'app', 'src', 'app', 'icon.svg')).length > 0);
+  });
+});
