@@ -206,3 +206,27 @@ describe('«Компаниям»: имена кнопок и ссылок сод
     }
   });
 });
+
+describe('изображения сайта хранятся в браузере сутки (Р-1009)', () => {
+  const config = read('app', 'next.config.mjs');
+
+  it('срок — сутки и неделя показа прежней копии с фоновой сверкой; «навсегда» файлам без свёртки в имени не ставится', () => {
+    assert.match(config, /const IMAGE_CACHE = 'public, max-age=86400, stale-while-revalidate=604800';/u);
+    assert.doesNotMatch(config, /IMAGE_CACHE = '[^']*immutable/u);
+  });
+
+  it('правило стоит на снимках, фотографиях и обложке ссылок', () => {
+    for (const source of ['/assets/:path*', '/photos/:path*', '/og-cover-v2.png']) {
+      assert.ok(config.includes(`{ source: '${source}', headers: [{ key: 'Cache-Control', value: IMAGE_CACHE }] },`), source);
+    }
+  });
+
+  it('обложка в правиле — та же, что объявлена страницам', () => {
+    assert.match(read('app', 'src', 'components', 'og-cover.ts'), /url: '\/og-cover-v2\.png',/u);
+  });
+
+  it('прототип кабинета и страницы под правило не попадают', () => {
+    assert.doesNotMatch(config, /source: '\/cabinet-preview[^']*', headers: \[\{ key: 'Cache-Control'/u);
+    assert.doesNotMatch(config, /source: '\/:path\*',\s+headers: \[\s+\{ key: 'Cache-Control'/u);
+  });
+});
