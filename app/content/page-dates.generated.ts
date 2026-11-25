@@ -6,8 +6,8 @@
 export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: string }> = {
   "/": {
     "layout": "StartPage",
-    "sha256": "ecb1b8dfd6d963a81d48ca40276ababa82639acbc1163d05abe44628853e44b6",
-    "date": "2026-11-22"
+    "sha256": "016b21634710f26be0726460c2e711eee463613fbc1310bb6a7681cd6830233b",
+    "date": "2026-11-25"
   },
   "/main": {
     "layout": "MainPage",
