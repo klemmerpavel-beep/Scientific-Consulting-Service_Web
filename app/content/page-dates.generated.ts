@@ -21,7 +21,7 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/business": {
     "layout": "BusinessPage",
-    "sha256": "6e6b12cea35b7b01844b9c8a100932a3d7b9eb894c6b701ba583d44601237b3c",
+    "sha256": "29ee96c0731fd81b10f873f0c9594d4e2d6d050600c977ae003daf6070a25e1d",
     "date": "2026-11-25"
   },
   "/tools": {

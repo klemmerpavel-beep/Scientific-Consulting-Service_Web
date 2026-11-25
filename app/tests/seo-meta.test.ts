@@ -251,7 +251,7 @@ describe('строки заголовка разделены пробелом и
 
   it('три заголовка, где строки стояли вплотную, читаются по словам', () => {
     assert.match(read('design', 'StudentsPage.dc.html'), />Готовьте диплом к защите<\/span> <span /u);
-    assert.match(read('design', 'BusinessPage.dc.html'), />Оформить разработку по требованиям<\/span> <span /u);
+    assert.match(read('design', 'BusinessPage.dc.html'), />Оформить НИОКР по требованиям<\/span> <span /u);
     assert.match(read('design', 'BusinessPage.dc.html'), />Пять пакетов: от техзадания<\/span> <span /u);
   });
 });
@@ -268,5 +268,20 @@ describe('значок сайта отдаётся и по адресу /favicon
   it('значок в разметке страниц остаётся векторным: файла app/favicon.ico нет', () => {
     assert.throws(() => readFileSync(path.join(ROOT, 'app', 'src', 'app', 'favicon.ico')));
     assert.ok(readFileSync(path.join(ROOT, 'app', 'src', 'app', 'icon.svg')).length > 0);
+  });
+});
+
+describe('«Компаниям»: H1 называет НИОКР (Р-1014)', () => {
+  const sources = [read('design', 'BusinessPage.dc.html'), read('app', 'src', 'components', 'pages', 'BusinessPage.tsx')];
+
+  it('H1 — «Оформить НИОКР по требованиям приёмки, гранта и патента»; подсветка на прежнем месте', () => {
+    const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/u.exec(sources[0]!)![1]!;
+    assert.equal(h1.replace(/<[^>]+>/gu, '').replace(/ /gu, ' '), 'Оформить НИОКР по требованиям приёмки, гранта и патента');
+    assert.match(h1, /<span style="position:relative">приёмки, гранта и патента<\/span>/u);
+    for (const source of sources) assert.doesNotMatch(source, /Оформить разработку по/u);
+  });
+
+  it('title и H1 называют НИОКР: страница отвечает запросу и в выдаче, и на экране', () => {
+    assert.match(/<title>([^<]*)<\/title>/u.exec(sources[0]!)![1]!, /^НИОКР/u);
   });
 });
