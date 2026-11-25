@@ -28,6 +28,9 @@ const ORG = {
   email: PRACTICE_EMAIL,
   telephone: PRACTICE_PHONE,
   areaServed: 'RU',
+  // Часы, в которые менеджер отвечает на заявки, — те же, что в формах и
+  // на странице контактов (Р-1015).
+  openingHours: 'Mo-Fr 10:00-19:00',
   knowsLanguage: 'ru',
   // Год начала работы сервиса — тот же, что в копирайте (HANDOFF, правило 6).
   foundingDate: '2016',

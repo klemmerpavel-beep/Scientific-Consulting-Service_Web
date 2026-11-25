@@ -39,6 +39,7 @@ export const PAGE_LAYOUTS = [
   ['/students', 'StudentsPage'],
   ['/business', 'BusinessPage'],
   ['/tools', 'ToolsPage'],
+  ['/contacts', 'ContactsPage'],
   ['/offer', 'OfferPage'],
   ['/privacy', 'PrivacyPage'],
   ['/consent', 'ConsentPage'],

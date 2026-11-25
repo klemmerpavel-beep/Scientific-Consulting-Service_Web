@@ -6,28 +6,33 @@
 export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: string }> = {
   "/": {
     "layout": "StartPage",
-    "sha256": "016b21634710f26be0726460c2e711eee463613fbc1310bb6a7681cd6830233b",
+    "sha256": "d2d96601378fca253adb574a0c7e941b2fed4b5bf6450eb24fdac66252ea8c05",
     "date": "2026-11-25"
   },
   "/main": {
     "layout": "MainPage",
-    "sha256": "0c739c96964be089df3b93eec86565e5aab2fa21a04cd9a9af24663053d5fbe0",
+    "sha256": "6d8c0f73e3f32e67b21e19608a6d8fa5f7264a055c71e4e8bda6578b313b36e2",
     "date": "2026-11-25"
   },
   "/students": {
     "layout": "StudentsPage",
-    "sha256": "fb644989c93a01e6bf1b625945d62aa58249bc742eaa22f0189176f75916cdb3",
+    "sha256": "35919a2d8e80990348f01b7f936eb9ee914bf94aa6e9646e7620f222a44b2e0c",
     "date": "2026-11-25"
   },
   "/business": {
     "layout": "BusinessPage",
-    "sha256": "29ee96c0731fd81b10f873f0c9594d4e2d6d050600c977ae003daf6070a25e1d",
+    "sha256": "7a67de367f566a58ec1457ede6b5cacfee0806ee89a4f8fbe803fc95130cb714",
     "date": "2026-11-25"
   },
   "/tools": {
     "layout": "ToolsPage",
-    "sha256": "c3753d219fc92f8182b14a98cf7ffea7d2629bb9a04814a2aacc6a63620d4645",
-    "date": "2026-11-22"
+    "sha256": "32648029d3d978c1558e52f9f4473ead9a2f267dc2681b5b0b8ca1636e6f48fd",
+    "date": "2026-11-25"
+  },
+  "/contacts": {
+    "layout": "ContactsPage",
+    "sha256": "b7e734eb723b7c39ce2ee12ac47fd0b31970a3adfa8188cbf53d59f803083db5",
+    "date": "2026-11-25"
   },
   "/offer": {
     "layout": "OfferPage",

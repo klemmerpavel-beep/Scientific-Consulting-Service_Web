@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Перенос девяти макетов в компоненты и сверка ассетов сайта ProDisser.
+# Перенос макетов в компоненты и сверка ассетов сайта ProDisser.
 #
 #   sync-check.sh            перенести макеты, показать изменённые компоненты,
 #                            сверить design/assets с app/public/assets
@@ -25,7 +25,8 @@ StudentsPage:StudentsPage:students BusinessPage:BusinessPage:business
 OfferPage:OfferPage:landing PrivacyPage:PrivacyPage:landing
 ConsentPage:ConsentPage:landing NotFoundPage:NotFoundPage:landing
 ExpertsPage:ExpertsPage:landing
-ToolsPage:ToolsPage:landing"
+ToolsPage:ToolsPage:landing
+ContactsPage:ContactsPage:landing"
 
 declare -A before
 for f in "$PAGES"/*.tsx "$PAGES"/*.ts; do [ -e "$f" ] || continue; before[$f]=$(sha1sum "$f" | cut -c1-40); done
