@@ -167,6 +167,35 @@ for (const c of CLUSTERS) {
   });
 }
 
+describe('главная ведёт на каждую посадочную одним переходом (Р-1020)', () => {
+  const start = read('design', 'StartPage.dc.html');
+  const section = start.slice(start.lastIndexOf('<section', start.indexOf('Три направления работы')), start.indexOf('</section>', start.indexOf('Три направления работы')));
+  const line = /<p class="pd-cluster"[^>]*>(Отдельные страницы направлений): ([\s\S]*?)\.<\/p>/u.exec(section);
+
+  it('строка стоит в разделе «Три направления работы», после карточек, и она на главной одна', () => {
+    assert.ok(line, 'нет строки со ссылками на посадочные');
+    assert.ok(section.indexOf('class="pd-routes"') < section.indexOf('class="pd-cluster"'));
+    assert.equal((start.match(/class="pd-cluster"/gu) ?? []).length, 1);
+  });
+
+  it('в строке — все посадочные, каждая один раз, подчёркнутой ссылкой', () => {
+    const links = [...line![2]!.matchAll(/<a href="\.\/([a-z-]+)\.html" style="([^"]*)">([^<]+)<\/a>/gu)];
+    assert.deepEqual(links.map((m) => m[1]).sort(), CLUSTERS.map((c) => c.route).sort());
+    for (const m of links) assert.match(m[2]!, /text-decoration:underline/u);
+    assert.doesNotMatch(plain(line![2]!.replace(/<[^>]+>/gu, '')), /заказ|под ключ|написани/iu);
+  });
+
+  it('карточки трёх направлений прежние: ссылки на «Аспирантам», «Студентам», «Компаниям»', () => {
+    const cards = [...section.matchAll(/<a class="pd-lift" href="\.\/(students|main|business)\.html"/gu)].map((m) => m[1]);
+    assert.deepEqual([...new Set(cards)].sort(), ['business', 'main', 'students']);
+  });
+
+  it('в компоненте ссылки ведут на маршруты посадочных', () => {
+    const tsx = read('app', 'src', 'components', 'pages', 'StartPage.tsx');
+    for (const c of CLUSTERS) assert.ok(tsx.includes(`href="/${c.route}"`), c.route);
+  });
+});
+
 describe('навигационная цепочка посадочных и разметка BreadcrumbList (Р-1018)', async () => {
   const sync = await import('../scripts/seo-sync.mjs');
   const { BREADCRUMBS } = await import('../content/breadcrumbs.generated.ts');
