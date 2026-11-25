@@ -4,6 +4,7 @@ import { meta } from '../../components/pages/GrantPage.meta';
 import { OG_COVER, OG_SITE } from '../../components/og-cover';
 import OrgSchema from '../../components/OrgSchema';
 import FaqSchema from '../../components/FaqSchema';
+import BreadcrumbSchema from '../../components/BreadcrumbSchema';
 
 export const metadata: Metadata = {
   title: meta.title,
@@ -18,6 +19,7 @@ export default function Route() {
       <Page />
       <OrgSchema />
       <FaqSchema page="/grant" />
+      <BreadcrumbSchema page="/grant" />
     </>
   );
 }

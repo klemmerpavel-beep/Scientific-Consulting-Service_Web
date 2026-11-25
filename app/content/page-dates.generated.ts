@@ -26,37 +26,37 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/kandidatskaya-dissertaciya": {
     "layout": "CandidatePage",
-    "sha256": "67c10c962f9755a7ac998e1522947d79a38738e2080af7f13e1b029cf481f5d6",
+    "sha256": "82aa768dc9fa2e5c69367f33ba4813cad531fd0154bbef9c1119173373323fd4",
     "date": "2026-11-25"
   },
   "/niokr": {
     "layout": "NiokrPage",
-    "sha256": "b7d15f338a48422c125b4764426892af65bcc36b4efc2d48f2f5171ca4653553",
+    "sha256": "87bedb2a8feb9b35e7a28ae5d3624d7af56c65570f1cc62269937bf9f589b5c0",
     "date": "2026-11-25"
   },
   "/magisterskaya-dissertaciya": {
     "layout": "MasterPage",
-    "sha256": "7a6135cbaad2c54abdf79a89c60e229eefb11ad5eaa608f2d40f9fd18c22818f",
+    "sha256": "d0fdf387641dc0d91919e533e3bab999532afb4a118c3c2e2e301c6c8a835cc9",
     "date": "2026-11-25"
   },
   "/statya-vak": {
     "layout": "ArticlePage",
-    "sha256": "027a284c20cb9e3d1aa6341831b924891b37e0d39fbc07a207991aa91ac0e9b4",
+    "sha256": "6f07bcab5caf5c56a1ae47f98550e030ef95e87d9c65f19add010fd6222505a9",
     "date": "2026-11-25"
   },
   "/normokontrol": {
     "layout": "NormPage",
-    "sha256": "a3794cd4fd3014f2787b9654102756a62c82493774fe546eff184a9e761486c2",
+    "sha256": "d78ce83aacf513a6803363390c8d151fe9216348ae50204003e51244c900dcab",
     "date": "2026-11-25"
   },
   "/patent": {
     "layout": "PatentPage",
-    "sha256": "6aa2444e4cba0b736b4467bc500e5223ae7a756ba14961e694a8f59e08059942",
+    "sha256": "105617f8449ccdca28d7c552b89d038be2c00d37b0710cc6047c9f9bbbad40e3",
     "date": "2026-11-25"
   },
   "/grant": {
     "layout": "GrantPage",
-    "sha256": "b2e2ec9cca75b1ce2051bd40d6c8b51e177bd22ddd141f6c90e3fd0a30a158a7",
+    "sha256": "37f5d3dfbd88f3b7815abb74dba263499e047d9a901f3b8985a33e8d464e322e",
     "date": "2026-11-25"
   },
   "/tools": {

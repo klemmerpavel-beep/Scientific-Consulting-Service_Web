@@ -167,6 +167,58 @@ for (const c of CLUSTERS) {
   });
 }
 
+describe('навигационная цепочка посадочных и разметка BreadcrumbList (Р-1018)', async () => {
+  const sync = await import('../scripts/seo-sync.mjs');
+  const { BREADCRUMBS } = await import('../content/breadcrumbs.generated.ts');
+  const PARENT_NAME: Record<string, string> = { main: 'Аспирантам', students: 'Студентам', business: 'Компаниям' };
+
+  it('порождённый файл совпадает с цепочками макетов; запись есть у каждой посадочной и только у них', () => {
+    assert.equal(read('app', 'content', 'breadcrumbs.generated.ts'), sync.renderCrumbs(sync.collectCrumbs()));
+    assert.deepEqual(Object.keys(BREADCRUMBS).sort(), CLUSTERS.map((c) => `/${c.route}`).sort());
+  });
+
+  for (const c of CLUSTERS) {
+    it(`/${c.route}: Главная → ${PARENT_NAME[c.parentRoute]} → страница; последнее звено — не ссылка`, () => {
+      const design = read('design', `${c.design}.dc.html`);
+      const nav = /<nav aria-label="Навигационная цепочка"[^>]*>([\s\S]*?)<\/nav>/u.exec(design)?.[1];
+      assert.ok(nav, 'нет цепочки');
+      // Цепочка стоит до заголовка страницы.
+      assert.ok(design.indexOf('Навигационная цепочка') < design.indexOf('<h1'));
+      const links = [...nav.matchAll(/<a href="([^"]+)"[^>]*>([^<]*)<\/a>/gu)].map((m) => [m[1], m[2]]);
+      assert.deepEqual(links, [['./index.html', 'Главная'], [`./${c.parentRoute}.html`, PARENT_NAME[c.parentRoute]]]);
+      assert.match(nav, /<li aria-current="page"[^>]*>[^<]+<\/li>/u);
+      // Ссылки цепочки — цели не ниже 44 px (Р-57).
+      for (const m of nav.matchAll(/<a href="[^"]+" style="([^"]*)"/gu)) assert.match(m[1]!, /min-height:44px/u);
+
+      const trail = BREADCRUMBS[`/${c.route}`]!;
+      assert.deepEqual(trail.map((t) => t.path), ['/', `/${c.parentRoute}`, `/${c.route}`]);
+      assert.deepEqual(trail.slice(0, 2).map((t) => t.name), ['Главная', PARENT_NAME[c.parentRoute]]);
+      assert.ok(plain(body(design)).includes(`Главная / ${PARENT_NAME[c.parentRoute]} / ${trail[2]!.name}`));
+      assert.ok(read('app', 'src', 'app', c.route, 'page.tsx').includes(`<BreadcrumbSchema page="/${c.route}" />`));
+    });
+  }
+
+  it('название разводящей страницы в цепочке — её имя в метке первого экрана или в навигации сайта', () => {
+    // «Аспирантам», «Студентам», «Компаниям» — имена страниц в документах проекта и на главной.
+    const start = plain(read('design', 'StartPage.dc.html'));
+    for (const name of ['Аспирантам', 'Студентам']) assert.ok(start.includes(name), name);
+  });
+
+  it('разметка: BreadcrumbList, звенья с позицией и абсолютным адресом; витрина и сборка без адреса её не выводят', () => {
+    const component = read('app', 'src', 'components', 'BreadcrumbSchema.tsx');
+    assert.match(component, /'@type': 'BreadcrumbList',/u);
+    assert.match(component, /'@type': 'ListItem',\n\s+position: i \+ 1,\n\s+name,\n\s+item: `\$\{url\}\$\{path === '\/' \? '\/' : path\}`,/u);
+    assert.match(component, /if \(!trail\?\.length \|\| !url \|\| process\.env\.NEXT_PUBLIC_PREVIEW === '1'\) return null;/u);
+  });
+
+  it('у разводящих страниц, главной и документных страниц цепочки и разметки нет', () => {
+    for (const dir of ['main', 'students', 'business', 'tools', 'contacts', 'offer']) {
+      assert.doesNotMatch(read('app', 'src', 'app', dir, 'page.tsx'), /BreadcrumbSchema/u);
+    }
+    assert.doesNotMatch(read('app', 'src', 'app', 'page.tsx'), /BreadcrumbSchema/u);
+  });
+});
+
 describe('посадочные не вводят новых фактов: числа и нормы — те же, что на разводящих страницах', () => {
   const candidate = plain(body(read('design', 'CandidatePage.dc.html')));
   const main = read('design', 'MainPage.dc.html');

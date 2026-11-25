@@ -1,7 +1,8 @@
 /**
  * Данные для поисковых систем, которые выводятся из макетов (Р-1010).
  *
- * Два порождаемых файла в `app/content/`:
+ * Три порождаемых файла в `app/content/` (третий — `breadcrumbs.generated.ts`,
+ * навигационные цепочки посадочных для разметки BreadcrumbList, Р-1018):
  *
  * - `page-dates.generated.ts` — дата последней правки каждой страницы карты
  *   сайта. Дата меняется только вместе с макетом: рядом с ней хранится
@@ -31,6 +32,7 @@ const ROOT = path.join(APP, '..');
 
 export const DATES_OUTPUT = path.join(APP, 'content', 'page-dates.generated.ts');
 export const FAQ_OUTPUT = path.join(APP, 'content', 'faq.generated.ts');
+export const CRUMBS_OUTPUT = path.join(APP, 'content', 'breadcrumbs.generated.ts');
 
 /** Страницы карты сайта и макеты, из которых они перенесены. */
 export const PAGE_LAYOUTS = [
@@ -128,6 +130,30 @@ export function collectFaq() {
   return Object.fromEntries(FAQ_LAYOUTS.map(([route, layout]) => [route, layoutFaq(layout)]));
 }
 
+/**
+ * Навигационная цепочка страницы (Р-1018): ссылки и текущая страница из
+ * `<nav aria-label="Навигационная цепочка">` макета. Адрес `./main.html`
+ * переводится так же, как это делает конвертер: `/main`, а `./index.html`
+ * — `/`. У страницы без цепочки записи нет.
+ */
+export function layoutCrumbs(layout, route) {
+  const html = readFileSync(layoutPath(layout), 'utf8');
+  const nav = /<nav aria-label="Навигационная цепочка"[^>]*>([\s\S]*?)<\/nav>/u.exec(html)?.[1];
+  if (!nav) return null;
+  const text = (value) => value.replace(/<[^>]+>/gu, '').replace(/\u00a0/gu, ' ').trim();
+  const trail = [...nav.matchAll(/<a href="\.\/([a-z-]+)\.html"[^>]*>([\s\S]*?)<\/a>/gu)]
+    .map(([, file, name]) => ({ name: text(name), path: file === 'index' ? '/' : `/${file}` }));
+  const current = /<li aria-current="page"[^>]*>([\s\S]*?)<\/li>/u.exec(nav)?.[1];
+  if (trail.length === 0 || !current) throw new Error(`${layout}: в цепочке нет ссылок или текущей страницы`);
+  return [...trail, { name: text(current), path: route }];
+}
+
+export function collectCrumbs() {
+  return Object.fromEntries(
+    PAGE_LAYOUTS.map(([route, layout]) => [route, layoutCrumbs(layout, route)]).filter(([, trail]) => trail),
+  );
+}
+
 const DATES_HEAD = `// Сгенерировано tools/seo-sync.mjs из макетов design/*.dc.html. Руками не
 // править: дата страницы меняется вместе со свёрткой её макета — после
 // правки макета выполнить \`node tools/seo-sync.mjs\` из корня репозитория
@@ -142,18 +168,27 @@ const FAQ_HEAD = `// Сгенерировано tools/seo-sync.mjs из разд
 
 export const FAQ: Record<string, { q: string; a: string }[]> = `;
 
+const CRUMBS_HEAD = `// Сгенерировано tools/seo-sync.mjs из навигационных цепочек макетов
+// design/*.dc.html. Руками не править: правится макет, затем
+// \`node tools/seo-sync.mjs\` из корня репозитория (его же выполняет
+// sync-check.sh). Решение Р-1018.
+
+export const BREADCRUMBS: Record<string, { name: string; path: string }[]> = `;
+
+export const renderCrumbs = (crumbs) => `${CRUMBS_HEAD}${JSON.stringify(crumbs, null, 2)};\n`;
 export const renderDates = (dates) => `${DATES_HEAD}${JSON.stringify(dates, null, 2)};\n`;
 export const renderFaq = (faq) => `${FAQ_HEAD}${JSON.stringify(faq, null, 2)};\n`;
 
 /** Что записал бы сценарий сейчас; `date` — для изменённых макетов. */
 export function expected(date = today()) {
   const hashes = Object.fromEntries(PAGE_LAYOUTS.map(([, layout]) => [layout, layoutHash(layout)]));
-  return { dates: nextDates(readDates(), hashes, date), faq: collectFaq() };
+  return { dates: nextDates(readDates(), hashes, date), faq: collectFaq(), crumbs: collectCrumbs() };
 }
 
 export function writeAll(date = today()) {
-  const { dates, faq } = expected(date);
+  const { dates, faq, crumbs } = expected(date);
   writeFileSync(DATES_OUTPUT, renderDates(dates));
   writeFileSync(FAQ_OUTPUT, renderFaq(faq));
-  return { dates, faq };
+  writeFileSync(CRUMBS_OUTPUT, renderCrumbs(crumbs));
+  return { dates, faq, crumbs };
 }
