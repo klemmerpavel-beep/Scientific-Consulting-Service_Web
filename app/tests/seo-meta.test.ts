@@ -230,3 +230,28 @@ describe('изображения сайта хранятся в браузере
     assert.doesNotMatch(config, /source: '\/:path\*',\s+headers: \[\s+\{ key: 'Cache-Control'/u);
   });
 });
+
+describe('строки заголовка разделены пробелом и в разметке (Р-1011)', () => {
+  // Первая строка заголовка — `span` с `display:block`, вторая — подсветка.
+  // Перенос задаёт оформление, а в разметке между словами строк не было ни
+  // пробела, ни `<br>`: разбор без таблицы стилей читал «защитепод»,
+  // «требованиямприёмки», «техзаданиядо». Пробел после блочной строки на
+  // экране не виден — он стоит в начале следующей строки и схлопывается.
+  const pages = [
+    ['StartPage', 'StartPage'], ['MainPage', 'PostgradPage'], ['StudentsPage', 'StudentsPage'],
+    ['BusinessPage', 'BusinessPage'], ['ExpertsPage', 'ExpertsPage'], ['ToolsPage', 'ToolsPage'],
+  ] as const;
+
+  for (const [design, component] of pages) {
+    it(`${design}: после блочной строки заголовка стоит пробел`, () => {
+      assert.doesNotMatch(read('design', `${design}.dc.html`), /<span style="display:block">[^<]*<\/span><span /u);
+      assert.doesNotMatch(read('app', 'src', 'components', 'pages', `${component}.tsx`), /<span style=\{\{ display: "block" \}\}>[^<]*<\/span><span /u);
+    });
+  }
+
+  it('три заголовка, где строки стояли вплотную, читаются по словам', () => {
+    assert.match(read('design', 'StudentsPage.dc.html'), />Готовьте диплом к защите<\/span> <span /u);
+    assert.match(read('design', 'BusinessPage.dc.html'), />Оформить разработку по требованиям<\/span> <span /u);
+    assert.match(read('design', 'BusinessPage.dc.html'), />Пять пакетов: от техзадания<\/span> <span /u);
+  });
+});
