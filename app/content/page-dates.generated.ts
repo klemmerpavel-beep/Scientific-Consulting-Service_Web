@@ -11,7 +11,7 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/main": {
     "layout": "MainPage",
-    "sha256": "6d8c0f73e3f32e67b21e19608a6d8fa5f7264a055c71e4e8bda6578b313b36e2",
+    "sha256": "947a4415803ab2f3c375191eb02adead2ddc27c04621dea2e357c2517e1e48f3",
     "date": "2026-11-25"
   },
   "/students": {
@@ -21,7 +21,17 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/business": {
     "layout": "BusinessPage",
-    "sha256": "7a67de367f566a58ec1457ede6b5cacfee0806ee89a4f8fbe803fc95130cb714",
+    "sha256": "163485249b5debeefa7c8c2cdd9e1cc6032f96a6757d7b5f83a61b8bc7a10ce3",
+    "date": "2026-11-25"
+  },
+  "/kandidatskaya-dissertaciya": {
+    "layout": "CandidatePage",
+    "sha256": "dbe77fb417076d8e9f585e52b11b08b2072d164273945fa7fb04c887463c24d2",
+    "date": "2026-11-25"
+  },
+  "/niokr": {
+    "layout": "NiokrPage",
+    "sha256": "efc9038f67e3dce3952db310ddd7d146c3d66b78f8f84b85fea00c7c04ee8d11",
     "date": "2026-11-25"
   },
   "/tools": {

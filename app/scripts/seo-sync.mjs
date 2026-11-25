@@ -38,6 +38,8 @@ export const PAGE_LAYOUTS = [
   ['/main', 'MainPage'],
   ['/students', 'StudentsPage'],
   ['/business', 'BusinessPage'],
+  ['/kandidatskaya-dissertaciya', 'CandidatePage'],
+  ['/niokr', 'NiokrPage'],
   ['/tools', 'ToolsPage'],
   ['/contacts', 'ContactsPage'],
   ['/offer', 'OfferPage'],
@@ -50,6 +52,8 @@ export const FAQ_LAYOUTS = [
   ['/main', 'MainPage'],
   ['/students', 'StudentsPage'],
   ['/business', 'BusinessPage'],
+  ['/kandidatskaya-dissertaciya', 'CandidatePage'],
+  ['/niokr', 'NiokrPage'],
 ];
 
 const layoutPath = (layout) => path.join(ROOT, 'design', `${layout}.dc.html`);

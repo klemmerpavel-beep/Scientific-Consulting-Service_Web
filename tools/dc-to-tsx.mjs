@@ -32,6 +32,7 @@ const ROUTES = {
   './privacy.html': '/privacy', './consent.html': '/consent',
   './cabinet.html': '/cabinet', './experts.html': '/experts',
   './tools.html': '/tools', './contacts.html': '/contacts',
+  './kandidatskaya-dissertaciya.html': '/kandidatskaya-dissertaciya', './niokr.html': '/niokr',
 };
 
 const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComplete',

@@ -115,7 +115,7 @@ function prefixInternalLinks() {
 
   // Кабинета в витрине нет (см. список убираемого выше), поэтому его нет и
   // здесь: ссылка на него с посадочной ведёт в «страницу не найдена» стенда.
-  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent', 'experts'];
+  const routes = ['main', 'students', 'business', 'offer', 'privacy', 'consent', 'experts', 'tools', 'contacts', 'kandidatskaya-dissertaciya', 'niokr'];
   const rules = [
     ...routes.flatMap((r) => [
       // Ссылка с якорем идёт первой: правило без якоря ищет закрывающую
