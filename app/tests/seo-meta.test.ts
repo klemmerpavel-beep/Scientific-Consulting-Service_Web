@@ -90,7 +90,8 @@ describe('robots.txt: метки рекламы не плодят дублей �
   const prod = robotsTxt({ demoStand: false, base: 'https://prodisser.ru' });
 
   it('Clean-param перечисляет метки Директа и отметки перехода Яндекса', () => {
-    assert.match(prod, /^Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid$/mu);
+    // Р-1008: к меткам Директа добавлены метки других площадок.
+    assert.match(prod, /^Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&erid&_openstat&utm_referrer&gclid&fbclid$/mu);
     // Каждая метка из объявлений `marketing/campaigns` закрыта.
     const ads = read('marketing', 'campaigns', 'direct.json');
     for (const param of new Set([...ads.matchAll(/[?&](utm_[a-z]+)=/gu)].map((m) => m[1]!))) {
@@ -104,6 +105,15 @@ describe('robots.txt: метки рекламы не плодят дублей �
     }
     // `Disallow: /cabinet` без косой черты спрятал бы от робота `noindex` страницы входа.
     assert.ok(!prod.split('\n').includes('Disallow: /cabinet'));
+  });
+
+  it('директива одна и укладывается в предел Яндекса — 500 знаков (Р-1008)', () => {
+    const lines = prod.split('\n').filter((line) => line.startsWith('Clean-param:'));
+    assert.equal(lines.length, 1);
+    assert.ok(lines[0]!.length - 'Clean-param: '.length <= 500);
+    // Параметр, который меняет содержимое страницы, в перечень не попадает:
+    // у сайта таких нет, а `page` или `q` Яндекс счёл бы незначащими.
+    for (const param of CLEAN_PARAMS) assert.match(param, /^(utm_[a-z]+|yclid|ysclid|erid|_openstat|gclid|fbclid)$/u);
   });
 
   it('демонстрационный стенд закрыт целиком, без карты', () => {
