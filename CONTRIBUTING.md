@@ -13,7 +13,7 @@
 уронит сборку: CI переносит макеты заново и сверяет результат с тем, что
 лежит в репозитории.
 
-Соответствие тринадцати макетов и компонентов:
+Соответствие восемнадцати макетов и компонентов:
 
 | Макет | Компонент | Маршрут |
 |---|---|---|
@@ -30,6 +30,11 @@
 | `design/ContactsPage.dc.html` | `ContactsPage.tsx` | `/contacts` |
 | `design/CandidatePage.dc.html` | `CandidatePage.tsx` | `/kandidatskaya-dissertaciya` |
 | `design/NiokrPage.dc.html` | `NiokrPage.tsx` | `/niokr` |
+| `design/MasterPage.dc.html` | `MasterPage.tsx` | `/magisterskaya-dissertaciya` |
+| `design/ArticlePage.dc.html` | `ArticlePage.tsx` | `/statya-vak` |
+| `design/NormPage.dc.html` | `NormPage.tsx` | `/normokontrol` |
+| `design/PatentPage.dc.html` | `PatentPage.tsx` | `/patent` |
+| `design/GrantPage.dc.html` | `GrantPage.tsx` | `/grant` |
 
 Обратите внимание на вторую строку: макет называется `MainPage`, компонент —
 `PostgradPage`, а маршрут — `/main`. Это историческое расхождение, менять его
@@ -55,7 +60,12 @@ for t in "StartPage:StartPage:landing" \
          "ToolsPage:ToolsPage:landing" \
          "ContactsPage:ContactsPage:landing" \
          "CandidatePage:CandidatePage:landing" \
-         "NiokrPage:NiokrPage:landing"; do
+         "NiokrPage:NiokrPage:landing" \
+         "MasterPage:MasterPage:landing" \
+         "ArticlePage:ArticlePage:landing" \
+         "NormPage:NormPage:landing" \
+         "PatentPage:PatentPage:landing" \
+         "GrantPage:GrantPage:landing"; do
   IFS=: read -r src name source <<< "$t"
   node tools/dc-to-tsx.mjs "design/$src.dc.html" \
     "app/src/components/pages/$name.tsx" "$name" "$source"

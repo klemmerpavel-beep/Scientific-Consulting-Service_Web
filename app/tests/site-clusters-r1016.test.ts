@@ -1,5 +1,5 @@
 /**
- * Посадочные под кластеры запросов (решение Р-1016; ответ владельца
+ * Посадочные под кластеры запросов (решения Р-1016, Р-1017; ответ владельца
  * на квиз 25.11.2026: «Посадочные под кластеры», ядро — «помощь и
  * сопровождение»).
  *
@@ -38,7 +38,39 @@ const CLUSTERS = [
     term: /НИОКР/u, h1: 'НИОКР по договору: от технического задания до акта приёмки',
     linkText: 'НИОКР по договору',
   },
+  // Пять кластеров по тому же образцу (Р-1017).
+  {
+    decision: 'Р-1017', design: 'MasterPage', route: 'magisterskaya-dissertaciya', parent: 'StudentsPage', parentRoute: 'students',
+    term: /магистерской диссертации/iu, h1: 'Магистерская диссертация под контролем куратора со степенью',
+    linkText: 'сопровождение магистерской диссертации',
+  },
+  {
+    decision: 'Р-1017', design: 'ArticlePage', route: 'statya-vak', parent: 'MainPage', parentRoute: 'main',
+    term: /ВАК/u, h1: 'Научная экспертиза статьи до подачи в журнал из перечня ВАК',
+    linkText: 'статья в журнал ВАК',
+  },
+  {
+    decision: 'Р-1017', design: 'NormPage', route: 'normokontrol', parent: 'MainPage', parentRoute: 'main',
+    term: /нормоконтроль диссертации/iu, h1: 'Нормоконтроль диссертации по ГОСТ Р 7.0.11-2011 и требованиям совета',
+    linkText: 'нормоконтроль диссертации',
+  },
+  {
+    decision: 'Р-1017', design: 'PatentPage', route: 'patent', parent: 'BusinessPage', parentRoute: 'business',
+    term: /патентный поиск/iu, h1: 'Патентный поиск и заявка на изобретение или полезную модель',
+    linkText: 'патентный поиск и заявка',
+  },
+  {
+    decision: 'Р-1017', design: 'GrantPage', route: 'grant', parent: 'BusinessPage', parentRoute: 'business',
+    term: /заявка на грант/iu, h1: 'Заявка на грант: от условий конкурса до комплекта документов',
+    linkText: 'заявка на грант',
+  },
 ] as const;
+
+/** Макет страницы по имени файла в ссылке: `./main.html` → `MainPage`. */
+const LAYOUT_OF: Record<string, string> = {
+  index: 'StartPage', main: 'MainPage', students: 'StudentsPage', business: 'BusinessPage', tools: 'ToolsPage',
+  ...Object.fromEntries(CLUSTERS.map((c) => [c.route, c.design])),
+};
 
 for (const c of CLUSTERS) {
   const design = read('design', `${c.design}.dc.html`);
@@ -83,9 +115,14 @@ for (const c of CLUSTERS) {
       assert.ok(tsx.includes(`href="/${c.parentRoute}#request"`));
     });
 
-    it('каждый якорь, на который ведут ссылки страницы, есть на разводящей', () => {
-      for (const m of design.matchAll(new RegExp(`href="\\./${c.parentRoute}\\.html#([a-z-]+)"`, 'gu'))) {
-        assert.ok(parent.includes(`id="${m[1]}"`), `на ${c.parent} нет якоря #${m[1]}`);
+    it('каждая ссылка страницы ведёт на существующую страницу и существующий раздел', () => {
+      const links = [...design.slice(design.indexOf('<main')).matchAll(/href="\.\/([a-z-]+)\.html(?:#([a-z-]+))?"/gu)];
+      assert.ok(links.length >= 5);
+      for (const [, file, anchor] of links) {
+        if (['offer', 'privacy', 'consent', 'contacts', 'cabinet'].includes(file!)) continue;
+        const layout = LAYOUT_OF[file!];
+        assert.ok(layout, `ссылка на неизвестную страницу ./${file}.html`);
+        if (anchor) assert.ok(read('design', `${layout}.dc.html`).includes(`id="${anchor}"`), `на ${layout} нет раздела #${anchor}`);
       }
     });
 
@@ -113,10 +150,15 @@ for (const c of CLUSTERS) {
       assert.ok(read('app', 'scripts', 'build-preview.mjs').includes(`'${c.route}'`));
     });
 
-    it('на разводящей странице — одна ссылка на посадочную, строкой под разделом', () => {
+    it('на разводящей странице — одна ссылка на посадочную, в строке под разделом', () => {
       const links = [...parent.matchAll(new RegExp(`<a href="\\./${c.route}\\.html"[^>]*>([^<]*)</a>`, 'gu'))].map((m) => plain(m[1]!));
       assert.deepEqual(links, [c.linkText]);
-      assert.match(parent, new RegExp(`<p class="pd-cluster"[^>]*>Отдельная страница направления: <a href="\\./${c.route}\\.html" style="[^"]*text-decoration:underline`, 'u'));
+      const line = /<p class="pd-cluster"[^>]*>(Отдельн(?:ая страница направления|ые страницы направлений)): ([\s\S]*?)\.<\/p>/u.exec(parent);
+      assert.ok(line, 'нет строки со ссылками на посадочные');
+      assert.ok(line[2]!.includes(`<a href="./${c.route}.html" style="`) && /text-decoration:underline/u.test(line[2]!));
+      // Строка одна; единственное или множественное число — по числу ссылок.
+      assert.equal((parent.match(/class="pd-cluster"/gu) ?? []).length, 1);
+      assert.equal(line[1] === 'Отдельная страница направления', (line[2]!.match(/<a /gu) ?? []).length === 1);
     });
 
     it('реквизитов общества на странице нет (Р-404)', () => {
@@ -151,6 +193,53 @@ describe('посадочные не вводят новых фактов: чис
   });
 
   it('часы ответа менеджера — те же, что в формах: Пн—Пт 10:00—19:00', () => {
-    for (const text of [candidate, niokr]) assert.match(text, /Пн—Пт 10:00—19:00/u);
+    for (const c of CLUSTERS) assert.match(plain(body(read('design', `${c.design}.dc.html`))), /Пн—Пт 10:00—19:00/u, c.design);
+  });
+
+  it('статья ВАК: четыре числа публикаций — числа таблицы «Аспирантам»; отраслей в первой строке двенадцать (Р-1017)', () => {
+    const article = plain(body(read('design', 'ArticlePage.dc.html')));
+    const rows = [...main.matchAll(/\['([^']+)', (\d+), (\d+)\]/gu)].filter((m) => /отрасли науки|науки;/u.test(m[1]!));
+    assert.deepEqual(rows.map((m) => [Number(m[2]), Number(m[3])]), [[3, 15], [2, 10]]);
+    assert.match(article, /теология не менее 3 Кандидатская: остальные отрасли науки не менее 2 Докторская: те же двенадцать отраслей науки не менее 15 Докторская: остальные отрасли науки не менее 10/u);
+    assert.equal(plain(rows[0]![1]!).split(/[,;] /u).length, 12);
+    for (const part of ['из перечня ВАК или индексируемый в Scopus и Web of Science', 'О публикации решает редакция журнала.']) {
+      assert.ok(article.includes(part) && plain(main).includes(part), part);
+    }
+  });
+
+  it('нормоконтроль: три стандарта — те же, что на «Аспирантам», «Студентам» и «Инструментах» (Р-1017)', () => {
+    const norm = plain(body(read('design', 'NormPage.dc.html')));
+    const sources = { 'ГОСТ Р 7.0.11-2011': 'MainPage', 'ГОСТ 7.32': 'StudentsPage', 'ГОСТ Р 7.0.100-2018': 'ToolsPage' };
+    for (const [gost, layout] of Object.entries(sources)) {
+      assert.ok(norm.includes(gost) && plain(read('design', `${layout}.dc.html`)).includes(gost), gost);
+    }
+    // Шесть участков проверки — из перечня «Семь причин возврата с нормоконтроля».
+    const students = plain(read('design', 'StudentsPage.dc.html'));
+    for (const fix of ['Проверяем сквозную нумерацию и ссылки на приложения в тексте.', 'Сверяем описания с ГОСТ, отмечаем дубли и битые ссылки.', 'Сверяем оглавление с заголовками и нумерацию страниц.']) {
+      assert.ok(norm.includes(fix) && students.includes(fix), fix);
+    }
+  });
+
+  it('магистерская: ГОСТ 7.32, перечень «Что прислать» и ответ о научном руководителе — как на «Студентам» (Р-1017)', () => {
+    // Макет целиком: ответы «Вопросов» стоят в данных сценария.
+    const master = plain(read('design', 'MasterPage.dc.html'));
+    const students = plain(read('design', 'StudentsPage.dc.html'));
+    for (const part of ['ГОСТ 7.32', 'Тему работы и требования кафедры к оформлению.', 'Дату защиты или дату сдачи на кафедру.', 'Мы не связываемся с кафедрой и вузом без вашей просьбы']) {
+      assert.ok(master.includes(part) && students.includes(part), part);
+    }
+  });
+
+  it('патент и грант: права, решение получателя и возврат оплаты — словами «Компаниям» (Р-1017)', () => {
+    const patent = plain(read('design', 'PatentPage.dc.html'));
+    const grant = plain(read('design', 'GrantPage.dc.html'));
+    for (const part of ['не становясь правообладателем', 'Материалы проекта не используются в других работах и не публикуются как примеры.', 'отдельный первый этап с собственным актом']) {
+      assert.ok(patent.includes(part) && business.includes(part), part);
+    }
+    for (const part of ['соответствие документа требованиям получателя на дату подачи', 'оплата за него возвращается по вашему заявлению', 'Подбираем программу под стадию и отрасль']) {
+      assert.ok(grant.includes(part) && business.includes(part), part);
+    }
+    // Обещания результата нет: решение — за фондом и ведомством.
+    assert.match(grant, /Решение принимает фонд по итогам экспертизы, и его мы не обещаем/u);
+    assert.match(patent, /решение принимает ведомство по своему усмотрению, и его мы не обещаем/u);
   });
 });

@@ -73,8 +73,8 @@ describe('раздел «Вопросы»: ответы в разметке ст
   it('порождённый файл совпадает с макетами слово в слово', () => {
     assert.equal(read('app', 'content', 'faq.generated.ts'), sync.renderFaq(sync.collectFaq()));
     // Три разводящие страницы с раскрывающимися вопросами и посадочные
-    // кластеров (Р-1016), где ответы видны сразу.
-    assert.deepEqual(Object.keys(FAQ), [...pages.map(([route]) => route), '/kandidatskaya-dissertaciya', '/niokr']);
+    // кластеров (Р-1016, Р-1017), где ответы видны сразу.
+    assert.deepEqual(Object.keys(FAQ), [...pages.map(([route]) => route), '/kandidatskaya-dissertaciya', '/niokr', '/magisterskaya-dissertaciya', '/statya-vak', '/normokontrol', '/patent', '/grant']);
   });
 
   for (const [route, design, component, dir] of pages) {

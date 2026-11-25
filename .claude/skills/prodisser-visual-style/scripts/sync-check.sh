@@ -27,7 +27,8 @@ ConsentPage:ConsentPage:landing NotFoundPage:NotFoundPage:landing
 ExpertsPage:ExpertsPage:landing
 ToolsPage:ToolsPage:landing
 ContactsPage:ContactsPage:landing
-CandidatePage:CandidatePage:landing NiokrPage:NiokrPage:landing"
+CandidatePage:CandidatePage:landing NiokrPage:NiokrPage:landing
+MasterPage:MasterPage:landing ArticlePage:ArticlePage:landing NormPage:NormPage:landing PatentPage:PatentPage:landing GrantPage:GrantPage:landing"
 
 declare -A before
 for f in "$PAGES"/*.tsx "$PAGES"/*.ts; do [ -e "$f" ] || continue; before[$f]=$(sha1sum "$f" | cut -c1-40); done

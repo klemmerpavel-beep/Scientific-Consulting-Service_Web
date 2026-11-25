@@ -15,8 +15,8 @@ import { describe, it } from 'node:test';
 import { bind } from './helpers/short-words.ts';
 
 const DESIGN = path.join(import.meta.dirname, '../../design');
-// С Р-1015 и Р-1016 — и страница контактов, и посадочные кластеров.
-const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'ToolsPage', 'NotFoundPage', 'ContactsPage', 'CandidatePage', 'NiokrPage'];
+// С Р-1015…Р-1017 — и страница контактов, и посадочные кластеров.
+const PAGES = ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage', 'ExpertsPage', 'ToolsPage', 'NotFoundPage', 'ContactsPage', 'CandidatePage', 'NiokrPage', 'MasterPage', 'ArticlePage', 'NormPage', 'PatentPage', 'GrantPage'];
 
 /** Макет без комментариев: в них решения цитируют запреты дословно. */
 function source(page: string): string {

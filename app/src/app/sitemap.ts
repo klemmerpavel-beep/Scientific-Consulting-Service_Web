@@ -14,6 +14,12 @@ const PAGES: { path: string; priority: number }[] = [
   // Посадочные под кластеры запросов (Р-1016).
   { path: '/kandidatskaya-dissertaciya', priority: 0.8 },
   { path: '/niokr', priority: 0.8 },
+  // Ещё пять кластеров по тому же образцу (Р-1017).
+  { path: '/magisterskaya-dissertaciya', priority: 0.8 },
+  { path: '/statya-vak', priority: 0.8 },
+  { path: '/normokontrol', priority: 0.8 },
+  { path: '/patent', priority: 0.8 },
+  { path: '/grant', priority: 0.8 },
   { path: '/tools', priority: 0.6 },
   { path: '/contacts', priority: 0.5 },
   { path: '/offer', priority: 0.3 },

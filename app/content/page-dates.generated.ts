@@ -11,27 +11,52 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/main": {
     "layout": "MainPage",
-    "sha256": "947a4415803ab2f3c375191eb02adead2ddc27c04621dea2e357c2517e1e48f3",
+    "sha256": "85c8fff1fb0ffed71819f5ca884229180d4f9cd6cd2ab7c9f2bb88aef9c1a38b",
     "date": "2026-11-25"
   },
   "/students": {
     "layout": "StudentsPage",
-    "sha256": "35919a2d8e80990348f01b7f936eb9ee914bf94aa6e9646e7620f222a44b2e0c",
+    "sha256": "6d5aeebc8e8644f3b9ac995de6ee38cde48025c96320a86758d84b7bcac2a28b",
     "date": "2026-11-25"
   },
   "/business": {
     "layout": "BusinessPage",
-    "sha256": "163485249b5debeefa7c8c2cdd9e1cc6032f96a6757d7b5f83a61b8bc7a10ce3",
+    "sha256": "4da676d745e6199cf4b66e9bfe9497b5d709abc0414e91394191e937be413d05",
     "date": "2026-11-25"
   },
   "/kandidatskaya-dissertaciya": {
     "layout": "CandidatePage",
-    "sha256": "dbe77fb417076d8e9f585e52b11b08b2072d164273945fa7fb04c887463c24d2",
+    "sha256": "67c10c962f9755a7ac998e1522947d79a38738e2080af7f13e1b029cf481f5d6",
     "date": "2026-11-25"
   },
   "/niokr": {
     "layout": "NiokrPage",
-    "sha256": "efc9038f67e3dce3952db310ddd7d146c3d66b78f8f84b85fea00c7c04ee8d11",
+    "sha256": "b7d15f338a48422c125b4764426892af65bcc36b4efc2d48f2f5171ca4653553",
+    "date": "2026-11-25"
+  },
+  "/magisterskaya-dissertaciya": {
+    "layout": "MasterPage",
+    "sha256": "7a6135cbaad2c54abdf79a89c60e229eefb11ad5eaa608f2d40f9fd18c22818f",
+    "date": "2026-11-25"
+  },
+  "/statya-vak": {
+    "layout": "ArticlePage",
+    "sha256": "027a284c20cb9e3d1aa6341831b924891b37e0d39fbc07a207991aa91ac0e9b4",
+    "date": "2026-11-25"
+  },
+  "/normokontrol": {
+    "layout": "NormPage",
+    "sha256": "a3794cd4fd3014f2787b9654102756a62c82493774fe546eff184a9e761486c2",
+    "date": "2026-11-25"
+  },
+  "/patent": {
+    "layout": "PatentPage",
+    "sha256": "6aa2444e4cba0b736b4467bc500e5223ae7a756ba14961e694a8f59e08059942",
+    "date": "2026-11-25"
+  },
+  "/grant": {
+    "layout": "GrantPage",
+    "sha256": "b2e2ec9cca75b1ce2051bd40d6c8b51e177bd22ddd141f6c90e3fd0a30a158a7",
     "date": "2026-11-25"
   },
   "/tools": {
