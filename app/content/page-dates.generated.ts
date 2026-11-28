@@ -11,12 +11,12 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
   },
   "/main": {
     "layout": "MainPage",
-    "sha256": "0533fee8c98fbff51346421ea98aefeee2dd947569312cb5b44b69dc80010d7a",
+    "sha256": "5cbf0737f4536ffb3a92fba5c7cb9a16afc872a0973c2cd5d583d676882079b7",
     "date": "2026-11-28"
   },
   "/students": {
     "layout": "StudentsPage",
-    "sha256": "909d9cf100b8b3c0a537d2a3683d1d8c14e5ea6322aa85418bc967d86aec35e8",
+    "sha256": "81c0bc3d6ff99a7879d5657d665dd6ff09d739a163d3bc46d75227697c76b3e0",
     "date": "2026-11-28"
   },
   "/business": {
