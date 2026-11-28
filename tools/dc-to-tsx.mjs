@@ -34,6 +34,7 @@ const ROUTES = {
   './tools.html': '/tools', './contacts.html': '/contacts',
   './kandidatskaya-dissertaciya.html': '/kandidatskaya-dissertaciya', './niokr.html': '/niokr',
   './magisterskaya-dissertaciya.html': '/magisterskaya-dissertaciya', './statya-vak.html': '/statya-vak', './normokontrol.html': '/normokontrol', './patent.html': '/patent', './grant.html': '/grant',
+  './predzashchita-dissertacii.html': '/predzashchita-dissertacii', './ekspertiza-dissertacii.html': '/ekspertiza-dissertacii', './zashchita-diploma.html': '/zashchita-diploma', './zamechaniya-k-diplomu.html': '/zamechaniya-k-diplomu',
 };
 
 const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComplete',

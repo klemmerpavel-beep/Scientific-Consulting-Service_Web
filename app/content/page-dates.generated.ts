@@ -6,17 +6,17 @@
 export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: string }> = {
   "/": {
     "layout": "StartPage",
-    "sha256": "25016eca186fa5aea073e348aa91ae582c613bf44de43e0575ee573c78ff804d",
-    "date": "2026-11-25"
+    "sha256": "6c3cd65337d90d1b07d21d81607750e1c667318b0b8b91036dc848f7c0c33e1f",
+    "date": "2026-11-28"
   },
   "/main": {
     "layout": "MainPage",
-    "sha256": "ccfa00a7f168d0f8476376c5d6b976f1cbff1f32a38b46ae9ee2ef509bf5bd3a",
+    "sha256": "0533fee8c98fbff51346421ea98aefeee2dd947569312cb5b44b69dc80010d7a",
     "date": "2026-11-28"
   },
   "/students": {
     "layout": "StudentsPage",
-    "sha256": "5e5ffc44a5b3f946727a5663864064c1c1043b956189b583f032252c77d6347a",
+    "sha256": "909d9cf100b8b3c0a537d2a3683d1d8c14e5ea6322aa85418bc967d86aec35e8",
     "date": "2026-11-28"
   },
   "/business": {
@@ -58,6 +58,26 @@ export const PAGE_DATES: Record<string, { layout: string; sha256: string; date: 
     "layout": "GrantPage",
     "sha256": "37f5d3dfbd88f3b7815abb74dba263499e047d9a901f3b8985a33e8d464e322e",
     "date": "2026-11-25"
+  },
+  "/predzashchita-dissertacii": {
+    "layout": "PredefensePage",
+    "sha256": "c6b760af58cdde22ecc232ee46e98c53086fd51e9db600c4d21f9a022af61f8f",
+    "date": "2026-11-28"
+  },
+  "/ekspertiza-dissertacii": {
+    "layout": "ExpertisePage",
+    "sha256": "258dfe75f72c677352e0423e15ddba46470db4deaf9f4bf9ebb3308bc7e1ff76",
+    "date": "2026-11-28"
+  },
+  "/zashchita-diploma": {
+    "layout": "DefensePage",
+    "sha256": "017c5d5181a11be7281bdc7fac2b7d99ec8cf01e8994ce68031503d370832ba1",
+    "date": "2026-11-28"
+  },
+  "/zamechaniya-k-diplomu": {
+    "layout": "RemarksPage",
+    "sha256": "5f2547db14f57227cfbe2d9061bff67ffea0b32c4e312a39ed2240889f6ad91f",
+    "date": "2026-11-28"
   },
   "/tools": {
     "layout": "ToolsPage",

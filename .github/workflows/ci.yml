@@ -74,7 +74,9 @@ jobs:
                    "ContactsPage:ContactsPage:landing" \
                    "CandidatePage:CandidatePage:landing" "NiokrPage:NiokrPage:landing" \
                    "MasterPage:MasterPage:landing" "ArticlePage:ArticlePage:landing" "NormPage:NormPage:landing" \
-                   "PatentPage:PatentPage:landing" "GrantPage:GrantPage:landing"; do
+                   "PatentPage:PatentPage:landing" "GrantPage:GrantPage:landing" \
+                   "PredefensePage:PredefensePage:landing" "ExpertisePage:ExpertisePage:landing" \
+                   "DefensePage:DefensePage:landing" "RemarksPage:RemarksPage:landing"; do
             IFS=: read -r src name source <<< "$t"
             node tools/dc-to-tsx.mjs "design/$src.dc.html" \
               "app/src/components/pages/$name.tsx" "$name" "$source"
