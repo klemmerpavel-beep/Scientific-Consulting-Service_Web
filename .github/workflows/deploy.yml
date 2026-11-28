@@ -95,3 +95,23 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://prodisser.ru/api/health)
           echo "внешняя проверка: $code"
           [ "$code" = "200" ] || { echo "::error::Сайт снаружи отвечает $code"; exit 1; }
+
+      # Р-1024: Яндексу сообщаются страницы, изменённые за цикл выпуска, —
+      # по протоколу IndexNow, чтобы робот не ждал очередного обхода
+      # sitemap.xml. Шаг стоит после внешней проверки: сообщать о страницах
+      # недоступного сайта незачем. Отказ Яндекса или сети выкат не роняет
+      # (сценарий сам завершается кодом 0, continue-on-error — на случай
+      # сбоя загрузки репозитория).
+      - name: Репозиторий для сценария IndexNow
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          sparse-checkout: |
+            tools/indexnow.mjs
+            app/scripts/indexnow.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Яндексу сообщены изменённые страницы (IndexNow)
+        continue-on-error: true
+        run: node tools/indexnow.mjs
