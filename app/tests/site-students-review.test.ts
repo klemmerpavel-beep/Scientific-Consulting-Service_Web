@@ -505,12 +505,8 @@ describe('«Студентам», «Смета»: «Подбор сметы» б
     assert.match(PAGE, /estGo: \(\) => \{ const field = document\.getElementById\('rq-term'\); if \(field\) field\.value = EST_TERMS\[tm\]\[1\]; \}/u);
   });
 
-  it('в «Подборе сметы» цен и сумм нет (Р-03); ориентир раздела — одной строкой (Р-1022); тёмная панель одна, свёртка «Нормоконтроль» на месте', () => {
-    // Р-1022: над «Подбором сметы» — строка ценового ориентира; сам подбор и его данные сумм не показывают.
-    const guide = /<p class="pd-price"[^>]*>[\s\S]*?<\/p>\n/gu;
-    assert.equal((COST.match(guide) ?? []).length, 1);
-    assert.ok(COST.indexOf('class="pd-price"') < COST.indexOf('class="sp-est"'));
-    for (const source of [COST.replace(guide, ''), LOGIC]) assert.doesNotMatch(nbsp(source), /₽|руб\.|рубл|\bот \d[\d ]*(?:₽|р\.)|стоимость от/iu);
+  it('цен и сумм нет (Р-03); тёмная панель в «Смете» одна, свёртка «Нормоконтроль» на месте', () => {
+    for (const source of [COST, LOGIC]) assert.doesNotMatch(nbsp(source), /₽|руб\.|рубл|\bот \d[\d ]*(?:₽|р\.)|стоимость от/iu);
     assert.equal((COST.match(/background:var\(--pd-accent-deep\)/gu) ?? []).length, 1);
     assert.match(text(COST), /Консультация 20 минут · не оплачивается/u);
     assert.match(COST, /<div id="norm" class="sp-normbox"/u);
