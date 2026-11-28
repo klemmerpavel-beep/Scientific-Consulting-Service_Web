@@ -20,6 +20,11 @@ const PAGES: { path: string; priority: number }[] = [
   { path: '/normokontrol', priority: 0.8 },
   { path: '/patent', priority: 0.8 },
   { path: '/grant', priority: 0.8 },
+  // Четыре кластера второй очереди (Р-1023).
+  { path: '/predzashchita-dissertacii', priority: 0.8 },
+  { path: '/ekspertiza-dissertacii', priority: 0.8 },
+  { path: '/zashchita-diploma', priority: 0.8 },
+  { path: '/zamechaniya-k-diplomu', priority: 0.8 },
   { path: '/tools', priority: 0.6 },
   { path: '/contacts', priority: 0.5 },
   { path: '/offer', priority: 0.3 },

@@ -64,6 +64,27 @@ const CLUSTERS = [
     term: /заявка на грант/iu, h1: 'Заявка на грант: от условий конкурса до комплекта документов',
     linkText: 'заявка на грант',
   },
+  // Четыре кластера второй очереди (Р-1023; ответ владельца на квиз 28.11.2026: «Четыре посадочные»).
+  {
+    decision: 'Р-1023', design: 'PredefensePage', route: 'predzashchita-dissertacii', parent: 'MainPage', parentRoute: 'main',
+    term: /предзащите диссертации/iu, h1: 'Подготовка к предзащите диссертации: доклад, вопросы совета, замечания оппонентов',
+    linkText: 'подготовка к предзащите',
+  },
+  {
+    decision: 'Р-1023', design: 'ExpertisePage', route: 'ekspertiza-dissertacii', parent: 'MainPage', parentRoute: 'main',
+    term: /экспертиза диссертации/iu, h1: 'Научная экспертиза диссертации перед предзащитой',
+    linkText: 'экспертиза диссертации',
+  },
+  {
+    decision: 'Р-1023', design: 'DefensePage', route: 'zashchita-diploma', parent: 'StudentsPage', parentRoute: 'students',
+    term: /защите диплома/iu, h1: 'Подготовка к защите диплома: доклад, презентация, вопросы комиссии',
+    linkText: 'подготовка к защите диплома',
+  },
+  {
+    decision: 'Р-1023', design: 'RemarksPage', route: 'zamechaniya-k-diplomu', parent: 'StudentsPage', parentRoute: 'students',
+    term: /замечани[йя]/iu, h1: 'Диплом вернули на доработку: разбор замечаний по пунктам',
+    linkText: 'разбор замечаний к диплому',
+  },
 ] as const;
 
 /** Макет страницы по имени файла в ссылке: `./main.html` → `MainPage`. */
@@ -209,14 +230,14 @@ describe('цены «от» на трёх посадочных — нижняя 
     });
   }
 
-  it('у посадочных без данных о договорах цены нет: НИОКР, нормоконтроль, патент, грант', () => {
-    for (const design of ['NiokrPage', 'NormPage', 'PatentPage', 'GrantPage']) {
+  it('у посадочных без данных о договорах цены нет: НИОКР, нормоконтроль, патент, грант и четыре кластера Р-1023', () => {
+    for (const design of ['NiokrPage', 'NormPage', 'PatentPage', 'GrantPage', 'PredefensePage', 'ExpertisePage', 'DefensePage', 'RemarksPage']) {
       assert.doesNotMatch(read('design', `${design}.dc.html`), /₽|class="sv-price"/u, design);
     }
   });
 
-  it('разводящие страницы и главная цен не показывают: разделы «без цен» прежние (Р-886)', () => {
-    for (const design of ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage']) {
+  it('главная и «Компаниям» цен не показывают; ориентир на «Аспирантам» и «Студентам» — site-prices-r1022.test.ts', () => {
+    for (const design of ['StartPage', 'BusinessPage']) {
       assert.doesNotMatch(read('design', `${design}.dc.html`).replace(/<!--[\s\S]*?-->/gu, ''), /\d[\d  ]*₽/u, design);
     }
   });
@@ -384,5 +405,68 @@ describe('посадочные не вводят новых фактов: чис
     // Обещания результата нет: решение — за фондом и ведомством.
     assert.match(grant, /Решение принимает фонд по итогам экспертизы, и его мы не обещаем/u);
     assert.match(patent, /решение принимает ведомство по своему усмотрению, и его мы не обещаем/u);
+  });
+});
+
+describe('четыре кластера второй очереди не вводят новых фактов (Р-1023)', () => {
+  // Макеты целиком: сроки и ответы стоят и в разметке, и в данных сценария.
+  const main = plain(read('design', 'MainPage.dc.html'));
+  const studentsRaw = read('design', 'StudentsPage.dc.html');
+  const students = plain(studentsRaw);
+  const page = (design: string) => plain(read('design', `${design}.dc.html`));
+
+  it('предзащита: сроки «от 10 дней», «от 2 месяцев», «от 4 месяцев» и шаг 06 — как на «Аспирантам»', () => {
+    const text = page('PredefensePage');
+    for (const part of ['от 10 дней', 'от 2 месяцев', 'от 4 месяцев', 'Репетиция ответов на вопросы совета и разбор замечаний рецензентов.', 'ГОСТ Р 7.0.11-2011', 'ответы на вопросы диссовета', 'Разбор отзывов оппонентов и ведущей организации'.toLowerCase()]) {
+      assert.ok(text.toLowerCase().includes(part.toLowerCase()) && main.toLowerCase().includes(part.toLowerCase()), part);
+    }
+    // Срок подготовки стоит у карточки «Подготовка к предзащите» разводящей страницы.
+    assert.match(main, /\['Подготовка к предзащите', '[^']+', 'от 10 дней'\]/u);
+  });
+
+  it('экспертиза: итог разбора — три результата «Диагностики»; заключения и решения совета страница не обещает', () => {
+    const text = page('ExpertisePage');
+    for (const [title, sub] of [['Замечания куратора', 'Раздел, проблема, способ исправления'], ['Методология', 'Объект, предмет и логика доказательства'], ['План с датами', 'Сроки глав, апробации и предзащиты']] as const) {
+      assert.ok(main.includes(`'${title}', '${sub}'`), title);
+      assert.ok(text.includes(`${title}: ${sub.charAt(0).toLowerCase()}${sub.slice(1)}.`), title);
+    }
+    for (const part of ['Куратор читает текст и называет, что мешает выйти на предзащиту', 'Число правок внутри этапа не ограничено, срок ответа прописан в договоре.', 'ГОСТ Р 7.0.11-2011', 'Тема и текст не передаются третьим лицам и не используются в других работах.']) {
+      assert.ok(text.includes(part) && main.includes(part), part);
+    }
+    // Видимый текст и ответы — без комментариев макета и сценария.
+    const shown = plain(read('design', 'ExpertisePage.dc.html').replace(/<!--[\s\S]*?-->/gu, ' ').replace(/\/\*[\s\S]*?\*\//gu, ' '));
+    assert.doesNotMatch(shown.slice(shown.indexOf('</helmet>')), /заключени[ея] о соответствии|допуск[а-я]* к защите обеспеч|совет примет/iu);
+  });
+
+  it('защита диплома: сроки и состав — из «Этапов» и «Состава работ» страницы «Студентам»', () => {
+    const text = page('DefensePage');
+    assert.match(students, /\['Разбор перед предзащитой', '[^']+', 'от 3 дней', /u);
+    assert.match(students, /\['Доклад к защите', '2 дня', 2, false,/u);
+    assert.match(students, /\['Замечания и защита', '1–2 недели', 10, false,/u);
+    for (const part of ['от 3 дней', '2 дня', '1–2 недели', 'которые задаёт комиссия', 'Замечания к презентации ключевых результатов', 'вся работа по этапам, отдельные разделы или только нормоконтроль и доклад', 'Работа разбирается за один день']) {
+      assert.ok(text.includes(part) && students.includes(part), part);
+    }
+  });
+
+  it('замечания к диплому: четыре этапа и их сроки — маршрут «Работу вернули на доработку»', () => {
+    const text = page('RemarksPage');
+    const from = students.indexOf("['Работу вернули на доработку', 'около 3 недель',");
+    const to = students.indexOf("['До защиты меньше месяца',", from);
+    assert.ok(from > 0 && to > from);
+    const stages = [...students.slice(from, to).matchAll(/\['([^']+)', '([^']+)', \d+, (?:true|false),/gu)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(stages, [['Разбор замечаний', '1 день'], ['Правки по содержанию', '1–2 недели'], ['Оформление и ссылки', '3–5 дней'], ['Повторная сдача', '3 дня']]);
+    const design = read('design', 'RemarksPage.dc.html');
+    const rows = [...design.matchAll(/<li style="display:grid;grid-template-columns:minmax\(0,1fr\) auto[^>]*><span[^>]*>([^<]+)<\/span><span[^>]*>([^<]+)<\/span><\/li>/gu)].map((m) => [plain(m[1]!).split(':')[0], plain(m[2]!)]);
+    assert.deepEqual(rows, stages);
+    for (const part of ['около 3 недель', 'пункт считается закрытым только после вашей правки по существу', 'Мы не связываемся с кафедрой и вузом без вашей просьбы', 'ГОСТ 7.32']) {
+      assert.ok(text.includes(part) && students.includes(part), part);
+    }
+  });
+
+  it('страницы одного кластера не дублируют соседние: нормоконтроль и магистерская — ссылкой, а не разделом', () => {
+    assert.ok(read('design', 'RemarksPage.dc.html').includes('href="./normokontrol.html"'));
+    assert.ok(read('design', 'DefensePage.dc.html').includes('href="./zamechaniya-k-diplomu.html"'));
+    assert.ok(read('design', 'PredefensePage.dc.html').includes('href="./ekspertiza-dissertacii.html"'));
+    assert.ok(read('design', 'ExpertisePage.dc.html').includes('href="./predzashchita-dissertacii.html"'));
   });
 });
