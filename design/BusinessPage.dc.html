@@ -350,7 +350,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div class="bp-hero" style="gap:44px;align-items:start">
 <div style="min-width:0">
 <span style="display:inline-block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:24px">Бизнесу и стартап-командам</span>
-<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Оформить разработку по требованиям</span><span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">приёмки, гранта и патента</span></span></h1>
+<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Оформить НИОКР по требованиям</span> <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">приёмки, гранта и патента</span></span></h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:52ch">Техническое задание, отчётность по НИОКР, заявки на патенты и гранты, постановка прав на баланс — по действующим ГОСТ и требованиям получателя документа.</p>
 
 <form class="bp-topform" onSubmit="{{ submitTop }}" style="margin:36px 0 0;max-width:520px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
@@ -599,7 +599,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:28px">
 <div style="display:flex;flex-direction:column;gap:8px">
 <span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Предложения</span>
-<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance"><span style="display:block">Пять пакетов: от техзадания</span><span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">до постановки на баланс</span></span></h2>
+<h2 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink);max-width:30ch;text-wrap:balance"><span style="display:block">Пять пакетов: от техзадания</span> <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">до постановки на баланс</span></span></h2>
 </div>
 <span class="bp-sub" style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted);text-align:right;margin-left:auto;padding-bottom:6px;border-bottom:1px solid var(--pd-border)">Сроки и смета фиксируются календарным планом после разбора материала</span>
 </div>
@@ -630,6 +630,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </article>
 </sc-for>
 </div>
+<!-- Р-1016, Р-1017: вход на посадочные кластеров — строкой под разделом; карточки и кнопки раздела не меняются. -->
+<p class="pd-cluster" style="margin:20px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Отдельные страницы направлений: <a href="./niokr.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">НИОКР по договору</a>, <a href="./patent.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">патентный поиск и заявка</a>, <a href="./grant.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">заявка на грант</a>.</p>
 <!-- Р-978 (указание владельца 22.11.2026, С-6.6): под «Пятью пакетами» — кнопка раздела «Оставить заявку» в исполнении Р-960 (как «География»): ведёт к форме заявки прокруткой, окно не открывает; ссылки «Обсудить пакет» в карточках остаются (Р-977). Между кнопкой «Кто работает над проектом» и кнопкой «Как это выглядит внутри» было 5,8 экрана без кнопки действия. -->
 <a href="#request" style="align-self:flex-start;margin-top:28px;display:inline-flex;align-items:center;gap:12px;background:var(--pd-ink);color:var(--pd-ink-inverse);font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:{{ arrowRight }};mask:{{ arrowRight }}"></span></a>
 </section>
@@ -880,6 +882,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:8px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:8px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
 </button>
+<p hidden>{{ f.a }}</p>
 </sc-if>
 </sc-for>
 </div>
@@ -1060,6 +1063,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
 <a href="./tools.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Оформить список литературы по ГОСТ</a>
+<a href="./contacts.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Контакты</a>
 <a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Публичная оферта</a>
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>
@@ -1607,7 +1611,7 @@ class Component extends DCLogic {
         ['Кому принадлежат права на результат?',
          'Исключительные права на всё, что создано в проекте, переходят вашей компании с подписанием акта по этапу. Заявителем и правообладателем по заявкам на охранные документы выступаете вы: мы готовим документы и сопровождаем подачу, не становясь правообладателем. Материалы проекта не используются в других работах и не публикуются как примеры.'],
         ['Как считается смета и когда платить?',
-         'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов — цен на сайте нет. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
+         'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего. Вперёд за всю работу платить не нужно.'],
         ['Подойдут ли документы для учёта расходов на НИОКР?',
          'Комплект под учёт собираем: отчёт по ГОСТ 7.32-2017, акты сдачи-приёмки этапов, регистрационную и информационную карту НИОКТР. Решение о применении коэффициента по п. 7 ст. 262 НК РФ принимает налоговый орган; мы отвечаем за состав и оформление документов.']
       ].map(([q, a], i) => ({

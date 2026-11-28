@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="ProDisser — заявка на грант" description="Посадочная под кластер «заявка на грант». Решение Р-1017." -->
+<helmet>
+<title>Заявка на грант: подготовка и экспертиза — ProDisser</title>
+<meta name="description" content="Заявка на грант под требования конкурса: подбор программы, бюджет проекта, вопросы экспертного совета, отчётность по гранту. Решение принимает фонд.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ProDisser">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Заявка на грант: подготовка и экспертиза — ProDisser">
+<meta property="og:description" content="Заявка на грант под требования конкурса: подбор программы, бюджет проекта, вопросы экспертного совета, отчётность по гранту. Решение принимает фонд.">
+<meta name="twitter:card" content="summary_large_image">
+<script src="./ds-base.js"></script>
+<style>
+/* Токены палитры. Значения здесь, а не в каждом объявлении: страница
+   держит около 1700 упоминаний цвета, и смена одного оттенка иначе
+   означает правку в сотнях мест. Роли токенов — docs/DESIGN-SYSTEM.md,
+   раздел 2. Цвета внутри атрибутов SVG остаются литералами: var() в
+   презентационном атрибуте не работает. */
+:root{--pd-ink:#14161C;--pd-ink-secondary:#3D4450;--pd-ink-muted:#5C6474;--pd-ink-inverse:#FFFFFF;--pd-border:#E3E7EC;--pd-divider:#EFF1F4;--pd-surface-quiet:#F6F7F9;--pd-edge-neutral:#C4CAD4;--pd-accent:#14417A;--pd-accent-press:#0F3260;--pd-accent-deep:#0D2B52;--pd-accent-mark:#D8E4F3;--pd-accent-edge:#B4C9E5;--pd-accent-tint:#ECF1F8;--pd-button-hover:#262A33;--pd-accent-hover:#0A2145;--pd-accent-active:#081A38;--pd-ok-bg:#E6F9F1;--pd-ok-ink:#0E4E3C;--pd-err-bg:#FAE7E5;--pd-err-border:#F0C9C3;--pd-err-ink:#8E2C22;--pd-ok-border:#C5EEDD;--pd-accent-soft:#2A63B4;--pd-art-line:#E5EBF2;--pd-art-mark:#D3DEEC;--pd-art-dot:#D8DEE6}
+body{margin:0;background:var(--pd-ink-inverse)}h1,h2,h3{text-wrap:balance}p,li{text-wrap:pretty}a{color:var(--pd-accent);text-decoration:none}a:hover{color:var(--pd-accent-press)}*:focus-visible{outline:2px solid var(--pd-accent);outline-offset:2px}.pd-skip{position:absolute;left:-9999px;top:0;z-index:9;box-sizing:border-box;min-height:44px;display:flex;align-items:center;background:var(--pd-ink);color:var(--pd-ink-inverse);padding:12px 20px;border-radius:0 0 10px 0;font-size:14px;font-weight:600}.pd-skip:focus{left:0;color:var(--pd-ink-inverse)}.doc-layout{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:48px;align-items:start}.doc-toc{position:sticky;top:24px}.doc-toc-btn{display:none}.doc-toc-list{display:flex;flex-direction:column}.doc-toc-list[hidden]{display:none}
+@media (max-width:1024px){.doc-layout{grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:32px}}
+@media (max-width:768px){.doc-layout{grid-template-columns:minmax(0,1fr)}.doc-toc{position:static}.doc-toc-btn{display:flex}}
+@media (max-width:480px){.doc-pad{padding-left:20px!important;padding-right:20px!important}}
+@media (max-width:430px){.doc-mark{font-size:22px!important}}
+@media print{.doc-toc-list[hidden]{display:flex!important}.doc-toc,.doc-head,.doc-foot,.pd-skip{display:none!important}.doc-layout{grid-template-columns:minmax(0,1fr)!important;gap:0!important}body{background:var(--pd-ink-inverse)}main{max-width:none!important;padding:0!important}h1{font-size:20pt}h2{font-size:13pt;page-break-after:avoid}p,li{font-size:11pt;line-height:1.5}.doc-print{display:block!important}}.doc-print{display:none}
+/* Отправка идёт — кнопка это показывает. Инлайновый фон сильнее класса,
+   поэтому приглушение объявлено важным. */
+button[disabled]{opacity:.7!important;cursor:progress!important}
+input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
+/* Подтверждение и ошибка появляются плавно, а не возникают рывком.
+   Правило срабатывает при вставке элемента, поэтому блоки, которые уже
+   на странице, ничего не переигрывают при обновлении содержимого. */
+@keyframes pd-appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+[role="status"],[role="alert"]{animation:pd-appear 220ms cubic-bezier(.2,0,.2,1)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.pd-lift{transition:transform 220ms cubic-bezier(.2,0,.2,1),box-shadow 220ms cubic-bezier(.2,0,.2,1)}
+.pd-lift:hover,.pd-lift:focus-visible{transform:translateY(-5px)!important;box-shadow:0 10px 20px rgba(20,22,28,.09)!important}
+@media (prefers-reduced-motion:reduce){html .pd-lift{transition:none!important}html .pd-lift:hover,html .pd-lift:focus-visible{transform:none!important}}
+/* Посадочные под кластеры (Р-1016): плитки состава работ — три в ряд, до 900 px по две, до 560 px столбцом; раздел «заголовок слева — перечень справа» — две колонки, до 900 px одной; завершающий блок — как на «Инструментах» (Р-995). */
+.sv-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.sv-two{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:40px;align-items:start}.sv-more{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:900px){.sv-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-two,.sv-more{grid-template-columns:minmax(0,1fr)}.sv-two{gap:20px}}
+@media (max-width:560px){.sv-cards{grid-template-columns:minmax(0,1fr)}}
+.sv-route{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;column-gap:14px;align-items:center;box-sizing:border-box;min-height:44px;padding:8px 14px;background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:10px;text-decoration:none;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05)}
+@media (max-width:480px){.sv-route{padding-left:12px;padding-right:12px}}
+</style>
+</helmet>
+<div style="position:relative;background:var(--pd-ink-inverse);color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
+<a class="pd-skip" href="#main">Перейти к содержанию</a>
+<header class="doc-head doc-pad" style="max-width:1220px;margin:0 auto;padding:24px 30px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;padding:6px 10px;margin:-6px -10px;border-radius:10px;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:27px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" class="doc-mark" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
+<a href="./cabinet.html" class="pd-cabinet" style="appearance:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;min-height:44px;background:transparent;border:1px solid transparent;color:var(--pd-ink);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:0 22px;border-radius:999px;transition:border-color 180ms cubic-bezier(.2,0,.2,1),color 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-ink)" style-active="transform:scale(.97)">Личный кабинет</a>
+</header>
+<main id="main" class="doc-pad" style="max-width:1220px;margin:0 auto;padding:clamp(28px,4vw,48px) 30px 0">
+<!-- Р-1017: посадочная под кластер «заявка на грант» по образцу Р-1016 (SEO-аудит 25.11.2026, П-2; ответ владельца на квиз 25.11.2026: «Принять, делать остальные»). Утверждения — из принятых текстов действующих страниц. Своей формы нет: заявка ведёт на форму разводящей страницы. -->
+<nav aria-label="Навигационная цепочка" style="margin:0 0 12px">
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;font-size:13px;line-height:1.5;color:var(--pd-ink-muted)">
+<li><a href="./index.html" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Главная</a></li>
+<li aria-hidden="true">/</li>
+<li><a href="./business.html" style="display:inline-flex;align-items:center;min-height:44px;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Компаниям</a></li>
+<li aria-hidden="true">/</li>
+<li aria-current="page" style="color:var(--pd-ink-secondary)">Заявка на грант</li>
+</ol>
+</nav>
+<div style="max-width:66ch">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Бизнесу и молодым учёным</span>
+<h1 style="margin:12px 0 0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(28px,3vw,40px);line-height:1.24;font-weight:500;letter-spacing:-.015em;color:var(--pd-ink)">Заявка на грант: <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">от условий конкурса до комплекта документов</span></span></h1>
+<p style="margin:20px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">Подбираем программу под стадию и отрасль, готовим заявку по форме конкурса, считаем бюджет и разбираем с командой вопросы экспертного совета. О поддержке проекта решает фонд по итогам экспертизы.</p>
+<div style="margin-top:28px;display:flex;align-items:center;gap:12px 24px;flex-wrap:wrap">
+<a href="./business.html#request" style="display:inline-flex;align-items:center;gap:12px;min-height:48px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+<a href="./main.html#articles" style="display:inline-flex;align-items:center;gap:8px;min-height:44px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">Молодым учёным: заявка в научный фонд</a>
+</div>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Задачу обсуждаем после подписания NDA. Менеджер отвечает в течение рабочего дня, Пн⁠—⁠Пт 10:00⁠—⁠19:00.</p>
+</div>
+
+<section aria-labelledby="gr-scope" style="margin-top:clamp(56px,6vw,88px);display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Состав работ</span>
+<h2 id="gr-scope" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Что входит в подготовку заявки на грант</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:66ch">Получатель документа фиксируется до старта: его требования становятся критерием готовности.</p>
+</div>
+<div class="sv-cards">
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Подбор программы</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Подбираем программу под стадию и отрасль.</p>
+</div>
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Заявка по форме конкурса</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Оформляем заявку на грант или субсидию под требования конкурса.</p>
+</div>
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Бюджет проекта</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Считаем бюджет проекта под требования конкурса.</p>
+</div>
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Экспертный совет</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Упаковываем проект под требования конкретного конкурса и репетируем защиту с командой.</p>
+</div>
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Отчётность по гранту</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Промежуточная и итоговая отчётность по гранту.</p>
+</div>
+<div style="background:var(--pd-surface-quiet);border-radius:14px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Научные фонды</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">РНФ и другие научные фонды: куратор сверяет заявку с условиями конкурса.</p>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="gr-facts" class="sv-two" style="margin-top:clamp(56px,6vw,88px)">
+<div style="display:flex;flex-direction:column;gap:12px">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Решение фонда</span>
+<h2 id="gr-facts" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">За что отвечаем мы и что решает фонд</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Предмет договора — соответствие документа требованиям получателя на дату подачи.</p>
+</div>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+<li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;align-items:baseline;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Соответствие заявки требованиям конкурса на дату подачи</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink);white-space:nowrap">отвечаем мы</span></li>
+<li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;align-items:baseline;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Решение о поддержке проекта</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink);white-space:nowrap">принимает фонд</span></li>
+<li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;align-items:baseline;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Замечания в пределах согласованного объёма</span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink);white-space:nowrap">без доплаты</span></li>
+<li style="padding:14px 0;border-top:1px solid var(--pd-border);font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Если этап не сдан в срок, оплата за него возвращается по вашему заявлению.</li>
+</ul>
+</section>
+
+<section aria-labelledby="gr-steps" class="sv-two" style="margin-top:clamp(56px,6vw,88px)">
+<div style="display:flex;flex-direction:column;gap:12px">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Порядок работы</span>
+<h2 id="gr-steps" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">От заявки до отчётности по гранту</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Вперёд за всю работу платить не нужно: следующий этап оплачивается после приёмки предыдущего.</p>
+</div>
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-accent);padding-top:1px">01</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Заявка, NDA и проект договора</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Менеджер присылает NDA и проект договора. Задачу обсуждаем только после подписания NDA.</span></span></li>
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-accent);padding-top:1px">02</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Материалы и требования конкурса</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">В личном кабинете вы прикладываете имеющиеся материалы и требования получателя документа.</span></span></li>
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-accent);padding-top:1px">03</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Задание к договору</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Состав работ, требования получателя документа, календарный план и стоимость каждого этапа.</span></span></li>
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-accent);padding-top:1px">04</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Этапы с приёмкой</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Каждый этап вы принимаете в кабинете. По каждому — акт.</span></span></li>
+<li style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--pd-border)"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.5;letter-spacing:.05em;color:var(--pd-accent);padding-top:1px">05</span><span style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Отчётность</span><span style="font-size:14px;line-height:1.5;color:var(--pd-ink-secondary)">Документацию ведём от заявки в фонд до отчётности по гранту.</span></span></li>
+</ol>
+</section>
+
+<section id="faq" aria-labelledby="gr-faq" class="sv-two" style="margin-top:clamp(56px,6vw,88px);scroll-margin-top:24px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted)">Вопросы</span>
+<h2 id="gr-faq" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Вопросы о заявке на грант</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:44ch">Вопросы о НИОКР, патентах и правах на результат — на странице «Компаниям».</p>
+</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ faq }}" as="f" hint-placeholder-count="5">
+<div style="padding:16px 0;border-top:1px solid var(--pd-border);display:flex;flex-direction:column;gap:8px">
+<h3 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.4;font-weight:600;color:var(--pd-ink)">{{ f.q }}</h3>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary);max-width:70ch">{{ f.a }}</p>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="gr-more" class="sv-more" style="margin-top:clamp(56px,6vw,88px);background:var(--pd-accent-tint);border-radius:14px;padding:clamp(24px,3vw,36px);display:grid;gap:24px 40px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:8px;max-width:60ch">
+<span style="display:block;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.4;letter-spacing:.06em;text-transform:uppercase;color:var(--pd-ink-muted);margin-bottom:4px">Заявка</span>
+<h2 id="gr-more" style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(26px,2.4vw,34px);line-height:1.24;font-weight:500;letter-spacing:-.012em;color:var(--pd-ink)">Есть проект и конкурс с дедлайном — начните с заявки</h2>
+<p style="margin:0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Менеджер ответит в течение рабочего дня и пришлёт NDA и проект договора. Работу ведёт куратор по отрасли со степенью.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+<a class="pd-lift sv-route" href="./business.html#packs"><span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-stages.svg') center/contain no-repeat;mask:url('./assets/icons/pd-stages.svg') center/contain no-repeat"></span></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Пять пакетов: от техзадания до постановки на баланс</span><span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+<a class="pd-lift sv-route" href="./business.html#trl"><span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/flask-conical.svg') center/contain no-repeat;mask:url('./assets/icons/flask-conical.svg') center/contain no-repeat"></span></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Девять уровней готовности технологии и документы на выходе</span><span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+<a class="pd-lift sv-route" href="./main.html#articles"><span aria-hidden="true" style="width:28px;height:28px;border-radius:50%;background:var(--pd-accent-tint);display:flex;align-items:center;justify-content:center"><span style="width:15px;height:15px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/pd-grant.svg') center/contain no-repeat;mask:url('./assets/icons/pd-grant.svg') center/contain no-repeat"></span></span><span style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.4;font-weight:600;color:var(--pd-ink)">Молодым учёным: заявка на грант в научный фонд</span><span aria-hidden="true" style="width:18px;height:18px;display:block;background:var(--pd-ink);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+<a href="./business.html#request" style="align-self:flex-start;margin-top:8px;display:inline-flex;align-items:center;gap:12px;min-height:48px;box-sizing:border-box;background:var(--pd-ink);color:var(--pd-ink-inverse);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:600;padding:14px 32px;border-radius:999px;transition:background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:var(--pd-button-hover);color:var(--pd-ink-inverse)" style-active="transform:scale(.97)">Оставить заявку<span aria-hidden="true" style="width:15px;height:15px;display:block;background:var(--pd-ink-inverse);-webkit-mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat;mask:url('./assets/icons/arrow-right.svg') center/contain no-repeat"></span></a>
+</div>
+</section>
+</main>
+<footer class="doc-foot doc-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(88px,8vw,128px) auto 0;padding:48px 30px 24px;scroll-margin-top:24px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--pd-divider)">
+<span style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;min-width:0">
+<a href="./index.html" aria-label="ProDisser — на главную" style="display:inline-flex;align-items:center;min-height:44px;flex:0 0 auto;padding:6px 10px;margin:0 -10px;border-radius:10px;text-decoration:none;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:21px;line-height:1.24;font-weight:600;letter-spacing:.005em;transition:background 180ms cubic-bezier(.2,0,.2,1)" style-hover="background:rgba(216,228,243,.62)" style-active="background:rgba(216,228,243,.84)"><span style="color:var(--pd-accent)">PRO</span><span style="color:var(--pd-ink)">DISSER</span></a>
+<a href="tel:+74954564323" style="display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:500;color:var(--pd-ink);text-decoration:none;transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">+7 495 456 43 23</a>
+<a href="mailto:info.prodisser@gmail.com" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-ink-secondary)">info.prodisser@gmail.com</a>
+</span>
+<span style="display:flex;align-items:center;gap:12px;min-width:0">
+<span style="font-size:14px;line-height:1.5;color:var(--pd-ink-muted)">Пишите в Telegram — отвечаем в рабочее время</span>
+<a href="https://t.me/prodisser" target="_blank" rel="noopener noreferrer" aria-label="Telegram ProDisser" title="Telegram" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="width:20px;height:20px;display:block;background:var(--pd-accent);-webkit-mask:url('./assets/icons/send.svg') center/contain no-repeat;mask:url('./assets/icons/send.svg') center/contain no-repeat"></span></a>
+<a href="https://vk.ru/cmnrut" target="_blank" rel="noopener noreferrer" aria-label="VK — сообщество ProDisser во ВКонтакте" title="ВКонтакте" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--pd-border);border-radius:10px;background:var(--pd-ink-inverse);transition:border-color 180ms cubic-bezier(.2,0,.2,1),background 180ms cubic-bezier(.2,0,.2,1),transform 180ms cubic-bezier(.2,0,.2,1)" style-hover="border-color:var(--pd-accent);background:var(--pd-surface-quiet)" style-active="transform:scale(.94)"><span aria-hidden="true" style="font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1;font-weight:600;letter-spacing:.02em;color:var(--pd-accent)">VK</span></a>
+</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
+<a href="./tools.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Оформить список литературы по ГОСТ</a>
+<a href="./contacts.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Контакты</a>
+<a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Публичная оферта</a>
+<a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
+<a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>
+<a href="./privacy.html#cookies" data-pd-cookies style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Настройки cookies</a>
+</span>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:8px">
+<span style="font-size:14px;line-height:1.6;color:var(--pd-ink-muted)">© 2016—2026 ProDisser — научный консалтинг. Работаем по всей России</span>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280}}">
+/* Заявка на грант (решение Р-1017). Новых фактов страница не вводит: числа, обозначения норм и условия договора — из текстов действующих страниц; совпадение охраняет site-clusters-r1016.test.ts. */
+class Component extends DCLogic {
+  componentDidMount(){
+    document.documentElement.lang = 'ru';
+  }
+  renderVals(){
+    // Вопросы и ответы: из этого перечня tools/seo-sync.mjs собирает
+    // разметку FAQPage (Р-1010) — текст в разметке тот же, что на странице.
+    const faqData = [
+      ['Можете ли вы обещать, что грант дадут?', 'Нет. Решение принимает фонд по итогам экспертизы, и его мы не обещаем. Отвечаем за соответствие документа требованиям на дату подачи.'],
+      ['С какой стадии проекта можно подаваться на грант?', 'Программу подбираем под стадию и отрасль. Шкала уровней готовности технологии на странице «Компаниям» показывает, какие инструменты поддержки доступны на каждом уровне.'],
+      ['Что входит в подготовку заявки на грант?', 'Заявка по форме конкурса, бюджет проекта под его требования, разбор с командой вопросов экспертного совета и репетиция защиты. После получения гранта — промежуточная и итоговая отчётность.'],
+      ['Работаете с заявками молодых учёных в научные фонды?', 'Да. РНФ и другие научные фонды: куратор сверяет заявку с условиями конкурса — обоснование новизны, план работ, смету и отчётность по этапам.'],
+      ['Как считается смета и когда платить?', 'Стоимость складывается из состава работ и стадии готовности разработки, поэтому считается после разбора материалов. Оплата идёт по этапам: следующий оплачивается после приёмки предыдущего.']
+    ];
+    return {
+      faq: faqData.map(([q, a]) => ({ q, a }))
+    };
+  }
+}
+</script>
+</body>
+</html>

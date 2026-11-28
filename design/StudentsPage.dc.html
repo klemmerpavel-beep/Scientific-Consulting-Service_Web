@@ -285,7 +285,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="min-width:0">
 <!-- Р-855: над заголовком — плашка-доказательство «Научный коллектив с 2016 года» с тремя портретами ролей (из первого экрана Р-841, снимок владельца 13.11.2026) вместо метки «Студентам, магистрантам и специалистам». -->
 <span class="sp-proof" style="display:inline-flex;align-items:center;gap:12px;max-width:100%;box-sizing:border-box;margin-bottom:24px;padding:6px 16px 6px 8px;border:1px solid var(--pd-border);border-radius:999px;background:var(--pd-ink-inverse);box-shadow:0 1px 2px rgba(20,22,28,.05)"><span style="display:inline-flex;flex:0 0 auto"><img src="./assets/avatars/ph-curator.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:0"><img src="./assets/avatars/ph-expert.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"><img src="./assets/avatars/ph-editor.webp" alt="" aria-hidden="true" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--pd-ink-inverse);background:var(--pd-accent-mark);margin-left:-10px"></span><span style="font-size:14px;line-height:1.4;color:var(--pd-ink-secondary)"><b style="font-weight:600;color:var(--pd-ink)">Научный коллектив</b> с 2016 года</span></span>
-<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,42px);line-height:1.4;font-weight:500;letter-spacing:-.018em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Готовьте диплом к защите</span><span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">под контролем куратора с учёной степенью</span></span></h1>
+<h1 style="margin:0;font-family:'Literata',Georgia,'Times New Roman',serif;font-size:clamp(30px,3vw,42px);line-height:1.4;font-weight:500;letter-spacing:-.018em;color:var(--pd-ink);max-width:22ch;text-wrap:balance"><span style="display:block">Готовьте диплом к защите</span> <span style="background:var(--pd-accent-mark);border-radius:6px;padding:2px 0;box-shadow:-.1em 0 0 var(--pd-accent-mark),.1em 0 0 var(--pd-accent-mark);mix-blend-mode:multiply;box-decoration-break:clone;-webkit-box-decoration-break:clone"><span style="position:relative">под контролем куратора с учёной степенью</span></span></h1>
 <p style="margin:24px 0 0;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary);max-width:48ch">Куратор разбирает работу, сверяет её с требованиями кафедры и ГОСТ и сопровождает вас от первого разбора до защиты.</p>
 
 <form onSubmit="{{ submitTop }}" style="margin:32px 0 0;max-width:420px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">
@@ -496,6 +496,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span aria-hidden="true" style="width:17px;height:17px;flex:0 0 17px;display:block;background:var(--pd-accent);-webkit-mask:{{ offerToggleMask }};mask:{{ offerToggleMask }}"></span>
 </button>
 </div>
+<!-- Р-1016, Р-1017: вход на посадочные кластеров — строкой под разделом; карточки и кнопки раздела не меняются. -->
+<p class="pd-cluster" style="margin:20px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Отдельная страница направления: <a href="./magisterskaya-dissertaciya.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">сопровождение магистерской диссертации</a>.</p>
 </section>
 
 <section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -840,6 +842,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <span>{{ f.q }}</span>
 <span aria-hidden="true" style="position:relative;width:16px;height:16px;flex:0 0 16px"><span style="position:absolute;left:0;top:8px;width:16px;height:2px;background:var(--pd-ink-muted);border-radius:999px"></span><span style="position:absolute;left:8px;top:0;width:2px;height:16px;background:var(--pd-ink-muted);border-radius:999px"></span></span>
 </button>
+<p hidden>{{ f.a }}</p>
 </sc-if>
 </sc-for>
 </div>
@@ -1028,6 +1031,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
 <span style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0">
 <a href="./tools.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Оформить список литературы по ГОСТ</a>
+<a href="./contacts.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Контакты</a>
 <a href="./offer.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Публичная оферта</a>
 <a href="./privacy.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Политика конфиденциальности</a>
 <a href="./consent.html" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;line-height:1.5;color:var(--pd-ink-muted);transition:color 180ms cubic-bezier(.2,0,.2,1)" style-hover="color:var(--pd-accent)">Обработка персональных данных</a>

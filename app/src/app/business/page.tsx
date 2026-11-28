@@ -3,6 +3,7 @@ import Page from '../../components/pages/BusinessPage';
 import { meta } from '../../components/pages/BusinessPage.meta';
 import { OG_COVER, OG_SITE } from '../../components/og-cover';
 import OrgSchema from '../../components/OrgSchema';
+import FaqSchema from '../../components/FaqSchema';
 
 export const metadata: Metadata = {
   title: meta.title,
@@ -16,6 +17,7 @@ export default function Route() {
     <>
       <Page />
       <OrgSchema />
+      <FaqSchema page="/business" />
     </>
   );
 }

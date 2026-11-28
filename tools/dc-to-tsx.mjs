@@ -31,7 +31,9 @@ const ROUTES = {
   './business.html': '/business', './offer.html': '/offer',
   './privacy.html': '/privacy', './consent.html': '/consent',
   './cabinet.html': '/cabinet', './experts.html': '/experts',
-  './tools.html': '/tools',
+  './tools.html': '/tools', './contacts.html': '/contacts',
+  './kandidatskaya-dissertaciya.html': '/kandidatskaya-dissertaciya', './niokr.html': '/niokr',
+  './magisterskaya-dissertaciya.html': '/magisterskaya-dissertaciya', './statya-vak.html': '/statya-vak', './normokontrol.html': '/normokontrol', './patent.html': '/patent', './grant.html': '/grant',
 };
 
 const ATTR_MAP = { class: 'className', for: 'htmlFor', autocomplete: 'autoComplete',

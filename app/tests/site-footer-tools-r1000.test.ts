@@ -50,6 +50,8 @@ describe('вход на «Инструменты» из подвала (Р-1000)
       const links = linkRow(foot);
       assert.deepEqual(links.map(([href, , text]) => [href, text]), [
         ['./tools.html', LABEL],
+        // Р-1015: вход на страницу контактов — вторым в строке.
+        ['./contacts.html', 'Контакты'],
         ['./offer.html', 'Публичная оферта'],
         ['./privacy.html', 'Политика конфиденциальности'],
         ['./consent.html', 'Обработка персональных данных'],
@@ -62,7 +64,8 @@ describe('вход на «Инструменты» из подвала (Р-1000)
 
     it(`${page}: в компоненте подвал ведёт на /tools`, () => {
       const tsx = footer(read('app', 'src', 'components', 'pages', `${component}.tsx`));
-      assert.match(tsx, new RegExp(`<a className="[^"]+" href="/tools" style=\\{\\{[^}]*\\}\\}>${LABEL}</a><a className="[^"]+" href="/offer"`, 'u'));
+      // С Р-1015 между «Инструментами» и офертой стоит «Контакты».
+      assert.match(tsx, new RegExp(`<a className="[^"]+" href="/tools" style=\\{\\{[^}]*\\}\\}>${LABEL}</a><a className="[^"]+" href="/contacts" style=\\{\\{[^}]*\\}\\}>Контакты</a><a className="[^"]+" href="/offer"`, 'u'));
     });
 
     it(`${page}: предлоги в строках подвала не отрываются от слова`, () => {

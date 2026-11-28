@@ -216,11 +216,18 @@ describe('«Аспирантам»: под таблицей п. 13 — «Как 
 });
 
 describe('главная: вход для молодых учёных', () => {
-  it('h1, <title> и og:title — научный консалтинг для студентов, аспирантов, молодых учёных и компаний', () => {
-    const expected = 'ProDisser — научный консалтинг для студентов, аспирантов, молодых учёных и компаний';
-    assert.equal(h1Of(START), expected);
+  it('h1 — научный консалтинг для студентов, аспирантов, молодых учёных и компаний', () => {
+    assert.equal(h1Of(START), 'ProDisser — научный консалтинг для студентов, аспирантов, молодых учёных и компаний');
+  });
+
+  it('<title> и og:title — под запросы «сопровождение диссертации», «ВКР», «НИОКР», до 60 знаков (Р-1013)', () => {
+    // До Р-1013 title повторял h1: 83 знака, в выдаче обрезался, и ни
+    // «диссертации», ни «НИОКР» в нём не было. h1 остаётся прежним.
+    const expected = 'Научное сопровождение диссертаций, ВКР и НИОКР — ProDisser';
+    assert.ok(expected.length <= 60, `title ${expected.length} знаков`);
     assert.match(START, new RegExp(`<title>${expected}</title>`, 'u'));
     assert.match(START, new RegExp(`<meta property="og:title" content="${expected}">`, 'u'));
+    assert.ok(read('app/src/components/pages/StartPage.meta.ts').includes(JSON.stringify(expected)));
   });
 
   it('под формой первого экрана строки направлений нет (Р-861): вход в направления — карточками «Три направления работы» ниже', () => {

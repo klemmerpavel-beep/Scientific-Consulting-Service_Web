@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Перенос девяти макетов в компоненты и сверка ассетов сайта ProDisser.
+# Перенос макетов в компоненты и сверка ассетов сайта ProDisser.
 #
 #   sync-check.sh            перенести макеты, показать изменённые компоненты,
 #                            сверить design/assets с app/public/assets
@@ -25,7 +25,10 @@ StudentsPage:StudentsPage:students BusinessPage:BusinessPage:business
 OfferPage:OfferPage:landing PrivacyPage:PrivacyPage:landing
 ConsentPage:ConsentPage:landing NotFoundPage:NotFoundPage:landing
 ExpertsPage:ExpertsPage:landing
-ToolsPage:ToolsPage:landing"
+ToolsPage:ToolsPage:landing
+ContactsPage:ContactsPage:landing
+CandidatePage:CandidatePage:landing NiokrPage:NiokrPage:landing
+MasterPage:MasterPage:landing ArticlePage:ArticlePage:landing NormPage:NormPage:landing PatentPage:PatentPage:landing GrantPage:GrantPage:landing"
 
 declare -A before
 for f in "$PAGES"/*.tsx "$PAGES"/*.ts; do [ -e "$f" ] || continue; before[$f]=$(sha1sum "$f" | cut -c1-40); done
@@ -59,6 +62,15 @@ if [ $CHECK -eq 1 ]; then
     git diff --stat -- "$PAGES"
     status=1
   fi
+fi
+
+# Данные для поиска, выведенные из макетов (Р-1010): дата правки
+# страницы для sitemap.xml и вопросы раздела «Вопросы» для разметки FAQPage.
+# После переноса — обновить; при сверке — убедиться, что обновлены.
+if [ $CHECK -eq 1 ]; then
+  node tools/seo-sync.mjs --check || status=1
+else
+  node tools/seo-sync.mjs || status=1
 fi
 
 # Ассеты: всё из design/assets должно лежать в app/public/assets байт в байт.
