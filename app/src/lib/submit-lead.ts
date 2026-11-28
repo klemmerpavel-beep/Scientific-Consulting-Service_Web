@@ -1,6 +1,8 @@
 'use client';
 
-import { FIELD_LABELS, RATE_LIMIT_MESSAGE } from './lead-schema';
+// Из `lead-messages`, а не из `lead-schema`: схема заявки на zod браузеру не
+// нужна, а импорт оттуда клал библиотеку в сборку каждой страницы (Р-1019).
+import { FIELD_LABELS, RATE_LIMIT_MESSAGE } from './lead-messages';
 
 /**
  * Отправка заявки из формы, перенесённой из макета.

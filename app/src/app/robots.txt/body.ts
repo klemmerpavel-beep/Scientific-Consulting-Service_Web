@@ -7,8 +7,19 @@
  * но для Яндекса это подсказка, а `Clean-param` — правило. Директива
  * межсекционная: Яндекс читает её из любой группы, прочие роботы её
  * пропускают.
+ *
+ * С Р-1008 перечень дополнен метками, которые к адресу дописывают другие
+ * площадки: `erid` — токен маркировки рекламы (объявления во «ВКонтакте»,
+ * Telegram, на Авито), `_openstat` — разметка Директа прежнего образца,
+ * `utm_referrer` — источник перехода при переадресации, `gclid` и `fbclid`
+ * — отметки перехода Google и Meta. Содержимого страницы ни одна из них не
+ * меняет. Длина значения директивы — до 500 знаков (справка Вебмастера),
+ * перечень занимает меньше четверти.
  */
-export const CLEAN_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'yclid', 'ysclid'];
+export const CLEAN_PARAMS = [
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'yclid', 'ysclid',
+  'erid', '_openstat', 'utm_referrer', 'gclid', 'fbclid',
+];
 
 /**
  * Тело robots.txt.

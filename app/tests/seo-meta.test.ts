@@ -90,7 +90,8 @@ describe('robots.txt: метки рекламы не плодят дублей �
   const prod = robotsTxt({ demoStand: false, base: 'https://prodisser.ru' });
 
   it('Clean-param перечисляет метки Директа и отметки перехода Яндекса', () => {
-    assert.match(prod, /^Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid$/mu);
+    // Р-1008: к меткам Директа добавлены метки других площадок.
+    assert.match(prod, /^Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&erid&_openstat&utm_referrer&gclid&fbclid$/mu);
     // Каждая метка из объявлений `marketing/campaigns` закрыта.
     const ads = read('marketing', 'campaigns', 'direct.json');
     for (const param of new Set([...ads.matchAll(/[?&](utm_[a-z]+)=/gu)].map((m) => m[1]!))) {
@@ -104,6 +105,15 @@ describe('robots.txt: метки рекламы не плодят дублей �
     }
     // `Disallow: /cabinet` без косой черты спрятал бы от робота `noindex` страницы входа.
     assert.ok(!prod.split('\n').includes('Disallow: /cabinet'));
+  });
+
+  it('директива одна и укладывается в предел Яндекса — 500 знаков (Р-1008)', () => {
+    const lines = prod.split('\n').filter((line) => line.startsWith('Clean-param:'));
+    assert.equal(lines.length, 1);
+    assert.ok(lines[0]!.length - 'Clean-param: '.length <= 500);
+    // Параметр, который меняет содержимое страницы, в перечень не попадает:
+    // у сайта таких нет, а `page` или `q` Яндекс счёл бы незначащими.
+    for (const param of CLEAN_PARAMS) assert.match(param, /^(utm_[a-z]+|yclid|ysclid|erid|_openstat|gclid|fbclid)$/u);
   });
 
   it('демонстрационный стенд закрыт целиком, без карты', () => {
@@ -194,5 +204,84 @@ describe('«Компаниям»: имена кнопок и ссылок сод
       assert.doesNotMatch(source, /proofAria|bp-mechbtn/u);
       assert.match(source, /<span style=(?:"font-weight:600;color:var\(--pd-ink\)"|\{\{ fontWeight: "600", color: "var\(--pd-ink\)" \}\})>Чем закреплено:<\/span>/u);
     }
+  });
+});
+
+describe('изображения сайта хранятся в браузере сутки (Р-1009)', () => {
+  const config = read('app', 'next.config.mjs');
+
+  it('срок — сутки и неделя показа прежней копии с фоновой сверкой; «навсегда» файлам без свёртки в имени не ставится', () => {
+    assert.match(config, /const IMAGE_CACHE = 'public, max-age=86400, stale-while-revalidate=604800';/u);
+    assert.doesNotMatch(config, /IMAGE_CACHE = '[^']*immutable/u);
+  });
+
+  it('правило стоит на снимках, фотографиях и обложке ссылок', () => {
+    for (const source of ['/assets/:path*', '/photos/:path*', '/og-cover-v2.png']) {
+      assert.ok(config.includes(`{ source: '${source}', headers: [{ key: 'Cache-Control', value: IMAGE_CACHE }] },`), source);
+    }
+  });
+
+  it('обложка в правиле — та же, что объявлена страницам', () => {
+    assert.match(read('app', 'src', 'components', 'og-cover.ts'), /url: '\/og-cover-v2\.png',/u);
+  });
+
+  it('прототип кабинета и страницы под правило не попадают', () => {
+    assert.doesNotMatch(config, /source: '\/cabinet-preview[^']*', headers: \[\{ key: 'Cache-Control'/u);
+    assert.doesNotMatch(config, /source: '\/:path\*',\s+headers: \[\s+\{ key: 'Cache-Control'/u);
+  });
+});
+
+describe('строки заголовка разделены пробелом и в разметке (Р-1011)', () => {
+  // Первая строка заголовка — `span` с `display:block`, вторая — подсветка.
+  // Перенос задаёт оформление, а в разметке между словами строк не было ни
+  // пробела, ни `<br>`: разбор без таблицы стилей читал «защитепод»,
+  // «требованиямприёмки», «техзаданиядо». Пробел после блочной строки на
+  // экране не виден — он стоит в начале следующей строки и схлопывается.
+  const pages = [
+    ['StartPage', 'StartPage'], ['MainPage', 'PostgradPage'], ['StudentsPage', 'StudentsPage'],
+    ['BusinessPage', 'BusinessPage'], ['ExpertsPage', 'ExpertsPage'], ['ToolsPage', 'ToolsPage'],
+  ] as const;
+
+  for (const [design, component] of pages) {
+    it(`${design}: после блочной строки заголовка стоит пробел`, () => {
+      assert.doesNotMatch(read('design', `${design}.dc.html`), /<span style="display:block">[^<]*<\/span><span /u);
+      assert.doesNotMatch(read('app', 'src', 'components', 'pages', `${component}.tsx`), /<span style=\{\{ display: "block" \}\}>[^<]*<\/span><span /u);
+    });
+  }
+
+  it('три заголовка, где строки стояли вплотную, читаются по словам', () => {
+    assert.match(read('design', 'StudentsPage.dc.html'), />Готовьте диплом к защите<\/span> <span /u);
+    assert.match(read('design', 'BusinessPage.dc.html'), />Оформить НИОКР по требованиям<\/span> <span /u);
+    assert.match(read('design', 'BusinessPage.dc.html'), />Пять пакетов: от техзадания<\/span> <span /u);
+  });
+});
+
+describe('значок сайта отдаётся и по адресу /favicon.ico (Р-1012)', () => {
+  it('файл — контейнер ICO с тремя размерами', () => {
+    const ico = readFileSync(path.join(ROOT, 'app', 'public', 'favicon.ico'));
+    // Заголовок ICO: 0, тип 1 (значок), число изображений.
+    assert.deepEqual([ico.readUInt16LE(0), ico.readUInt16LE(2), ico.readUInt16LE(4)], [0, 1, 3]);
+    assert.deepEqual([ico.readUInt8(6), ico.readUInt8(22), ico.readUInt8(38)], [16, 32, 48]);
+    assert.ok(ico.length < 10_000, `значок ${ico.length} байт`);
+  });
+
+  it('значок в разметке страниц остаётся векторным: файла app/favicon.ico нет', () => {
+    assert.throws(() => readFileSync(path.join(ROOT, 'app', 'src', 'app', 'favicon.ico')));
+    assert.ok(readFileSync(path.join(ROOT, 'app', 'src', 'app', 'icon.svg')).length > 0);
+  });
+});
+
+describe('«Компаниям»: H1 называет НИОКР (Р-1014)', () => {
+  const sources = [read('design', 'BusinessPage.dc.html'), read('app', 'src', 'components', 'pages', 'BusinessPage.tsx')];
+
+  it('H1 — «Оформить НИОКР по требованиям приёмки, гранта и патента»; подсветка на прежнем месте', () => {
+    const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/u.exec(sources[0]!)![1]!;
+    assert.equal(h1.replace(/<[^>]+>/gu, '').replace(/ /gu, ' '), 'Оформить НИОКР по требованиям приёмки, гранта и патента');
+    assert.match(h1, /<span style="position:relative">приёмки, гранта и патента<\/span>/u);
+    for (const source of sources) assert.doesNotMatch(source, /Оформить разработку по/u);
+  });
+
+  it('title и H1 называют НИОКР: страница отвечает запросу и в выдаче, и на экране', () => {
+    assert.match(/<title>([^<]*)<\/title>/u.exec(sources[0]!)![1]!, /^НИОКР/u);
   });
 });

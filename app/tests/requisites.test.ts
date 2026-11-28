@@ -35,6 +35,9 @@ const LEGAL = [
   { design: 'OfferPage', route: 'offer' },
   { design: 'PrivacyPage', route: 'privacy' },
   { design: 'ConsentPage', route: 'consent' },
+  // Страница контактов (Р-1015): реквизиты — её содержание; подвалы
+  // содержательных страниц при этом остаются без реквизитов.
+  { design: 'ContactsPage', route: 'contacts' },
 ];
 
 describe('реквизиты общества вне правовых страниц не выводятся', () => {
@@ -65,7 +68,7 @@ describe('реквизиты общества вне правовых стран
   });
 });
 
-describe('правовые страницы реквизиты сохраняют', () => {
+describe('правовые страницы и страница контактов реквизиты сохраняют', () => {
   for (const page of LEGAL) {
     it(`${page.design}: реквизиты на месте, разметка с реквизитами`, () => {
       assert.match(read(SRC, 'components', 'pages', `${page.design}.tsx`), /9723254250/u);
