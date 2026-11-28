@@ -215,8 +215,8 @@ describe('цены «от» на трёх посадочных — нижняя 
     }
   });
 
-  it('разводящие страницы и главная цен не показывают: разделы «без цен» прежние (Р-886)', () => {
-    for (const design of ['StartPage', 'MainPage', 'StudentsPage', 'BusinessPage']) {
+  it('главная и «Компаниям» цен не показывают; ориентир на «Аспирантам» и «Студентам» — site-prices-r1022.test.ts', () => {
+    for (const design of ['StartPage', 'BusinessPage']) {
       assert.doesNotMatch(read('design', `${design}.dc.html`).replace(/<!--[\s\S]*?-->/gu, ''), /\d[\d  ]*₽/u, design);
     }
   });
