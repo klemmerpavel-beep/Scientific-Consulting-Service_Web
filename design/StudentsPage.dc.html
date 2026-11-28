@@ -497,7 +497,7 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </button>
 </div>
 <!-- Р-1016, Р-1017: вход на посадочные кластеров — строкой под разделом; карточки и кнопки раздела не меняются. -->
-<p class="pd-cluster" style="margin:20px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Отдельная страница направления: <a href="./magisterskaya-dissertaciya.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">сопровождение магистерской диссертации</a>.</p>
+<p class="pd-cluster" style="margin:20px 0 0;font-size:14px;line-height:1.6;color:var(--pd-ink-secondary)">Отдельные страницы направлений: <a href="./magisterskaya-dissertaciya.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">сопровождение магистерской диссертации</a>, <a href="./zashchita-diploma.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">подготовка к защите диплома</a>, <a href="./zamechaniya-k-diplomu.html" style="color:var(--pd-accent);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px">разбор замечаний к диплому</a>.</p>
 </section>
 
 <section id="cost" class="sp-pad" style="position:relative;z-index:1;max-width:1220px;margin:clamp(80px,8vw,126px) auto 0;padding:0 30px;scroll-margin-top:24px">
@@ -510,6 +510,8 @@ input::placeholder,textarea::placeholder{color:var(--pd-ink-muted);opacity:1}
 </div>
 <!-- Р-799: одна система контейнеров — белые карточки (рамка --pd-border, радиус 14, тень уровня 2) и единственная тёмная панель страницы (Р-608). Факторы — «Подбор сметы» (Р-886); тёмная панель консультации — на всю ширину («Что прислать для сметы» — в блоке заявки, Р-846); «Нормоконтроль» — карточка на ширину сетки, раскрытие и карточка-ссылка Р-791 — внутри неё. -->
 <!-- Р-886: «Подбор сметы» вместо трёх факторов строкой (замечание владельца 13.11.2026: блок «очень простой… доработать функционально и сделать более комплексным и понятным»). Слева — три фактора переключателями (кнопки aria-pressed, как вкладки «Этапов»), справа — что войдёт в смету: этапы маршрута из «Этапов» с ориентировочной длительностью (для диплома и магистерской; для отчёта и статьи — срок из «Состава работ»), что проверяет куратор (текст карточки «Состава работ»), оплата по этапам; «Получить смету» ведёт к форме заявки и ставит в поле «Срок сдачи» выбранный срок. Цен и сумм нет (Р-03). Тёмная панель консультации и свёртка «Нормоконтроль» — прежние; строка об оплате перешла из панели в карточку. -->
+<!-- Р-1022: ценовой ориентир в разделе «Смета» — нижняя граница договоров на сопровождение ВКР из свода книги заказов (та же сумма, что на посадочной магистерской, Р-1021). «Подбор сметы» (Р-886) прежний: переключатели сумм не показывают. -->
+<p class="pd-price" style="margin:-8px 0 20px;font-size:16px;line-height:1.6;color:var(--pd-ink-secondary)">Сопровождение ВКР и магистерской диссертации — <span style="font-weight:600;color:var(--pd-ink);white-space:nowrap">от 25 000 ₽</span>. Смета фиксируется в Задании после разбора материала.</p>
 <div class="sp-est" style="gap:16px;align-items:stretch">
 <div class="sp-estpick" style="background:var(--pd-ink-inverse);border:1px solid var(--pd-border);border-radius:14px;box-shadow:0 6px 14px rgba(20,22,28,.06),0 1px 2px rgba(20,22,28,.05);padding:22px 24px;display:flex;flex-direction:column;gap:20px;min-width:0">
 <div style="display:flex;flex-direction:column;gap:6px">
@@ -1321,7 +1323,7 @@ class Component extends DCLogic {
       ['Что если работу вернут после правок?', 'Разбираем новый лист замечаний вместе с вами. Замечания по сданному этапу разбираем без доплаты в рамках согласованного объёма, срок ответа прописан в договоре.'],
       ['Успеем, если до защиты три недели?', 'Часто да, но зависит от стадии работы. На консультации разбираем текст и называем объём сопровождения: вся работа по этапам, отдельные разделы или только нормоконтроль и доклад.'],
       ['Что делать, если меняется тема?', 'Разбираем с вами новый план по главам и подписываем дополнительное соглашение. Сделанные этапы не пропадают — часть материала обычно переносится в новую тему.'],
-      ['Когда и как платить?', 'По этапам. Стоимость этапов фиксируется в Задании; каждый этап вы принимаете отдельно и оплачиваете следующий только после приёмки.']
+      ['Когда и как платить?', 'Сопровождение ВКР и магистерской диссертации — от 25 000 ₽. Оплата — по этапам: стоимость этапов фиксируется в Задании; каждый этап вы принимаете отдельно и оплачиваете следующий только после приёмки.']
     ];
 
     // Карусель отзывов. Карточка со смещением 0 — впереди и резкая, ±1

@@ -47,6 +47,10 @@ export const PAGE_LAYOUTS = [
   ['/normokontrol', 'NormPage'],
   ['/patent', 'PatentPage'],
   ['/grant', 'GrantPage'],
+  ['/predzashchita-dissertacii', 'PredefensePage'],
+  ['/ekspertiza-dissertacii', 'ExpertisePage'],
+  ['/zashchita-diploma', 'DefensePage'],
+  ['/zamechaniya-k-diplomu', 'RemarksPage'],
   ['/tools', 'ToolsPage'],
   ['/contacts', 'ContactsPage'],
   ['/offer', 'OfferPage'],
@@ -66,6 +70,10 @@ export const FAQ_LAYOUTS = [
   ['/normokontrol', 'NormPage'],
   ['/patent', 'PatentPage'],
   ['/grant', 'GrantPage'],
+  ['/predzashchita-dissertacii', 'PredefensePage'],
+  ['/ekspertiza-dissertacii', 'ExpertisePage'],
+  ['/zashchita-diploma', 'DefensePage'],
+  ['/zamechaniya-k-diplomu', 'RemarksPage'],
 ];
 
 const layoutPath = (layout) => path.join(ROOT, 'design', `${layout}.dc.html`);
